@@ -85,7 +85,10 @@ COPY --chown=jotdojo:nodejs packages/embeddings ./packages/embeddings
 COPY --from=deps --chown=jotdojo:nodejs /repo/packages/storage/node_modules ./packages/storage/node_modules
 COPY --chown=jotdojo:nodejs packages/storage ./packages/storage
 
-USER jotdojo
+# NUMERIC, not a name. Kubernetes cannot verify a NAMED user is non-root, so a
+# pod with `runAsNonRoot: true` refuses the container outright with
+# CreateContainerConfigError. The uid is the one created above.
+USER 1001:1001
 EXPOSE 3401
 
 # `node` runs tsx's CLI module DIRECTLY, by real path.

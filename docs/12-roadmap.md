@@ -339,6 +339,27 @@ failures are different in kind.
   It now takes a median of three warm samples, which on the same machine reads
   18ms. A budget worth keeping; a measurement that was never measuring it.
 
+**The first deploy to reach a container, 2026-08-22.** The Azure identity blocker
+cleared -- `azure/login` succeeded, images pulled, and both migration Jobs
+completed -- so the release got further than any before it and found the next
+thing.
+
+All four services sat in `CreateContainerConfigError`, which usually means a
+missing Secret and this time did not: `jotdojo-secrets` and `jotdojo-config`
+were both present and correct. The container state said what the events did not:
+
+    container has runAsNonRoot and image has non-numeric user (jotdojo),
+    cannot verify user is non-root
+
+Every Dockerfile creates its user with `adduser -S -u 1001` and then writes
+`USER jotdojo` -- a NAME. Kubernetes cannot verify a named user is non-root, so
+`runAsNonRoot: true` refuses the container before anything starts. Nothing
+crashlooped because nothing ever ran.
+
+Fixed as `USER 1001:1001` in all four images rather than `runAsUser: 1001` in
+all four manifests: the uid is already declared one line above in each
+Dockerfile, and one source of truth beats four copies of a number.
+
 **Known gaps, named rather than left to be discovered:**
 - Search quality has never been measured against a real embedding model. The suites run
   `EMBEDDING_PROVIDER=fake`, a hash projection with no semantics, which proves the

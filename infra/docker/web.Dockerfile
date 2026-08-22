@@ -75,6 +75,9 @@ WORKDIR /app
 COPY --from=build --chown=nextjs:nodejs /repo/apps/web/.next/standalone ./
 COPY --from=build --chown=nextjs:nodejs /repo/apps/web/.next/static ./apps/web/.next/static
 COPY --from=build --chown=nextjs:nodejs /repo/apps/web/public ./apps/web/public
-USER nextjs
+# NUMERIC, not a name. Kubernetes cannot verify a NAMED user is non-root, so a
+# pod with `runAsNonRoot: true` refuses the container outright with
+# CreateContainerConfigError. The uid is the one created above.
+USER 1001:1001
 EXPOSE 3400
 CMD ["node", "apps/web/server.js"]
