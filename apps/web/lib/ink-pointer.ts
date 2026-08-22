@@ -60,6 +60,20 @@ export function samplesOf(e: PointerEvent): PointerEvent[] {
  * One list rather than two. Adding a listener in the constructor and forgetting
  * it in `destroy` leaks a canvas per note opened, and the two lists drifting is
  * the only way that happens.
+ *
+ * NO `pointerleave`, and its absence is load-bearing. The engine calls
+ * `setPointerCapture` on pointerdown, and moving capture to an element fires
+ * `pointerout`/`pointerleave` as the capture target changes -- carrying the
+ * SAME pointerId, while the pen is still down. `onUp` guards on exactly those
+ * two things, so the leave passed the guard and ended the stroke at one point,
+ * which `capture.finish()` then discards. Nothing drawn, no error, and only on
+ * touch: a mouse does not fire leave when capture lands on the element it is
+ * already over. That is why the iPhone drew nothing and the desktop was fine.
+ *
+ * Nothing is lost by dropping it. Capture guarantees `pointerup` reaches this
+ * element even when the finger leaves it, and `pointercancel` still covers a
+ * genuine abort -- so a stroke that runs off the edge now continues instead of
+ * being cut, which is what someone drawing expects anyway.
  */
 export function bindPointer(
   el: HTMLElement,
@@ -67,7 +81,7 @@ export function bindPointer(
 ): () => void {
   const pairs = [
     ["pointerdown", h.down], ["pointermove", h.move], ["pointerup", h.up],
-    ["pointercancel", h.up], ["pointerleave", h.up],
+    ["pointercancel", h.up],
   ] as const;
   for (const [name, fn] of pairs) el.addEventListener(name, fn);
   return () => { for (const [name, fn] of pairs) el.removeEventListener(name, fn); };

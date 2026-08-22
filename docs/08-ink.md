@@ -18,6 +18,14 @@ Honest capabilities on an iPad, because planning against the fantasy version was
 
 **Amusing inversion:** Chrome on Android *does* support `getCoalescedEvents`, so S Pen ink can be smoother in our web app than Apple Pencil ink is. Expect this to be reported as an iPad bug. It is not one.
 
+**`pointerleave` and `setPointerCapture` do not mix.** Moving capture to an element fires
+`pointerout`/`pointerleave` as the capture target changes, with the same `pointerId`, while
+the pen is still down. A handler that ends the stroke on leave therefore ends it on the
+first sample — drawing nothing, raising nothing, and only on touch, because a mouse does
+not fire leave when capture lands on the element it is already over. It cost an iPhone all
+of its ink while every desktop worked. Capture already guarantees `pointerup`, so leave
+buys nothing; `pointercancel` is the only abort worth listening to.
+
 **Set expectations accordingly.** Our ink should feel good. It will not feel like Procreate, and no amount of engineering closes that gap in a browser.
 
 ## Rendering
