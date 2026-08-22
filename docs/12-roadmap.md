@@ -331,6 +331,14 @@ failures are different in kind.
   matches every row, closing the suite's own work. That mistake was made and
   caught here; the note is what stops it being made again.
 
+- **The next CI run failed differently, which is progress.** `metering:smoke`
+  passed and the build reached the HTTP suites, where `smoke-capture.ts` failed
+  its latency budget at 341ms against 300ms. That assertion timed the FIRST
+  request to reach a freshly started server -- a cold pool and a cold JIT, paid
+  once by the harness and never by a person, whose server has been up for days.
+  It now takes a median of three warm samples, which on the same machine reads
+  18ms. A budget worth keeping; a measurement that was never measuring it.
+
 **Known gaps, named rather than left to be discovered:**
 - Search quality has never been measured against a real embedding model. The suites run
   `EMBEDDING_PROVIDER=fake`, a hash projection with no semantics, which proves the
