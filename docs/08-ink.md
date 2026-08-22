@@ -94,7 +94,9 @@ Render the ink to a clean high-contrast PNG, send it to a vision model, store th
 
 Chosen because: no licence, no new infrastructure, no per-seat cost, and frontier models read handwriting well. We already have an LLM budget. **Do not buy an SDK before there are users.**
 
-Practical notes: render at generous resolution with plain black ink on white regardless of the user's pen colour, split long pages into horizontal bands to keep the model focused, and ask for a confidence self-report alongside the text.
+Practical notes: render at generous resolution with plain black ink on white regardless of the user's pen colour, split the surface into overlapping tiles to keep the model focused, and ask for a confidence self-report alongside the text.
+
+**The frame comes from the ink, never from the stored canvas** (ADR-053). That canvas is the viewport the layer was created at — written once and never updated — so ink has always been able to live outside it, and did: rotate an iPad, write in the newly exposed strip, and those strokes were stored correctly and then clipped out of every read, silently and permanently. Tiling is two-dimensional because a surface spreads sideways as readily as down, and tile size is expressed in *rendered pixels* rather than document units, because on an endless canvas 700 units is four pages of writing when drawn zoomed out and two letters when drawn zoomed in.
 
 ### Tier 3 — MyScript iink (only if forced)
 
@@ -112,4 +114,6 @@ Below roughly 0.6, the UI offers a one-tap "fix this" that opens the transcript 
 
 ## Not in v1
 
-Shape recognition and beautification, handwriting search that highlights within strokes (search the transcript instead), infinite canvas panning (fixed page size is enough), layers, PDF annotation.
+Shape recognition and beautification, handwriting search that highlights within strokes (search the transcript instead), layers, PDF annotation.
+
+> **"Infinite canvas panning (fixed page size is enough)" used to be on this list.** It came off on 2026-08-22 (ADR-053). The deciding argument was not the feature: it was that recognition already read the wrong rectangle, and fixing that meant deriving geometry from the strokes — which is the whole of what an endless canvas needs from the server.

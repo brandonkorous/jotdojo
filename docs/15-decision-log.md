@@ -1353,3 +1353,60 @@ path. That is honest about what it is: a root script belongs to no workspace pac
 unusable is a different thing from one that is absent; both now answer 503 with a
 distinguishable message and a logged cause. Eighteen failing checks that named no cause
 is what that costs.
+
+### ADR-053 — The frame comes from the ink, not from the canvas it was drawn on
+**Settled 2026-08-22.** Recognition derives its geometry from the STROKES. The stored
+`canvas {w,h}` is no longer read by the renderer at all.
+
+**This started as a feature request and turned out to be a repair.** The ask was a dot
+grid, zoom and an endless canvas. The blocker looked like the recognition pipeline, which
+assumed a fixed page: `toSvg` emitted `viewBox="0 0 w h"` and `bands()` walked `0..h`.
+Then the reason that assumption was already wrong: `canvas` is written ONCE at block
+creation and never updated, while a ResizeObserver resizes the live surface freely. Rotate
+an iPad, write in the newly exposed strip, and those strokes were stored correctly and
+clipped out of the render — no error, no log, and permanently, because a re-read in 2027
+re-applies the same crop to the same strokes.
+
+**A latent bug sat one stroke behind it.** The recognition background was
+`<rect width="100%" height="100%">`. Percentages resolve against the viewport with `x`/`y`
+defaulting to zero, so the first negative viewBox origin would have put the white entirely
+off-screen and rasterised a transparent PNG — a model reading nothing, reporting nothing.
+The rect now carries explicit `x`/`y`, and a smoke test rasterises a page at
+`x = -4000` and asserts the corner pixel is opaque white.
+
+**Tiling is two-dimensional, and sized in PIXELS.** A surface spreads sideways as readily
+as down, and full-width bands over a wide board get shrunk by the longest-edge cap until
+nothing is legible — the same failure as clipping, through a different door. When content
+is one tile wide there is one column, which is the old banding behaviour at no cost.
+Document units stopped meaning anything the moment zoom existed: 700 units is four pages
+drawn zoomed out and two letters drawn zoomed in, so tile size is rendered pixels
+converted through the render scale.
+
+**Membership is rectangle overlap, not "some point is inside".** A two-point divider
+spanning the whole board has no sample in the middle tile and was invisible to the old
+test — and a zoomed-out board is mostly such strokes. This is now asserted directly.
+
+**Recognition may ENLARGE, and `Stroke.width` is how it knows to.** The client holds the
+pen at a constant DEVICE width, so what lands in the document is `constant / zoom`: ink
+drawn zoomed out is stored thin. Scaling to a legibility floor (~2.5px) rather than to
+fill the frame means a two-word note does not cost a full page of tokens to read.
+
+**Metering had to change with it.** One block could be 32 images — thirty pages of tokens
+— against a single unit of a 100-unit free allowance. A unit is now a page-equivalent,
+four rendered tiles. `smoke-metering`'s "one page costs one unit" stays green and becomes
+the guard that an ordinary page did not get more expensive.
+
+**No migration, and `v` stays 1.** Old documents have every stroke inside `[0,w]x[0,h]`,
+so bounding-box derivation is naturally compatible; the only visible change is that an old
+page renders cropped to its written area instead of its white margins, which reads better.
+Bump `v` when the document gains a FIELD — a persisted viewport would be a real `v: 2`.
+`canvas` is reinterpreted rather than removed: it is the viewport the layer was created
+at, which is where a client opening an endless surface should put its camera. ADR-047's
+one-layer rule and the `bad_canvas` guard are untouched.
+
+**Still owed, and named so it is not forgotten:** a partial read is not yet recorded
+anywhere. `MAX_TILES` caps one surface at 32 images and the worker logs when it drops
+some, but nothing tells an agent that a transcript covers part of a board. That needs a
+`transcript_coverage` column — not a fifth `transcript_state`, because a partial read IS
+ready, and not a suffix on `source`, because that string is the staleness key and would
+make every partial block permanently stale.

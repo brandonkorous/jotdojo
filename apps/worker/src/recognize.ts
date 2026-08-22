@@ -3,7 +3,7 @@ import {
   claimRecognizeJobs, storeTranscript, failTranscript, finishJob, recordRecognition,
   type RecognizeJob,
 } from "@jotdojo/domain";
-import { toSvg, bands } from "@jotdojo/ink-render";
+import { toSvg, tiles, bounds } from "@jotdojo/ink-render";
 import { storage } from "@jotdojo/storage";
 import { RecognitionError, type Recognizer, type Page } from "@jotdojo/vision";
 import { TranscriptionError, type Transcriber } from "@jotdojo/speech";
@@ -11,10 +11,25 @@ import { sourceFor } from "./sources";
 
 export type RecognizeResult = { claimed: number; read: number; failed: number };
 
-/** A page taller than this is split, so the model does not skim the middle. */
-const BAND_HEIGHT = 700;
-/** Enough bands for a very long page; beyond this the cost stops being worth it. */
-const MAX_BANDS = 8;
+/** One image the model reads. Pixels, not document units -- see `tiles`. */
+const TILE_PX = { w: 1600, h: 700 };
+/** The ceiling on ONE surface's cost. Beyond it the read is partial and says so. */
+const MAX_TILES = 32;
+/** Images per request. A provider limit, not a cost decision. */
+const IMAGES_PER_CALL = 8;
+/** Rendered tiles that add up to one metered page. */
+const TILES_PER_UNIT = 4;
+
+/** What a reading cost and how much of the surface it actually covered. */
+type Read = {
+  text: string;
+  confidence: number;
+  units: number;
+  /** 1 when the whole surface was read; below 1 when tiles were dropped. */
+  coverage: number;
+};
+
+type Rendered = { pages: Page[]; produced: number; rendered: number };
 
 /**
  * Rasterise strokes for the model.
@@ -24,16 +39,25 @@ const MAX_BANDS = 8;
  * contrast lines and JPEG ringing around them is exactly the artefact that
  * turns an l into a 1.
  */
-async function render(job: RecognizeJob): Promise<Page[]> {
+async function render(job: RecognizeJob): Promise<Rendered> {
   if (job.kind === "ink") {
-    if (!job.document) return [];
-    const pages = bands(job.document, BAND_HEIGHT).slice(0, MAX_BANDS);
-    return Promise.all(pages.map(async (band) => ({
+    if (!job.document) return { pages: [], produced: 0, rendered: 0 };
+
+    // The frame comes from the INK, never from the stored canvas -- that is a
+    // viewport written once at creation, and ink has always been able to live
+    // outside it. ADR-053.
+    const box = bounds(job.document);
+    if (!box) return { pages: [], produced: 0, rendered: 0 };
+
+    const all = tiles(job.document, { tilePx: TILE_PX, bounds: box });
+    const kept = all.slice(0, MAX_TILES);
+    const pages = await Promise.all(kept.map(async (tile) => ({
       mediaType: "image/png",
-      base64: (await sharp(Buffer.from(toSvg(band, { mode: "recognition" })))
-        .png({ compressionLevel: 6 })
-        .toBuffer()).toString("base64"),
+      base64: (await sharp(Buffer.from(toSvg(tile.doc, {
+        mode: "recognition", bounds: tile.rect,
+      }))).png({ compressionLevel: 6 }).toBuffer()).toString("base64"),
     })));
+    return { pages, produced: all.length, rendered: kept.length };
   }
 
   if (job.kind === "image") {
@@ -52,14 +76,14 @@ async function render(job: RecognizeJob): Promise<Page[]> {
      * 2000px one and reads no better; HEIC and friends become JPEG because that
      * is what the vision APIs accept.
      */
-    return [{
+    return { produced: 1, rendered: 1, pages: [{
       mediaType: "image/jpeg",
       base64: (await sharp(raw)
         .rotate()
         .resize({ width: 2000, height: 2000, fit: "inside", withoutEnlargement: true })
         .jpeg({ quality: 82 })
         .toBuffer()).toString("base64"),
-    }];
+    }] };
   }
 
   // Audio is not an image and cannot go to a vision model. It has its own
@@ -104,7 +128,9 @@ export async function runRecognitionCycle(
         vision: recognizer?.model, speech: transcriber?.model,
       });
       await storeTranscript(job.blockId, reading.text, source, reading.confidence);
-      await recordRecognition(job.blockId, unitsFor(job.kind, reading));
+      // Zero units for a surface with nothing on it: no model was called, so
+      // there is nothing to charge for.
+      if (reading.units > 0) await recordRecognition(job.blockId, reading.units);
       await finishJob(job.jobId);
       read++;
     } catch (err) {
@@ -124,26 +150,44 @@ export async function runRecognitionCycle(
 }
 
 /**
- * What one reading cost, in the units ADR-007 meters.
+ * Ink and images: rendered to images and read by a vision model.
  *
- * A page and a photo are one each. Audio is charged by STARTED MINUTE, derived
- * from the last word's timestamp rather than the file size -- a long silence
- * is not work, and a compressed codec is not a discount.
+ * A surface can now be many images, so this is where several calls become one
+ * reading. Confidence is the WORST of them -- a page is only as trustworthy as
+ * the piece that was hardest to read.
  */
-function unitsFor(kind: string, reading: object): number {
-  if (kind !== "audio") return 1;
-  // Only a Transcription carries word timings; a vision Reading has none, and
-  // the kind check above is what guarantees which one this is.
-  const words = (reading as { words?: { end: number }[] }).words;
-  return Math.max(1, Math.ceil((words?.at(-1)?.end ?? 0) / 60));
-}
-
-/** Ink and images: rendered to an image and read by a vision model. */
-async function caption(job: RecognizeJob, recognizer: Recognizer | null) {
+async function caption(job: RecognizeJob, recognizer: Recognizer | null): Promise<Read> {
   if (!recognizer) {
     throw new RecognitionError("no VISION_PROVIDER is configured", false);
   }
-  return recognizer.read(await render(job));
+
+  const { pages, produced, rendered } = await render(job);
+  // Nothing drawn. Do not send an empty image list to a provider that would
+  // either bill for the turn or refuse it.
+  if (pages.length === 0) return { text: "", confidence: 1, units: 0, coverage: 1 };
+
+  const texts: string[] = [];
+  let confidence = 1;
+  for (let i = 0; i < pages.length; i += IMAGES_PER_CALL) {
+    const reading = await recognizer.read(pages.slice(i, i + IMAGES_PER_CALL));
+    if (reading.text) texts.push(reading.text);
+    confidence = Math.min(confidence, reading.confidence);
+  }
+
+  const coverage = produced === 0 ? 1 : rendered / produced;
+  if (coverage < 1) {
+    console.warn(
+      `[worker] partial read of ${job.blockId}: ${rendered} of ${produced} regions`,
+    );
+  }
+  // One unit is one page-equivalent. Metering per BLOCK would let one endless
+  // canvas cost thirty pages of tokens against a single unit of allowance.
+  return {
+    text: texts.join("\n"),
+    confidence,
+    units: Math.max(1, Math.ceil(rendered / TILES_PER_UNIT)),
+    coverage,
+  };
 }
 
 /**
@@ -154,7 +198,7 @@ async function caption(job: RecognizeJob, recognizer: Recognizer | null) {
  * jobs -- reading them into a long-lived structure is how a background process
  * quietly acquires a memory ceiling.
  */
-async function transcribe(job: RecognizeJob, transcriber: Transcriber | null) {
+async function transcribe(job: RecognizeJob, transcriber: Transcriber | null): Promise<Read> {
   if (!transcriber) {
     throw new TranscriptionError("no SPEECH_PROVIDER is configured", false);
   }
@@ -167,5 +211,14 @@ async function transcribe(job: RecognizeJob, transcriber: Transcriber | null) {
   const result = await transcriber.transcribe(
     new Uint8Array(bytes), job.mimeType ?? "audio/webm",
   );
-  return { text: result.text, confidence: result.confidence };
+  // Charged by STARTED MINUTE, from the last word's timestamp rather than the
+  // file size: a long silence is not work, and a compressed codec is no
+  // discount. Audio is never partial -- the whole recording goes in one call.
+  const end = result.words?.at(-1)?.end ?? 0;
+  return {
+    text: result.text,
+    confidence: result.confidence,
+    units: Math.max(1, Math.ceil(end / 60)),
+    coverage: 1,
+  };
 }

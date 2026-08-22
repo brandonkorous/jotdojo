@@ -46,7 +46,12 @@ Rules:
 - Where a word is genuinely illegible, write [?] rather than guessing.
 - confidence is your own honest estimate from 0 to 1 that the whole transcript is
   correct. Be harsh. A page you mostly guessed at is not 0.9.
-- If the image contains no handwriting at all, return {"text": "", "confidence": 1}.`;
+- If the image contains no handwriting at all, return {"text": "", "confidence": 1}.
+
+When you are given more than one image, they are consecutive pieces of ONE surface
+in reading order -- left to right, then top to bottom -- and they overlap slightly
+at the edges. Transcribe them as a single continuous document, and do not repeat
+text that appears in two of them.`;
 
 /** Tolerant of a model that wrapped its JSON in prose or a code fence. */
 export function parseReading(raw: string): Reading {

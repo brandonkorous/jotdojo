@@ -13,7 +13,7 @@
  */
 import sharp from "sharp";
 import { fakeRecognizer } from "@jotdojo/vision";
-import { toSvg, bands } from "@jotdojo/ink-render";
+import { toSvg, tiles, bounds } from "@jotdojo/ink-render";
 import {
   upsertUserFromGoogle, asUser, createNote, defaultSpaceId, searchNotes,
   createInkBlock, appendStrokes, getInk, correctTranscript,
@@ -70,12 +70,65 @@ const meta = await sharp(png).metadata();
 check("...and rasterises to a real PNG", meta.format === "png" && (meta.width ?? 0) > 0);
 check("the long edge is capped", Math.max(meta.width ?? 0, meta.height ?? 0) <= 2000);
 
-const split = bands(doc, 700);
-check("a tall page is split into bands", split.length > 1);
+const split = tiles(doc, { tilePx: { w: 1600, h: 700 } });
+check("a tall page is split into tiles", split.length > 1);
+// A SUM is not the assertion this needs: duplicating one stroke into two tiles
+// while dropping another satisfies it. Membership, per stroke.
 check("every stroke survives the split",
-  split.reduce((n, b) => n + b.strokes.length, 0) >= doc.strokes.length);
-check("bands are translated to their own origin",
-  split.every((b) => b.strokes.every((s) => s.pts.every((p) => p[1] >= -50))));
+  doc.strokes.every((s) => split.some((t) => t.doc.strokes.includes(s))));
+check("each tile frames its own rect, not the whole surface",
+  split.every((t) => toSvg(t.doc, { mode: "recognition", bounds: t.rect })
+    .includes(`viewBox="`) && t.rect.h <= doc.canvas!.h));
+
+console.log("\ngeometry comes from the ink, not the stored canvas");
+
+// THE test for ADR-053. The canvas is a viewport written once at creation; the
+// same strokes must render identically whatever it claims.
+const tiny = toSvg({ ...doc, canvas: { w: 100, h: 100 } }, { mode: "recognition" });
+const huge = toSvg({ ...doc, canvas: { w: 9000, h: 9000 } }, { mode: "recognition" });
+check("the stored canvas does not change the render", tiny === huge);
+
+// Panning left puts ink at negative coordinates. Before ADR-053 the viewBox
+// was `0 0 w h` and every one of these strokes was silently clipped away.
+const away: InkDocument = {
+  v: 1,
+  canvas: { w: 1024, h: 1600 },
+  strokes: [scrawl(-900), scrawl(-700)].map((s) => ({
+    ...s, pts: s.pts.map((p) => [p[0] - 4000, p[1], p[2], p[3], p[4], p[5]] as typeof p),
+  })),
+};
+const negative = toSvg(away, { mode: "recognition" });
+check("ink at negative coordinates is inside the viewBox",
+  /viewBox="-\d/.test(negative));
+// The background used to be width="100%", which resolves against the viewport
+// with x/y defaulting to 0 -- off-screen entirely once the origin goes negative,
+// leaving a transparent PNG the model reads nothing from.
+check("...and the white background travels with it",
+  /<rect x="-\d[^/]*fill="#FFFFFF"/.test(negative));
+
+const awayPng = await sharp(Buffer.from(negative)).png().toBuffer();
+const corner = await sharp(awayPng).extract({ left: 0, top: 0, width: 1, height: 1 })
+  .raw().toBuffer();
+check("...so the raster is opaque white, not transparent",
+  corner[0] === 255 && corner[1] === 255 && corner[2] === 255);
+
+// A two-point divider spanning the board has NO sample inside the middle tile.
+// `pts.some(p => p[1] >= top)` misses it; rectangle overlap does not.
+const divider: InkDocument = {
+  v: 1,
+  canvas: { w: 1024, h: 4000 },
+  strokes: [{
+    tool: "pen", color: "#1A1817", width: 2,
+    pts: [[500, 0, 0, 0.5, 0, 0], [500, 4000, 100, 0.5, 0, 0]],
+  }],
+};
+const crossed = tiles(divider, { tilePx: { w: 1600, h: 700 } });
+check("a long stroke reaches every tile it crosses, not just its endpoints",
+  crossed.length > 2 && crossed.every((t) => t.doc.strokes.length === 1));
+
+check("an empty document has no bounds and produces no tiles",
+  bounds({ v: 1, canvas: { w: 10, h: 10 }, strokes: [] }) === null
+  && tiles({ v: 1, canvas: { w: 10, h: 10 }, strokes: [] }).length === 0);
 
 const preview = toSvg(doc, { mode: "preview" });
 check("a preview keeps the pen colour", preview.includes("#1A1817"));
