@@ -360,6 +360,23 @@ Fixed as `USER 1001:1001` in all four images rather than `runAsUser: 1001` in
 all four manifests: the uid is already declared one line above in each
 Dockerfile, and one source of truth beats four copies of a number.
 
+**The first deploy to actually run, 2026-08-22.** With the user numeric, api, mcp
+and web came up 1/1 and the worker crashlooped on
+`Cannot find package '@jotdojo/reason'`.
+
+The triage agent shipped a new workspace package and nothing added it to
+`worker.Dockerfile`. Typecheck passed, sixteen suites passed, CI went green --
+because every one of those runs against the workspace, where the package is
+present. Nothing in the repo was in a position to notice, and production was the
+first thing that looked.
+
+`pnpm images:check` now compares each image against the transitive closure of
+its app's declared dependencies. It is deliberately strict about packages only
+imported as TYPES today: `@jotdojo/billing` was an `import type` in domain,
+stripped at transpile, missing from three images and harmless until somebody
+imports a value from it. All three now carry it. A rule with an exception list
+gets an entry added instead of being obeyed.
+
 **Known gaps, named rather than left to be discovered:**
 - Search quality has never been measured against a real embedding model. The suites run
   `EMBEDDING_PROVIDER=fake`, a hash projection with no semantics, which proves the

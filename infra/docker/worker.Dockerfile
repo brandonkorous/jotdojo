@@ -41,10 +41,12 @@ COPY apps/api/package.json apps/api/
 COPY apps/mcp/package.json apps/mcp/
 COPY apps/web/package.json apps/web/
 COPY apps/worker/package.json apps/worker/
+COPY packages/billing/package.json packages/billing/
 COPY packages/db/package.json packages/db/
 COPY packages/domain/package.json packages/domain/
 COPY packages/embeddings/package.json packages/embeddings/
 COPY packages/ink-render/package.json packages/ink-render/
+COPY packages/reason/package.json packages/reason/
 COPY packages/speech/package.json packages/speech/
 COPY packages/storage/package.json packages/storage/
 COPY packages/vision/package.json packages/vision/
@@ -74,6 +76,8 @@ COPY --chown=jotdojo:nodejs apps/worker ./apps/worker
 # what makes it read like a dependency bug rather than a missing directory. The
 # worker is the widest graph of the four, so it is the one with the most ways to
 # get this wrong.
+COPY --from=deps --chown=jotdojo:nodejs /repo/packages/billing/node_modules ./packages/billing/node_modules
+COPY --chown=jotdojo:nodejs packages/billing ./packages/billing
 COPY --from=deps --chown=jotdojo:nodejs /repo/packages/db/node_modules ./packages/db/node_modules
 COPY --chown=jotdojo:nodejs packages/db ./packages/db
 COPY --from=deps --chown=jotdojo:nodejs /repo/packages/domain/node_modules ./packages/domain/node_modules
@@ -82,6 +86,8 @@ COPY --from=deps --chown=jotdojo:nodejs /repo/packages/embeddings/node_modules .
 COPY --chown=jotdojo:nodejs packages/embeddings ./packages/embeddings
 COPY --from=deps --chown=jotdojo:nodejs /repo/packages/ink-render/node_modules ./packages/ink-render/node_modules
 COPY --chown=jotdojo:nodejs packages/ink-render ./packages/ink-render
+COPY --from=deps --chown=jotdojo:nodejs /repo/packages/reason/node_modules ./packages/reason/node_modules
+COPY --chown=jotdojo:nodejs packages/reason ./packages/reason
 COPY --from=deps --chown=jotdojo:nodejs /repo/packages/speech/node_modules ./packages/speech/node_modules
 COPY --chown=jotdojo:nodejs packages/speech ./packages/speech
 COPY --from=deps --chown=jotdojo:nodejs /repo/packages/storage/node_modules ./packages/storage/node_modules

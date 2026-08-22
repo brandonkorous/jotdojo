@@ -34,6 +34,7 @@
     "lasso:smoke": "pnpm --filter @jotdojo/web smoke:lasso",
     "members:smoke": "pnpm --filter @jotdojo/domain smoke:members",
     "fakes:check": "tsx scripts/check-fake-guards.ts",
+    "images:check": "tsx scripts/check-image-packages.ts",
     "metering:smoke": "pnpm --filter @jotdojo/worker smoke:metering",
     "review:smoke": "pnpm --filter @jotdojo/domain smoke:review",
     "billing:smoke": "pnpm --filter @jotdojo/domain smoke:billing",

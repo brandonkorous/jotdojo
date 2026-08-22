@@ -122,6 +122,12 @@ jobs:
       - name: Check the fake-provider guards agree
         run: pnpm fakes:check
 
+      # A package can be declared, typechecked, smoke-tested and still absent
+      # from the image that has to run it -- every check here runs against the
+      # workspace, where it is present. Production found the last one.
+      - name: Check every image carries the packages it needs
+        run: pnpm images:check
+
       # These need no HTTP listener: they drive the domain layer and Postgres
       # directly. Run them first, because when the tenancy boundary is broken
       # nothing downstream is worth knowing.

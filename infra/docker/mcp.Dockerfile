@@ -35,6 +35,7 @@ COPY apps/api/package.json apps/api/
 COPY apps/mcp/package.json apps/mcp/
 COPY apps/web/package.json apps/web/
 COPY apps/worker/package.json apps/worker/
+COPY packages/billing/package.json packages/billing/
 COPY packages/db/package.json packages/db/
 COPY packages/domain/package.json packages/domain/
 COPY packages/embeddings/package.json packages/embeddings/
@@ -66,6 +67,8 @@ COPY --chown=jotdojo:nodejs apps/mcp ./apps/mcp
 # starts and then dies on the first query with "Cannot find package 'postgres'"
 # -- imported from a file that is present, in a package that is present, which is
 # what makes it read like a dependency bug rather than a missing directory.
+COPY --from=deps --chown=jotdojo:nodejs /repo/packages/billing/node_modules ./packages/billing/node_modules
+COPY --chown=jotdojo:nodejs packages/billing ./packages/billing
 COPY --from=deps --chown=jotdojo:nodejs /repo/packages/db/node_modules ./packages/db/node_modules
 COPY --chown=jotdojo:nodejs packages/db ./packages/db
 COPY --from=deps --chown=jotdojo:nodejs /repo/packages/domain/node_modules ./packages/domain/node_modules
