@@ -30,6 +30,21 @@ const reader = recognizer();
 const listener = transcriber();
 const thinker = reasoner();
 
+/**
+ * Wait for a shutdown signal, doing nothing.
+ *
+ * A Deployment restarts a clean exit forever, so exiting here looks exactly
+ * like a crash loop to anyone reading the cluster. Parking stays honestly
+ * idle instead, and still stops promptly when Kubernetes asks. ADR-055.
+ */
+function park(): Promise<void> {
+  return new Promise((resolve) => {
+    for (const signal of ["SIGINT", "SIGTERM"] as const) {
+      process.on(signal, () => resolve());
+    }
+  });
+}
+
 if (!provider && !reader && !listener && !thinker) {
   // Not a crash. Search degrades to lexical plus trigram and capture is
   // entirely unaffected; a missing provider must never stop the app from
@@ -42,6 +57,8 @@ if (!provider && !reader && !listener && !thinker) {
     + "search, ink capture and everything else still work. Set them to openai, "
     + "azure, anthropic, or fake (development only).",
   );
+  await park();
+  console.log("[worker] stopped");
   process.exit(0);
 }
 
