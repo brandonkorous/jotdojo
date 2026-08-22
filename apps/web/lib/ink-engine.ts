@@ -1,12 +1,16 @@
-import type { Point, Stroke } from "@jotdojo/domain";
+import type { Stroke } from "@jotdojo/domain";
 import type { InkTool } from "./canvas-tool";
 import { StrokeCapture } from "./ink-capture";
 import { eraseNear, restyle, without } from "./ink-edit";
-import { bindPointer, PalmGuard, pointFrom, samplesOf } from "./ink-pointer";
+import { ERASE_RADIUS } from "./ink-paint";
 import { InkSurface } from "./ink-surface";
+import { InkInput, type InputHost } from "./ink-input";
+import { InkViewport } from "./ink-viewport";
+import { strokesBounds } from "@jotdojo/ink-render";
+import { StrokeIndex } from "./ink-index";
 import { InkSelection, NO_SELECTION, type SelectionSummary } from "./ink-selection";
-import { paintStroke } from "./ink-paint";
-import { drawOverlay, drawPage } from "./ink-draw";
+import { commitStroke, drawAll, drawFrame, type Scene } from "./ink-draw";
+import { FrameLoop } from "./ink-frame";
 import { DEFAULT_PEN, type InkStyle } from "./ink-style";
 
 /**
@@ -33,39 +37,39 @@ export type EngineOptions = {
    *  The kinds matter: a marker recoloured to ink is the grey smear ADR-045
    *  exists to prevent, so its own palette has to be reachable. */
   onSelectionChange?: (selection: SelectionSummary) => void;
+  /** Fired ONLY when the zoom actually changes, so panning re-renders nothing. */
+  onZoom?: (k: number) => void;
 };
 
-export class InkEngine {
-  private readonly surface: InkSurface;
+export class InkEngine implements InputHost {
+  readonly surface: InkSurface;
   private readonly live: HTMLCanvasElement;
   private readonly opts: EngineOptions;
-  private readonly palm = new PalmGuard();
-  private readonly sel = new InkSelection();
-  private readonly capture = new StrokeCapture();
+  private readonly selection = new InkSelection();
+  private readonly strokeCapture = new StrokeCapture();
+  /** The camera. Never in React state -- panning must re-render nothing. */
+  readonly view = new InkViewport();
+  private readonly index = new StrokeIndex();
 
   private strokes: Stroke[] = [];
   private currentTool: Tool = "pen";
-  private penDown = false;
-  private activePointer: number | null = null;
-  private startedAt = 0;
-  private raf = 0;
-  private erasedThisDrag = false;
   private style: InkStyle = DEFAULT_PEN;
-  private unbind: () => void;
+  private readonly input: InkInput;
+  private readonly frame = new FrameLoop((d) => drawFrame(this.surface, d, this.scene));
 
   constructor(opts: EngineOptions) {
     this.opts = opts;
-    this.surface = new InkSurface(opts.committed, opts.live);
+    this.surface = new InkSurface(opts.committed, opts.live, this.view);
     this.live = opts.live;
 
-    this.unbind = bindPointer(this.live, { down: this.onDown, move: this.onMove, up: this.onUp });
     // Without this, a two-finger drag scrolls the page mid-stroke.
     this.live.style.touchAction = "none";
+    this.input = new InkInput(this.live, this);
   }
 
   destroy() {
-    cancelAnimationFrame(this.raf);
-    this.unbind();
+    this.frame.cancel();
+    this.input.destroy();
   }
 
   setTool(tool: Tool) {
@@ -73,34 +77,49 @@ export class InkEngine {
     // made it is a promise the next pen stroke will not keep.
     if (tool !== "select") this.dropSelection();
     this.currentTool = tool;
-    this.capture.setStyle(tool, this.style.color, this.style.width);
+    this.strokeCapture.setStyle(tool, this.style.color, this.style.width);
   }
 
   /** Colour and width for the CURRENT tool. React owns one of these per tool
    *  and pushes whichever applies, so the marker keeps its own. ADR-045. */
   setStyle(style: InkStyle) {
     this.style = style;
-    this.capture.setStyle(this.currentTool, style.color, style.width);
+    this.strokeCapture.setStyle(this.currentTool, style.color, style.width);
   }
 
-  /** Load an existing page. Replaces everything and repaints once. */
+  /** Load an existing page, and frame it. Opening a note on an endless
+   *  surface must never land on empty paper miles from the writing. */
   load(strokes: Stroke[]) {
     this.strokes = strokes.map((s) => ({ ...s, pts: [...s.pts] }));
     this.dropSelection();
-    this.repaint();
+    this.fitToContent();
   }
 
-  /** Resizing clears both canvases, so the repaint is not optional. */
+  /** Frame the ink. An empty page lands on exactly where it always did. */
+  fitToContent() {
+    this.view.fitTo(strokesBounds(this.strokes), this.surface.width, this.surface.height);
+    this.opts.onZoom?.(this.view.k);
+    this.repaintNow();
+  }
+
+  /**
+   * Resizing clears both canvases, so the repaint is not optional.
+   *
+   * The view is ANCHORED, not re-fitted: this fires when the iOS keyboard opens
+   * and when a tablet rotates, and re-framing there would teleport the page out
+   * from under somebody mid-sentence.
+   */
   resize(cssWidth: number, cssHeight: number) {
+    const was = { w: this.surface.width, h: this.surface.height };
     this.surface.resize(cssWidth, cssHeight);
-    this.repaint();
-    this.paintOverlay();
+    this.view.keepCentre(was.w, was.h, cssWidth, cssHeight);
+    this.repaintNow();
   }
 
   // --------------------------------------------------------- selection ----
 
-  private dropSelection() {
-    if (!this.sel.clear()) return;
+  dropSelection() {
+    if (!this.selection.clear()) return;
     this.opts.onSelectionChange?.(NO_SELECTION);
     this.paintOverlay();
   }
@@ -112,8 +131,9 @@ export class InkEngine {
    * re-lassoing. The strokes are mutated in place for exactly that reason.
    */
   restyleSelection(patch: { color?: string; width?: number }) {
-    if (this.sel.count === 0) return;
-    if (!restyle(this.sel.selected, patch)) return;
+    if (this.selection.count === 0) return;
+    if (!restyle(this.selection.selected, patch)) return;
+    this.index.invalidate(this.selection.selected);
     this.repaint();
     this.paintOverlay();
     this.opts.onReplace(this.strokes);
@@ -121,125 +141,72 @@ export class InkEngine {
 
   /** Delete what the lasso caught. The page is resent, as with erase. */
   deleteSelection() {
-    if (this.sel.count === 0) return;
-    this.strokes = without(this.strokes, new Set(this.sel.selected));
+    if (this.selection.count === 0) return;
+    this.strokes = without(this.strokes, new Set(this.selection.selected));
     this.dropSelection();
     this.repaint();
     this.opts.onReplace(this.strokes);
   }
 
   // ------------------------------------------------------------- input ----
+  //
+  // `InkInput` owns what a pointer is DOING; everything below is what the page
+  // does about it. The host contract is narrow on purpose -- input may ask for
+  // changes and may never paint.
 
-  private pointAt(e: PointerEvent): Point {
-    return pointFrom(e, this.surface.rect(), this.startedAt);
+  get tool() { return this.currentTool; }
+  get sel() { return this.selection; }
+  get capture() { return this.strokeCapture; }
+
+  eraseAt(x: number, y: number): boolean {
+    // A hit tolerance, so it is a SCREEN distance. Left in world units the
+    // eraser would swallow the page zoomed out and miss everything zoomed in.
+    const kept = eraseNear(this.strokes, x, y, ERASE_RADIUS / this.view.k);
+    if (!kept) return false;
+    this.strokes = kept;
+    this.repaint();
+    return true;
   }
 
-  private onDown = (e: PointerEvent) => {
-    if (!this.palm.accepts(e)) return;
-    e.preventDefault();
-    this.live.setPointerCapture(e.pointerId);
-    this.activePointer = e.pointerId;
-    this.penDown = true;
-    this.startedAt = performance.now();
-    this.erasedThisDrag = false;
+  endErase(erased: boolean) {
+    if (erased) this.opts.onReplace(this.strokes);
+  }
 
-    const p = this.pointAt(e);
-
-    if (this.currentTool === "eraser") return void this.eraseAt(p[0], p[1]);
-
-    if (this.currentTool === "select") {
-      // Inside an existing marquee means "move this", not "start over" --
-      // otherwise a selection could never be dragged, only redrawn.
-      if (this.sel.covers(p[0], p[1])) return void this.sel.beginDrag(p[0], p[1]);
-      this.dropSelection();
-      this.sel.beginLasso(p);
-      return void this.scheduleLive();
-    }
-
-    this.capture.begin(p);
-    this.scheduleLive();
-  };
-
-  private onMove = (e: PointerEvent) => {
-    if (!this.penDown || e.pointerId !== this.activePointer) return;
-    e.preventDefault();
-
-    if (this.currentTool === "eraser") {
-      const p = this.pointAt(e);
-      return void this.eraseAt(p[0], p[1]);
-    }
-
-    if (this.currentTool === "select") {
-      const p = this.pointAt(e);
-      if (this.sel.dragging) {
-        if (this.sel.dragTo(p[0], p[1])) { this.repaint(); this.paintOverlay(); }
-        return;
-      }
-      this.sel.extendLasso(p);
-      return void this.scheduleLive();
-    }
-
-    const rect = this.surface.rect();
-    for (const sample of samplesOf(e)) {
-      this.capture.extend(pointFrom(sample, rect, this.startedAt));
-    }
-    this.scheduleLive();
-  };
-
-  private onUp = (e: PointerEvent) => {
-    if (!this.penDown || e.pointerId !== this.activePointer) return;
-    this.penDown = false;
-    this.activePointer = null;
-    if (this.live.hasPointerCapture(e.pointerId)) this.live.releasePointerCapture(e.pointerId);
-
-    if (this.currentTool === "eraser") {
-      if (this.erasedThisDrag) this.opts.onReplace(this.strokes);
-      return;
-    }
-
-    if (this.currentTool === "select") return void this.finishSelect();
-
-    const stroke = this.capture.finish();
-    if (!stroke) return;
+  commit(stroke: Stroke) {
     this.strokes.push(stroke);
-
-    // Commit to the durable layer and clear the live one, so the finished
-    // stroke stops being repainted every frame.
-    paintStroke(this.surface.cctx, stroke);
-    this.surface.clearLive();
-
+    commitStroke(this.surface, stroke);
     this.opts.onStrokes([stroke], this.strokes.length - 1);
-  };
+  }
 
-  private finishSelect() {
-    if (this.sel.dragging) {
-      if (this.sel.endDrag()) this.opts.onReplace(this.strokes);
-      return;
-    }
-    this.sel.settle(this.strokes);
-    this.opts.onSelectionChange?.(this.sel.summary);
+  dragSelection(x: number, y: number) {
+    if (!this.selection.dragTo(x, y)) return;
+    // Dragging mutates strokes IN PLACE, so the cached boxes are now lies.
+    this.index.invalidate(this.selection.selected);
+    this.repaint();
     this.paintOverlay();
   }
 
-  private eraseAt(x: number, y: number) {
-    const kept = eraseNear(this.strokes, x, y);
-    if (!kept) return;
-    this.strokes = kept;
-    this.erasedThisDrag = true;
-    this.repaint();
+  finishSelect() {
+    if (this.selection.dragging) {
+      if (this.selection.endDrag()) this.opts.onReplace(this.strokes);
+      return;
+    }
+    this.selection.settle(this.strokes);
+    this.opts.onSelectionChange?.(this.selection.summary);
+    this.paintOverlay();
   }
 
   // ----------------------------------------------------------- render ----
 
-  private scheduleLive() {
-    if (this.raf) return;
-    this.raf = requestAnimationFrame(() => {
-      this.raf = 0;
-      this.paintOverlay();
-      if (this.capture.active) paintStroke(this.surface.lctx, this.capture.preview());
-    });
+  private get scene(): Scene {
+    return {
+      strokes: this.strokes, sel: this.selection, capture: this.strokeCapture,
+      index: this.index, k: this.view.k,
+    };
   }
 
-  private paintOverlay() { drawOverlay(this.surface, this.sel); }
-  private repaint() { drawPage(this.surface, this.strokes); }
+  scheduleLive() { this.frame.mark("live", "overlay"); }
+  private paintOverlay() { this.frame.mark("overlay"); }
+  private repaint() { this.frame.mark("page"); }
+  private repaintNow() { drawAll(this.surface, this.scene); }
 }

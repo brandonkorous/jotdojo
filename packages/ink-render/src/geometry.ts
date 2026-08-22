@@ -107,8 +107,14 @@ export function intersects(a: Bounds, b: Bounds): boolean {
  * model is a billed request that answers nothing. The caller decides.
  */
 export function bounds(doc: InkDocument): Bounds | null {
+  return strokesBounds(doc.strokes);
+}
+
+/** The same, for a caller holding strokes rather than a document -- the
+ *  browser engine, which needs to know where the ink is to frame it. */
+export function strokesBounds(strokes: readonly Stroke[]): Bounds | null {
   let box: Bounds | null = null;
-  for (const stroke of doc.strokes) {
+  for (const stroke of strokes) {
     const b = strokeBounds(stroke);
     if (b) box = box ? union(box, b) : b;
   }

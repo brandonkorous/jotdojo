@@ -18,15 +18,16 @@
   },
   "dependencies": {
     "@auth/core": "^0.41.3",
+    "@jotdojo/billing": "workspace:*",
     "@jotdojo/domain": "workspace:*",
+    "@jotdojo/ink-render": "workspace:*",
     "@wizeworks/silicaui-react": "^0.55.0",
     "lucide-react": "^1.33.0",
     "marked": "^15.0.12",
     "next": "^15.1.6",
     "next-auth": "^5.0.0-beta.25",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0",
-    "@jotdojo/billing": "workspace:*"
+    "react-dom": "^19.0.0"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.0.0",

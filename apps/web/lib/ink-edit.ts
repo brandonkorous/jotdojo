@@ -14,9 +14,11 @@ import { ERASE_RADIUS } from "./ink-paint";
  * Returns null when nothing was within reach, so callers can skip a repaint
  * rather than redrawing the page on every sample of a miss.
  */
-export function eraseNear(strokes: readonly Stroke[], x: number, y: number): Stroke[] | null {
+export function eraseNear(
+  strokes: readonly Stroke[], x: number, y: number, radius = ERASE_RADIUS,
+): Stroke[] | null {
   const kept = strokes.filter((stroke) =>
-    !stroke.pts.some((p) => dist2(p[0], p[1], x, y) <= ERASE_RADIUS ** 2));
+    !stroke.pts.some((p) => dist2(p[0], p[1], x, y) <= radius ** 2));
   return kept.length === strokes.length ? null : kept;
 }
 

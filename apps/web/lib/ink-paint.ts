@@ -80,16 +80,22 @@ export function paintStroke(ctx: CanvasRenderingContext2D, stroke: Stroke) {
   ctx.restore();
 }
 
-/** The lasso path itself, while it is being drawn. */
-export function paintLasso(ctx: CanvasRenderingContext2D, pts: readonly Point[]) {
+/**
+ * The lasso path itself, while it is being drawn.
+ *
+ * `k` is the zoom. Ink is world-space and must scale with the page, but the
+ * lasso is CHROME -- a marquee that thickens as you zoom in reads as part of
+ * the drawing. Dividing by k holds it at a constant size on screen.
+ */
+export function paintLasso(ctx: CanvasRenderingContext2D, pts: readonly Point[], k = 1) {
   if (pts.length < 2) return;
   ctx.save();
   ctx.strokeStyle = SELECT_STROKE;
   ctx.fillStyle = SELECT_FILL;
-  ctx.lineWidth = 1.5;
+  ctx.lineWidth = 1.5 / k;
   // Dashed and closing back to the start, so the shape reads as an enclosure
   // being drawn rather than as a very thin pen stroke.
-  ctx.setLineDash([6, 4]);
+  ctx.setLineDash([6 / k, 4 / k]);
   ctx.beginPath();
   ctx.moveTo(pts[0]![0], pts[0]![1]);
   for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i]![0], pts[i]![1]);
@@ -99,13 +105,15 @@ export function paintLasso(ctx: CanvasRenderingContext2D, pts: readonly Point[])
   ctx.restore();
 }
 
-/** The marquee around a settled selection, with a handle-free look. */
-export function paintSelection(ctx: CanvasRenderingContext2D, b: Bounds, pad = 6) {
+/** The marquee around a settled selection, with a handle-free look. Same
+ *  constant-on-screen rule as the lasso above. */
+export function paintSelection(ctx: CanvasRenderingContext2D, b: Bounds, k = 1) {
+  const pad = 6 / k;
   ctx.save();
   ctx.strokeStyle = SELECT_STROKE;
   ctx.fillStyle = SELECT_FILL;
-  ctx.lineWidth = 1.5;
-  ctx.setLineDash([4, 3]);
+  ctx.lineWidth = 1.5 / k;
+  ctx.setLineDash([4 / k, 3 / k]);
   ctx.beginPath();
   ctx.rect(b.x - pad, b.y - pad, b.w + pad * 2, b.h + pad * 2);
   ctx.fill();

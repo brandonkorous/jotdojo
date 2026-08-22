@@ -1,4 +1,5 @@
 import type { Point } from "@jotdojo/domain";
+import type { ViewSnapshot } from "./ink-viewport";
 
 /**
  * Palm rejection, which the web gives us almost for free.
@@ -25,14 +26,22 @@ export class PalmGuard {
   }
 }
 
-/** Canvas-space sample, with everything a later model might want to read. */
-export function pointFrom(e: PointerEvent, rect: DOMRect, startedAt: number): Point {
+/**
+ * World-space sample, with everything a later model might want to read.
+ *
+ * The ONE place screen coordinates become document coordinates, which is why
+ * the viewport only has to be threaded here: every hit test downstream --
+ * erase, lasso, marquee -- already works in this space and needs no change.
+ */
+export function pointFrom(
+  e: PointerEvent, rect: DOMRect, startedAt: number, v: ViewSnapshot,
+): Point {
   // A mouse reports pressure 0 when down and there is no meaningful value to
   // read; 0.5 keeps the width where an unmodulated pen would sit.
   const pressure = e.pointerType === "mouse" || e.pressure === 0 ? 0.5 : e.pressure;
   return [
-    e.clientX - rect.left,
-    e.clientY - rect.top,
+    (e.clientX - rect.left - v.x) / v.k,
+    (e.clientY - rect.top - v.y) / v.k,
     performance.now() - startedAt,
     pressure,
     e.tiltX ?? 0,
