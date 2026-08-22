@@ -40,9 +40,9 @@ Everything below follows from those two facts.
 **What we do not store:** payment card details (Stripe holds those), Google credentials or refresh tokens beyond the sign-in exchange, any biometric or location data.
 
 **Third parties that see note content:**
-- The recognition provider — Azure Speech, Azure AI Vision, and whichever VLM performs handwriting and image work.
-- The embedding provider.
-- The triage provider, **only for spaces where an owner has switched the triage agent on** (ADR-048). It is off by default, it is the only thing here that sends a note to a model without somebody asking, and switching it off stops it immediately — including work already queued.
+- The recognition provider. As of 2026-08-22 this is **Azure OpenAI** in `eastus2`: `whisper` for audio, `gpt-4o-mini` for handwriting and photographed pages (ADR-051).
+- The embedding provider — **Azure OpenAI** `text-embedding-3-small`, same account.
+- The triage provider — **Azure OpenAI** `gpt-4o-mini`, same account — **only for spaces where an owner has switched the triage agent on** (ADR-048). It is off by default, it is the only thing here that sends a note to a model without somebody asking, and switching it off stops it immediately — including work already queued.
 - Nobody else.
 
 Choose providers that contractually exclude training on our data, and **say who they are on the privacy page**. Our users are handing us the thing their business starts on; opacity here is not survivable.

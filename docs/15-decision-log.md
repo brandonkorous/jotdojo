@@ -1266,3 +1266,40 @@ generator rather than a build step, because a home screen icon that depends on a
 installed on whichever machine ran the build is one that will one day come out blank. The
 generator refuses to write a file whose mark did not draw, which is how the first two
 attempts were caught: the glyph rendered off-centre, and then clipped by its own canvas.
+
+### ADR-051 — The models are Azure OpenAI, provisioned by sparx, keyed from the vault
+**Settled 2026-08-22.** All four seams -- `vision`, `speech`, `embeddings`, `reason` --
+run against ONE Azure OpenAI account, created by sparx's Terraform in
+`terraform/envs/azure/jotdojo.tf`. Nothing in this repo changed to adopt it.
+
+**Why Azure rather than the vendors directly.** Azure startup credits pay for it, and the
+four resolvers already had an `azure` branch. This is a funding decision wearing a
+technical hat, and it should be read as buying runway rather than solving economics --
+docs/01 says so in the same words. `recognition_usage` meters from day one, so the
+decision that comes after the credits expire gets made against a measured cost per space.
+
+**The account is in `eastus2`, not the platform's `centralus`, and that is not a
+preference.** `whisper` is listed in centralus with SKU `None` -- present in the catalogue,
+not deployable. Azure OpenAI is reached over HTTPS and is not VNet-bound like Postgres and
+AKS, so it is free to sit where the model actually exists. It must be whisper rather than
+the `gpt-4o-mini-transcribe` that IS in centralus, because `packages/speech` asks for
+`verbose_json` with word timestamps and the gpt-4o transcribe models support neither.
+
+**`text-embedding-3-small` is not a free choice either.** It is natively 1536 dimensions,
+`block_embeddings.embedding` is `vector(1536)`, and the provider REFUSES a response of any
+other width. Changing the model is a migration and a full re-embed.
+
+**The key is written by Terraform and never typed.** Same property as the generated
+database passwords beside it: a hand-transcribed credential is a crashloop two stages later
+with nothing pointing at the typo. Managed identity would remove the key entirely and is
+the right end state, but it needs `roleAssignments/write` (which the release identity
+deliberately lacks), bearer-token auth in all four seams, and AKS workload identity in
+`infra/k8s/`. It is a project, not a line.
+
+**The load-bearing part is the four `*_PROVIDER` switches.** Every `resolve*()` reads its
+provider variable FIRST and returns null when it is absent -- so the endpoint, the key and
+all four deployment names can be present and correct and every feature still be off, with
+no error anywhere. They were missing from `release.yml`'s optional list, which meant a
+fully configured vault would have produced a deployment that looked healthy and did
+nothing. That is the same silent-green failure the required list exists to refuse,
+arriving through the back door.

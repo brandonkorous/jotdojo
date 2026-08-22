@@ -302,6 +302,35 @@ and build a plan in kanninja. That needs the server reachable from wherever the 
 runs, which is an AKS deploy. That is no longer undecided: ADR-026 settled the shape, and the
 four Dockerfiles and `infra/k8s` manifests are written and waiting to be applied.
 
+**The first push to main, 2026-08-22.** Both workflows failed, and the two
+failures are different in kind.
+
+- **Release** stopped at `azure/login`: no federated identity credential matches
+  `repo:brandonkorous/jotdojo:environment:prod`. That is the sparx-side
+  Terraform not applied yet, first item on the deploy checklist in docs/17. The
+  deploy refused rather than half-shipping, which is the design working.
+- **CI** failed on `metering:smoke`, and that one was ours. **Fixed 2026-08-22.**
+  The over-quota check asserts a reading is DEFERRED rather than failed and got
+  `{"claimed":1,"read":0,"failed":1}` — the third instance of a suite counting
+  jobs on the GLOBAL outbox queue rather than its own.
+
+  The first diagnosis written here blamed the section immediately above it. That
+  was wrong. The failed job belongs to `recognize:smoke` or `media:smoke`, which
+  run just before this suite in CI and leave AUDIO blocks behind; this suite
+  passes **no transcriber at all**, so claiming one throws "no provider" and
+  lands as `failed`. The `drain()` at startup could not prevent it, because
+  recognition is queued with a 30-second quiet period: a job enqueued just before
+  the suite began is not yet claimable when the drain runs, and is claimable by
+  the time the assertion happens. That is why it passed locally and failed on a
+  slower runner.
+
+  The fix closes foreign `block.recognize` jobs immediately before every measured
+  cycle. It matches on the payload's `blockId` rather than joining to `blocks` —
+  that table is FORCE ROW LEVEL SECURITY and the suite's connection sets no
+  actor, so a subquery against it returns nothing and a `NOT EXISTS` built on one
+  matches every row, closing the suite's own work. That mistake was made and
+  caught here; the note is what stops it being made again.
+
 **Known gaps, named rather than left to be discovered:**
 - Search quality has never been measured against a real embedding model. The suites run
   `EMBEDDING_PROVIDER=fake`, a hash projection with no semantics, which proves the
