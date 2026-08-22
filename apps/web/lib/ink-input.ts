@@ -3,8 +3,9 @@ import type { InkTool } from "./canvas-tool";
 import type { StrokeCapture } from "./ink-capture";
 import type { InkSelection } from "./ink-selection";
 import type { InkSurface } from "./ink-surface";
-import type { ViewSnapshot } from "./ink-viewport";
+import type { InkViewport } from "./ink-viewport";
 import { bindPointer, PalmGuard, pointFrom, samplesOf } from "./ink-pointer";
+import { ViewGestures } from "./ink-gestures";
 
 /**
  * The pointer state machine, split from the page it draws on. ADR-053.
@@ -18,7 +19,7 @@ import { bindPointer, PalmGuard, pointFrom, samplesOf } from "./ink-pointer";
  *  it may start, extend and finish things, and it may never paint. */
 export type InputHost = {
   readonly surface: InkSurface;
-  readonly view: ViewSnapshot;
+  readonly view: InkViewport;
   readonly capture: StrokeCapture;
   readonly sel: InkSelection;
   readonly tool: InkTool;
@@ -31,31 +32,75 @@ export type InputHost = {
   dropSelection(): void;
   dragSelection(x: number, y: number): void;
   scheduleLive(): void;
+  /** The camera moved. */
+  onView(): void;
 };
 
 export class InkInput {
   private readonly palm = new PalmGuard();
   private penDown = false;
+  /** Whether the active pointer is a stylus rather than a finger or a mouse. */
+  private penPointer = false;
   private activePointer: number | null = null;
   private startedAt = 0;
   private erasedThisDrag = false;
   private readonly unbind: () => void;
+  private readonly gestures: ViewGestures;
 
   constructor(private readonly el: HTMLElement, private readonly host: InputHost) {
     this.unbind = bindPointer(el, { down: this.down, move: this.move, up: this.up });
+    this.gestures = new ViewGestures(el, {
+      view: host.view,
+      rect: () => host.surface.rect(),
+      abortInput: () => this.abort(),
+      onView: () => host.onView(),
+    });
   }
 
-  destroy() { this.unbind(); }
+  destroy() {
+    this.unbind();
+    this.gestures.destroy();
+  }
+
+  /**
+   * A gesture claimed the pointer mid-stroke.
+   *
+   * The erase flush is the subtle half: strokes are already gone locally, and
+   * without it `up` never runs, so the page is never resent and the ink comes
+   * back on reload -- vanished here, alive on the server.
+   */
+  private abort() {
+    if (!this.penDown) return;
+    this.penDown = false;
+    this.activePointer = null;
+    const host = this.host;
+    if (host.tool === "eraser") host.endErase(this.erasedThisDrag);
+    else if (host.tool === "select") host.dropSelection();
+    else host.capture.abort();
+    host.scheduleLive();
+  }
 
   private pointAt(e: PointerEvent): Point {
     return pointFrom(e, this.host.surface.rect(), this.startedAt, this.host.view);
   }
 
+  /**
+   * While the stylus is on the glass, touch does nothing at all.
+   *
+   * Narrower than PalmGuard's page-wide latch, and it has to be: a resting
+   * palm is often two contact points, which would otherwise read as a pinch
+   * and pan the page out from under the nib. Between strokes fingers pan
+   * freely, which is the iPad idiom people already have in their hands.
+   */
+  private get writingWithPen() { return this.penDown && this.penPointer; }
+
   private down = (e: PointerEvent) => {
+    if (!this.writingWithPen && this.gestures.down(e)) return void e.preventDefault();
     if (!this.palm.accepts(e)) return;
     e.preventDefault();
     this.el.setPointerCapture(e.pointerId);
     this.activePointer = e.pointerId;
+    this.penPointer = e.pointerType === "pen";
     this.penDown = true;
     this.startedAt = performance.now();
     this.erasedThisDrag = false;
@@ -79,6 +124,9 @@ export class InkInput {
   };
 
   private move = (e: PointerEvent) => {
+    // Before the guards below, which key on the ONE active pointer and would
+    // otherwise drop the second finger of every pinch on the floor.
+    if (!this.writingWithPen && this.gestures.move(e)) return void e.preventDefault();
     if (!this.penDown || e.pointerId !== this.activePointer) return;
     e.preventDefault();
     const host = this.host;
@@ -103,6 +151,7 @@ export class InkInput {
   };
 
   private up = (e: PointerEvent) => {
+    if (this.gestures.up(e)) return;
     if (!this.penDown || e.pointerId !== this.activePointer) return;
     this.penDown = false;
     this.activePointer = null;

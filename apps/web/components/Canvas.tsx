@@ -40,6 +40,7 @@ export function Canvas({
   const [body, setBody] = useState(initialBody);
   const [state, setState] = useState<SaveState>("idle");
   const [dimmed, setDimmed] = useState(false);
+  const dimmedRef = useRef(false);
   const [tool, setTool] = useState<CanvasTool>("text");
   // Mounted from the start when the page already HAS ink, or it would not be
   // drawn until somebody reached for the pen -- and reaching for the pen used
@@ -114,10 +115,24 @@ export function Canvas({
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => void flush(), 600);
 
-    setDimmed(true);
+    dim(true);
     if (dimTimer.current) clearTimeout(dimTimer.current);
-    dimTimer.current = setTimeout(() => setDimmed(false), 3000);
+    dimTimer.current = setTimeout(() => dim(false), 3000);
   };
+
+  /**
+   * Dim the chrome, without a dispatch when it is already where it should be.
+   *
+   * `onPointerMove` on the shell is the only React call in the pointer hot
+   * path, and setting state to its current value is NOT free -- it still
+   * enters the dispatcher. Since the canvas gained two-finger gestures it
+   * fires for both fingers of every pinch, so the guard now earns its keep.
+   */
+  function dim(on: boolean) {
+    if (dimmedRef.current === on) return;
+    dimmedRef.current = on;
+    setDimmed(on);
+  }
 
   const { input, block, mark, heading, syncBlock, onKeyDown } = useMarks(onChange);
 
@@ -145,7 +160,7 @@ export function Canvas({
   const pad = "px-5 pt-16 pb-10 sm:px-8";
 
   return (
-    <div className="jd-canvas-shell" onPointerMove={() => setDimmed(false)}>
+    <div className="jd-canvas-shell" onPointerMove={() => dim(false)}>
       <div className={`h-full w-full ${pad}`}>
         <textarea
           ref={input}

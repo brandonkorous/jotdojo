@@ -112,8 +112,22 @@ Recognition output always carries a confidence value, and it is always shown —
 
 Below roughly 0.6, the UI offers a one-tap "fix this" that opens the transcript for editing next to the ink. A user correction sets `transcript_source = 'user'` and confidence to null, and that block is never re-recognized again.
 
+## The camera
+
+The page is endless in both directions, and what you are looking at is a camera over it: three numbers, `x`, `y` and `k`, sitting between the pointer and the document (ADR-054).
+
+**Two fingers move the canvas; one finger draws.** Pan and zoom are the same gesture — a two-finger drag that doesn't change the spread simply pans — so there is nothing to switch between and no mode to be in. On a desktop, ⌘/Ctrl with the wheel zooms about the cursor and a plain wheel pans. While a stylus is on the glass, touch does nothing at all, which is what stops a resting palm from dragging the page out from under the nib.
+
+**Opening a note frames its writing.** A page you have never touched opens exactly where it always did; a page with ink on it opens showing that ink, never blank paper somewhere off to the side. Zoom never exceeds 1:1 on load, because a three-word note blown up to fill a monitor looks like a mistake. Rotating a tablet or opening the keyboard widens the window onto the same place rather than re-framing — being teleported mid-sentence is worse than a slightly awkward view.
+
+**The zoom readout is the way back.** Nothing clamps how far you can pan, so it is possible to end up somewhere with no ink in sight. Tapping the readout frames the writing again. It only appears once you have actually moved.
+
+A faint dot grid gives the surface somewhere to be. It scales with the zoom on a doubling ladder, so the dots stay roughly the same distance apart on screen whatever `k` is, and it stays quiet enough not to argue with washi's paper grain.
+
+Nothing about the camera is stored. Where you were last looking is not a property of the note, and two people opening the same shared page should both land on the writing rather than on each other's scroll position.
+
 ## Not in v1
 
 Shape recognition and beautification, handwriting search that highlights within strokes (search the transcript instead), layers, PDF annotation.
 
-> **"Infinite canvas panning (fixed page size is enough)" used to be on this list.** It came off on 2026-08-22 (ADR-053). The deciding argument was not the feature: it was that recognition already read the wrong rectangle, and fixing that meant deriving geometry from the strokes — which is the whole of what an endless canvas needs from the server.
+> **"Infinite canvas panning (fixed page size is enough)" used to be on this list.** It came off on 2026-08-22 (ADR-053, ADR-054). The deciding argument was not the feature: it was that recognition already read the wrong rectangle, and fixing that meant deriving geometry from the strokes — which is the whole of what an endless canvas needs from the server.

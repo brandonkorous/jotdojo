@@ -32,6 +32,7 @@
     "web:build": "pnpm --filter @jotdojo/web build:verify",
     "media:smoke": "pnpm --filter @jotdojo/worker smoke:media",
     "lasso:smoke": "pnpm --filter @jotdojo/web smoke:lasso",
+    "viewport:smoke": "pnpm --filter @jotdojo/web smoke:viewport",
     "members:smoke": "pnpm --filter @jotdojo/domain smoke:members",
     "fakes:check": "tsx scripts/check-fake-guards.ts",
     "images:check": "tsx scripts/check-image-packages.ts",

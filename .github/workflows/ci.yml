@@ -146,6 +146,7 @@ jobs:
           pnpm billing:smoke
           pnpm anon:smoke
           pnpm lasso:smoke
+          pnpm viewport:smoke
           pnpm marks:smoke
           pnpm reread:smoke
           pnpm triage:smoke

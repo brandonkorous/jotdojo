@@ -47,6 +47,19 @@ export class StrokeCapture {
     return stroke;
   }
 
+  /**
+   * Throw the in-progress stroke away.
+   *
+   * A second finger landing means a pinch, not a line -- and without this
+   * every zoom leaves the tick mark the first finger had already drawn.
+   * Returns whether there was anything to discard.
+   */
+  abort(): boolean {
+    if (this.pts.length === 0) return false;
+    this.pts = [];
+    return true;
+  }
+
   /** The marker ignores the chosen width: docs/08 makes it unmodulated on
    *  purpose, and a thin highlighter is just a pen with a colour problem. */
   private width() {

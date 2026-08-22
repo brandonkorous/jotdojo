@@ -10,7 +10,8 @@ import { strokesBounds } from "@jotdojo/ink-render";
 import { StrokeIndex } from "./ink-index";
 import { InkSelection, NO_SELECTION, type SelectionSummary } from "./ink-selection";
 import { commitStroke, drawAll, drawFrame, type Scene } from "./ink-draw";
-import { FrameLoop } from "./ink-frame";
+import { FrameLoop, type Dirty } from "./ink-frame";
+import { paintGrid } from "./ink-grid";
 import { DEFAULT_PEN, type InkStyle } from "./ink-style";
 
 /**
@@ -37,8 +38,12 @@ export type EngineOptions = {
    *  The kinds matter: a marker recoloured to ink is the grey smear ADR-045
    *  exists to prevent, so its own palette has to be reachable. */
   onSelectionChange?: (selection: SelectionSummary) => void;
-  /** Fired ONLY when the zoom actually changes, so panning re-renders nothing. */
-  onZoom?: (k: number) => void;
+  /** The dot grid. Painted through CSS variables inside the frame loop, so it
+   *  moves with the ink rather than a frame behind it. */
+  grid?: HTMLElement;
+  /** Fired ONLY when the zoom changes or the camera leaves or returns to home.
+   *  Panning around out there re-renders nothing. */
+  onView?: (k: number, home: boolean) => void;
 };
 
 export class InkEngine implements InputHost {
@@ -55,7 +60,9 @@ export class InkEngine implements InputHost {
   private currentTool: Tool = "pen";
   private style: InkStyle = DEFAULT_PEN;
   private readonly input: InkInput;
-  private readonly frame = new FrameLoop((d) => drawFrame(this.surface, d, this.scene));
+  private readonly frame = new FrameLoop((d) => this.paint(d));
+  /** The last camera React was told about, so it hears nothing on a pan. */
+  private reported = { k: 1, home: true };
 
   constructor(opts: EngineOptions) {
     this.opts = opts;
@@ -98,7 +105,7 @@ export class InkEngine implements InputHost {
   /** Frame the ink. An empty page lands on exactly where it always did. */
   fitToContent() {
     this.view.fitTo(strokesBounds(this.strokes), this.surface.width, this.surface.height);
-    this.opts.onZoom?.(this.view.k);
+    this.tellView();
     this.repaintNow();
   }
 
@@ -113,6 +120,7 @@ export class InkEngine implements InputHost {
     const was = { w: this.surface.width, h: this.surface.height };
     this.surface.resize(cssWidth, cssHeight);
     this.view.keepCentre(was.w, was.h, cssWidth, cssHeight);
+    this.tellView();
     this.repaintNow();
   }
 
@@ -205,8 +213,32 @@ export class InkEngine implements InputHost {
     };
   }
 
+  /** The camera moved: everything on screen is now somewhere else. */
+  onView() {
+    this.frame.mark("page", "overlay", "grid");
+    this.tellView();
+  }
+
+  /** React hears about the camera only when something it renders changed --
+   *  the zoom readout, or whether there is anywhere to go back to. */
+  private tellView() {
+    const home = this.view.atHome;
+    if (this.view.k === this.reported.k && home === this.reported.home) return;
+    this.reported = { k: this.view.k, home };
+    this.opts.onView?.(this.view.k, home);
+  }
+
   scheduleLive() { this.frame.mark("live", "overlay"); }
   private paintOverlay() { this.frame.mark("overlay"); }
   private repaint() { this.frame.mark("page"); }
-  private repaintNow() { drawAll(this.surface, this.scene); }
+
+  private paint(dirty: ReadonlySet<Dirty>) {
+    if (dirty.has("grid") && this.opts.grid) paintGrid(this.opts.grid, this.view);
+    drawFrame(this.surface, dirty, this.scene);
+  }
+
+  private repaintNow() {
+    if (this.opts.grid) paintGrid(this.opts.grid, this.view);
+    drawAll(this.surface, this.scene);
+  }
 }

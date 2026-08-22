@@ -1,6 +1,7 @@
 "use client";
 
-import { Bold, Italic, Underline } from "lucide-react";
+import { useState } from "react";
+import { Bold, Italic, Underline, X } from "lucide-react";
 import type { CanvasTool } from "@/lib/canvas-tool";
 import type { Block, Mark } from "@/lib/markdown-marks";
 import {
@@ -17,6 +18,10 @@ import {
  * It renders nothing at all for the eraser and for select. The eraser has no
  * settings, and everything you can do to a selection belongs ON the selection,
  * where the strokes are.
+ *
+ * On a phone it can be dismissed, and on a phone only. A desktop has room to
+ * spare; a phone does not, and a permanent band across the top of the page
+ * sits exactly where the next line of handwriting was going to go.
  */
 
 const BLOCKS: { id: Block; label: string; hint: string }[] = [
@@ -42,7 +47,13 @@ export function ToolOptions({
   onMark?: (mark: Mark) => void;
   onBlock?: (block: Block) => void;
 }) {
+  // Which tool's options were waved away, rather than a plain boolean: picking
+  // a different tool then brings the pill back with no effect to reset it,
+  // and the rail is right there, so it is never lost.
+  const [dismissed, setDismissed] = useState<CanvasTool | null>(null);
+
   if (tool === "eraser" || tool === "select") return null;
+  if (dismissed === tool) return null;
 
   return (
     <div className="jd-chrome glass jd-tool-options top-16 left-1/2 z-20 flex -translate-x-1/2 items-center gap-1 rounded-full p-1">
@@ -122,6 +133,17 @@ export function ToolOptions({
           marker
         />
       )}
+
+      <span aria-hidden className="jd-rail-sep-v jd-options-dismiss" />
+      <button
+        type="button"
+        className="jd-tool jd-options-dismiss"
+        title="Hide these options"
+        aria-label="Hide these options"
+        onClick={() => setDismissed(tool)}
+      >
+        <X aria-hidden strokeWidth={1.75} />
+      </button>
     </div>
   );
 }

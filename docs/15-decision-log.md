@@ -1410,3 +1410,85 @@ some, but nothing tells an agent that a transcript covers part of a board. That 
 `transcript_coverage` column — not a fifth `transcript_state`, because a partial read IS
 ready, and not a suffix on `source`, because that string is the staleness key and would
 make every partial block permanently stale.
+
+### ADR-054 — The canvas is endless, and two fingers move it
+
+**Context.** docs/08-ink.md listed infinite canvas panning as a v1 non-goal. That held
+while the page was one screen of paper. It stopped holding the moment ADR-053 made
+recognition read from the ink's own bounding box: the renderer no longer cares how large
+the surface is, so the only thing still pinning the client to one screen was the client.
+
+**Decision.** A three-number camera — `x`, `y`, `k` — between the pointer and the
+document. Endless in both directions. Zoom clamped to `[0.1, 8]`.
+
+**The camera is never in React state.** It lives in `InkViewport`, which the engine holds
+and mutates directly, and every paint goes through one `requestAnimationFrame` coalescer.
+An Apple Pencil reports faster than a display refreshes; a `setState` per pointermove is a
+re-render every few milliseconds, and docs/08 has always said that destroys the feel.
+React is told only when the ZOOM changes or the camera leaves or returns to home — a
+readout and a button, nothing else. Panning around out there re-renders nothing at all.
+
+**One conversion point.** `pointFrom` is the only place screen coordinates become document
+coordinates, so every hit test downstream — erase, lasso, marquee — was already in world
+space and needed no change. What did need changing is everything measured in SCREEN terms:
+the erase radius, the lasso's line width and dash, the marquee's padding. Those are divided
+by `k`. Ink widths are world-space and must never be, or zooming out would draw hairlines.
+
+**Two fingers move the camera; one finger draws.** Pan and zoom are one formula — a
+two-finger drag with unchanged spread falls out of `applyPinch` as a pure pan — so there is
+no separate pan path to get wrong. The gesture tracker is fed BEFORE the drawing guards,
+which key on a single active pointer and would otherwise drop the second finger entirely.
+
+Three things about that were only obvious once written down. A gesture must **abort the
+stroke in progress**, or every zoom leaves the tick mark the first finger already drew —
+and the abort has to FLUSH a pending erase, because the strokes are already gone locally
+while `up` never runs, so without it the ink vanishes here and comes back on reload. The
+claim must **outlive the pinch until every finger lifts**, or the survivor of a two-finger
+gesture is handed a stroke it never started. And **while the stylus is on the glass, touch
+does nothing at all** — narrower than PalmGuard's page-wide latch, and necessary, because a
+resting palm is often two contact points and would otherwise read as a pinch.
+
+**The dot grid is CSS, not a third canvas.** At 1440×900 a 24px grid is ~2,200 dots. On a
+canvas that is 2,200 `arc`+`fill` calls per pan frame, on the same main thread the next pen
+sample arrives on — precisely the budget `desynchronized: true` was bought to protect. Four
+custom properties on a repeating radial-gradient cost two style writes instead. World
+spacing steps on a power-of-two ladder so screen spacing stays inside `[16, 64]px`; without
+it `k = 0.1` is moire. The phase uses `((v % step) + step) % step`, because JS `%` keeps the
+sign of the dividend and the raw remainder jumps the grid a whole cell at the origin.
+
+**Fit-to-content on load, and no persistence.** Opening a note frames its writing rather
+than landing on blank paper miles away. An empty page lands on exactly `0, 0, 1` — bit for
+bit what the canvas did before it had a camera — and `k` is capped at 1 so a three-word note
+is not blown up to fill a monitor. Resize ANCHORS rather than re-fits: the ResizeObserver
+fires when the iOS keyboard opens and when a tablet rotates, and re-framing there teleports
+the page out from under somebody mid-sentence. Nothing is stored, so there is no migration
+and no `v` bump; a persisted viewport would be a real `v: 2`.
+
+**The zoom chip is not decoration.** The canvas is unclamped, so someone can pan into blank
+paper until there is no ink on screen and nothing to steer by. It is the way back.
+
+**Consequences.** Pan and zoom are unreachable with the TEXT tool selected, because the ink
+mount is `pointer-events: none` unless an ink tool is active. Correct for v1 — the textarea
+underneath needs those events — and the chip is exempted so nobody is stranded. The
+marketing hero does not use the engine and is unaffected: it stays one fixed screen.
+
+**Verification is honest about its limit.** `smoke-viewport.ts` covers the arithmetic and
+the gesture state machine — 45 assertions, no DOM — because that is what fails quietly.
+Whether any of it feels right under a thumb it cannot answer. That needs a real phone,
+which is what ADR-050 was about.
+
+### ADR-055 — An idle worker parks; it does not exit
+
+**Context.** With no provider configured the worker printed a loud warning and called
+`process.exit(0)`. Deliberate, and right in spirit: a missing provider must never stop the
+app accepting notes (ADR-007). But a Kubernetes Deployment restarts a clean exit forever,
+so the honest "nothing to do here" rendered in the cluster as a pod restarting every few
+seconds — indistinguishable from a crash loop, and the first thing anyone would chase.
+
+**Decision.** Wait for `SIGINT`/`SIGTERM` instead of exiting. The pod stays `Running` with
+nothing to drain, which is exactly what is true, and still shuts down promptly when asked.
+
+**Consequences.** The state now reads correctly from `kubectl get pods` — a worker with no
+providers looks idle rather than broken. It costs one parked process. The warning still
+prints, so the reason is one `logs` away, and when sparx's Azure OpenAI deployment lands
+the rollout replaces the pod anyway.

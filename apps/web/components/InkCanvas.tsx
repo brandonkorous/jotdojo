@@ -7,6 +7,7 @@ import { InkSync, type SyncState } from "@/lib/ink-sync";
 import type { InkStyle } from "@/lib/ink-style";
 import { inkLayerAction, getInkAction } from "@/app/actions";
 import { SelectionBar } from "./SelectionBar";
+import { ZoomChip } from "./ZoomChip";
 
 /**
  * React's entire involvement with ink.
@@ -32,18 +33,22 @@ export function InkCanvas({
   const committedRef = useRef<HTMLCanvasElement>(null);
   const liveRef = useRef<HTMLCanvasElement>(null);
   const shellRef = useRef<HTMLDivElement>(null);
+  const gridRef = useRef<HTMLDivElement>(null);
   const engineRef = useRef<InkEngine | null>(null);
   const syncRef = useRef<InkSync | null>(null);
 
   const [state, setState] = useState<SyncState>("idle");
   const [selected, setSelected] = useState<SelectionSummary>(NO_SELECTION);
   const [error, setError] = useState<string | null>(null);
+  /** Only ever set from the engine's `onView`, which stays silent on a pan. */
+  const [view, setView] = useState({ k: 1, home: true });
 
   useEffect(() => {
     const committed = committedRef.current;
     const live = liveRef.current;
     const shell = shellRef.current;
-    if (!committed || !live || !shell) return;
+    const grid = gridRef.current;
+    if (!committed || !live || !shell || !grid) return;
 
     let disposed = false;
     let engine: InkEngine | null = null;
@@ -67,9 +72,11 @@ export function InkCanvas({
       engine = new InkEngine({
         committed,
         live,
+        grid,
         onStrokes: (strokes) => sync!.push(strokes),
         onReplace: (all: Stroke[]) => sync!.replace(all),
         onSelectionChange: setSelected,
+        onView: (k, home) => setView({ k, home }),
       });
       engine.setTool(tool);
       engine.setStyle(style);
@@ -153,6 +160,7 @@ export function InkCanvas({
 
   return (
     <div ref={shellRef} className="jd-ink-shell">
+      <div ref={gridRef} className="jd-ink-grid" aria-hidden />
       <canvas ref={committedRef} className="jd-ink-layer" aria-hidden />
       <canvas
         ref={liveRef}
@@ -165,6 +173,11 @@ export function InkCanvas({
         onColor={(color) => engineRef.current?.restyleSelection({ color })}
         onWidth={(width) => engineRef.current?.restyleSelection({ width })}
         onDelete={() => engineRef.current?.deleteSelection()}
+      />
+      <ZoomChip
+        zoom={view.k}
+        home={view.home}
+        onFit={() => engineRef.current?.fitToContent()}
       />
       {(state !== "idle" || error) && (
         <p role="status" aria-live="polite" className="jd-chrome jd-ink-status">

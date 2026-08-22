@@ -11,7 +11,7 @@
  * Marking is cheap and idempotent; the paint happens once, on the frame.
  */
 
-export type Dirty = "page" | "overlay" | "live";
+export type Dirty = "page" | "overlay" | "live" | "grid";
 
 export class FrameLoop {
   private readonly dirty = new Set<Dirty>();

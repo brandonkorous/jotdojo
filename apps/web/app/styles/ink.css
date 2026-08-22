@@ -19,6 +19,61 @@
 
 .jd-ink-shell { position: relative; width: 100%; height: 100%; }
 
+/* The endless surface's dot grid. ADR-053.
+ *
+ * A repeating background rather than a third canvas: at 1440x900 a 24px grid
+ * is ~2,200 dots, and drawing those per pan frame would spend the low-latency
+ * budget `desynchronized: true` was bought to protect. The engine sets the
+ * four custom properties inside its frame loop, so the dots move with the ink
+ * rather than a frame behind it.
+ *
+ * Alpha stays low deliberately: washi already carries paper grain (--noise),
+ * and a grid that competes with it makes the page look like graph paper. */
+.jd-ink-grid {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  --jd-grid: 24px;
+  --jd-grid-x: 0px;
+  --jd-grid-y: 0px;
+  --jd-dot-r: 1px;
+  background-image: radial-gradient(
+    circle at center,
+    color-mix(in oklab, var(--color-base-content) 14%, transparent) var(--jd-dot-r),
+    transparent calc(var(--jd-dot-r) + 0.5px)
+  );
+  background-size: var(--jd-grid) var(--jd-grid);
+  background-position: var(--jd-grid-x) var(--jd-grid-y);
+}
+
+/* Where the camera is, and the way back to the writing. Bottom right: the
+   toolbar owns the top and the agent's remarks own the bottom left. */
+.jd-ink-zoom {
+  right: max(0.75rem, env(safe-area-inset-right));
+  bottom: calc(0.75rem + env(safe-area-inset-bottom));
+  z-index: 16;
+  /* Clickable even when the mount is transparent to pointers, so switching to
+     the text tool cannot strand somebody miles from their ink. */
+  pointer-events: auto;
+  padding: 0.25rem 0.625rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.7;
+}
+.jd-ink-zoom:hover,
+.jd-ink-zoom:focus-visible { opacity: 1; }
+
+/* Dismissing the options pill is a phone affordance only. `display: none`
+   rather than visually-hidden, so a desktop screen reader is not offered a
+   control for a problem a desktop does not have. */
+.jd-options-dismiss { display: none; }
+@media (pointer: coarse) {
+  .jd-options-dismiss { display: inline-flex; }
+  span.jd-options-dismiss { display: inline-block; }
+}
+
 .jd-ink-layer {
   position: absolute;
   inset: 0;
