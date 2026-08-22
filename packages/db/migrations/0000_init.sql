@@ -8,9 +8,48 @@
 -- the app connects as the owner) would silently bypass every policy and we
 -- would never notice a missing one until production.
 
-CREATE EXTENSION IF NOT EXISTS vector;
-CREATE EXTENSION IF NOT EXISTS pg_trgm;
-CREATE EXTENSION IF NOT EXISTS citext;
+-- Extensions, guarded by a CATALOG LOOKUP rather than by `IF NOT EXISTS`.
+--
+-- Those two are not equivalent on Azure Database for PostgreSQL, and that
+-- difference is the whole reason this block looks like it does.
+--
+-- `vector` is not a trusted extension, so Azure permits CREATE EXTENSION only to
+-- members of `azure_pg_admin`. That check lives in a ProcessUtility hook
+-- (`check_extension_permissions`, azure_utils.c) which runs BEFORE PostgreSQL
+-- evaluates `IF NOT EXISTS` — so on a managed server the statement is refused
+-- even when the extension is already installed and would have done nothing:
+--
+--     ERROR:  Because vector isn't a trusted extension, only members of
+--             "azure_pg_admin" are allowed to use CREATE EXTENSION vector
+--
+-- Stock PostgreSQL checks existence first and never reaches a permission check,
+-- which is why this passes on a laptop and on any self-hosted server, and fails
+-- only where it matters.
+--
+-- In production the extensions are installed ahead of this migration by the
+-- platform that owns the SERVER, using the admin login this database's owner
+-- deliberately is not. The alternative — making `jotdojo_owner` a member of
+-- `azure_pg_admin` — would hand this database's role administrative rights over
+-- every other database on the instance, which is a steep price for three lines
+-- of DDL.
+--
+-- So: look in the catalog, and issue CREATE EXTENSION only when it is genuinely
+-- absent. Present, the statement never executes and the hook never fires;
+-- absent, it runs exactly as before — which is what happens on a developer's
+-- machine, where nothing has installed them for us.
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'vector') THEN
+    CREATE EXTENSION vector;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pg_trgm') THEN
+    CREATE EXTENSION pg_trgm;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'citext') THEN
+    CREATE EXTENSION citext;
+  END IF;
+END
+$$;
 
 -- Returns the acting user, or NULL when unset. NULL denies everything, which
 -- is the correct default for a connection that forgot to identify itself.
