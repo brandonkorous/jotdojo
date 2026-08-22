@@ -1,0 +1,70 @@
+# apps/worker -- the async half: outbox drain, embeddings, handwriting.
+#
+# NO SERVICE AND NO PORT. src/index.ts is a polling loop with no HTTP listener,
+# so there is nothing for Caddy to route to and nothing to probe over the
+# network. There is deliberately NO readiness or liveness probe either: an HTTP
+# probe would need a server invented for the probe's benefit, and any probe that
+# cannot actually fail is worse than none -- it reports healthy for a process
+# that has stopped draining the outbox.
+#
+# The honest signal that this is alive is the outbox depth, which is a query
+# rather than a probe. Until there is monitoring, `kubectl logs` is it.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: worker
+  namespace: jotdojo
+  labels:
+    app: worker
+    app.kubernetes.io/part-of: jotdojo
+spec:
+  replicas: 1
+  # RECREATE, NOT ROLLINGUPDATE, and this is the one strategy difference in the
+  # four. A surging worker means two processes draining the same outbox at once.
+  # The claim is a row-level lock so it would not corrupt anything, but a second
+  # drainer doubles concurrent VISION AND EMBEDDING CALLS -- billed per token,
+  # against a rate limit, on every deploy. Stop, then start.
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: worker
+  template:
+    metadata:
+      labels:
+        app: worker
+        app.kubernetes.io/part-of: jotdojo
+    spec:
+      # A recognition cycle is a vision call over a whole page and can legitimately
+      # take a while. This lets an in-flight batch finish rather than being killed
+      # halfway, which would leave its blocks claimed but unwritten until the
+      # claim expires.
+      terminationGracePeriodSeconds: 120
+      containers:
+        - name: worker
+          image: ghcr.io/brandonkorous/jotdojo/worker:latest
+          imagePullPolicy: Always
+          envFrom:
+            - configMapRef: { name: jotdojo-config }
+            - secretRef: { name: jotdojo-secrets }
+          env:
+            # The smallest share. The worker processes one batch at a time, and a
+            # batch is a loop over blocks rather than parallel queries.
+            - name: DB_POOL_MAX
+              value: '3'
+          resources:
+            requests:
+              cpu: '25m'
+              # The largest of the four, because of sharp: ink rendering
+              # decompresses a whole page bitmap, and sharp's native allocations
+              # sit OUTSIDE the V8 heap where they are easy to miss when reading
+              # process memory.
+              memory: '384Mi'
+            limits:
+              # Deliberately roomier for the same reason. A render that briefly
+              # doubles resident memory should be slow, not OOMKilled mid-batch.
+              memory: '1Gi'
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            capabilities: { drop: ['ALL'] }

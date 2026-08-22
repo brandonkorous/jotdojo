@@ -1,0 +1,106 @@
+# apps/web -- the PWA and BFF. The origin behind app.jotdojo.com.
+#
+# `app.`, not the apex: the PWA install origin is permanent once a home-screen
+# icon exists (ADR-010, ADR-018). The apex is a parked static page until M3.
+#
+# Next.js standalone output, so this is a compiled server rather than the
+# runtime-tsx shape the other three use, and it boots quickly.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web
+  namespace: jotdojo
+  labels:
+    app: web
+    app.kubernetes.io/part-of: jotdojo
+spec:
+  replicas: 1
+  # RollingUpdate with surge, unlike the worker below. Two web pods briefly
+  # coexisting is harmless -- they share no lock and hold no cursor -- and it is
+  # what keeps app.jotdojo.com answering through a deploy.
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: web
+  template:
+    metadata:
+      labels:
+        app: web
+        app.kubernetes.io/part-of: jotdojo
+    spec:
+      # A rolling update replaces this tag; `:latest` is a placeholder that
+      # should never actually run. Move it with:
+      #   kubectl set image -n jotdojo deploy/web web=<registry>/jotdojo-web:<sha>
+      containers:
+        - name: web
+          image: ghcr.io/brandonkorous/jotdojo/web:latest
+          imagePullPolicy: Always
+          ports:
+            - name: http
+              containerPort: 3400
+          envFrom:
+            - configMapRef: { name: jotdojo-config }
+            - secretRef: { name: jotdojo-secrets }
+          env:
+            # The BFF serves concurrent user requests, so it takes one of the two
+            # larger shares of the connection budget. See config.yaml and
+            # packages/db/src/client.ts for why this is set per service: the
+            # whole SERVER is capped at 50 connections and sparx is on it too.
+            - name: DB_POOL_MAX
+              value: '5'
+          # Next.js standalone boots in a few seconds, so a short startup budget
+          # is honest here. The three tsx services get much longer.
+          startupProbe:
+            httpGet: { path: /, port: http }
+            periodSeconds: 5
+            failureThreshold: 24
+          readinessProbe:
+            httpGet: { path: /, port: http }
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: { path: /, port: http }
+            periodSeconds: 30
+            failureThreshold: 5
+          resources:
+            requests:
+              cpu: '25m'
+              # An honest starting number for a standalone Next.js server with
+              # this page count; sparx's equivalents measure 288-448Mi. REPLACE IT
+              # WITH A MEASUREMENT once there is one (`kubectl top pod -n
+              # jotdojo`). On a shared node the request is not a formality: the
+              # kubelet ranks eviction victims by usage ABOVE request, so a pod
+              # that under-declares is first in line to be killed.
+              memory: '320Mi'
+            limits:
+              # No CPU limit, deliberately. A cap only throttles cold starts,
+              # which is the one thing worth protecting on a shared node.
+              memory: '640Mi'
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            capabilities: { drop: ['ALL'] }
+---
+# Port 80 -> 3400, so the shared Caddy in the sparx repo never has to know
+# jotDOJO's port assignments. Its site block reads
+# `reverse_proxy web.jotdojo.svc.cluster.local:80`.
+apiVersion: v1
+kind: Service
+metadata:
+  name: web
+  namespace: jotdojo
+  labels:
+    app: web
+    app.kubernetes.io/part-of: jotdojo
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+      protocol: TCP
+  selector:
+    app: web

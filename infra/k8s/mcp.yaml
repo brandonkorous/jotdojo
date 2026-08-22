@@ -1,0 +1,90 @@
+# apps/mcp -- the MCP server, the origin behind mcp.jotdojo.com.
+#
+# Streamable HTTP transport and an OAuth 2.1 resource server. A thin adapter over
+# the same @jotdojo/domain services the web app uses: no SQL of its own, no
+# permission checks of its own. If an agent can do a thing here it is because a
+# domain method allowed it (docs/03).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mcp
+  namespace: jotdojo
+  labels:
+    app: mcp
+    app.kubernetes.io/part-of: jotdojo
+spec:
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: mcp
+  template:
+    metadata:
+      labels:
+        app: mcp
+        app.kubernetes.io/part-of: jotdojo
+    spec:
+      # Streamable HTTP means a client can hold a response open. 60s lets an
+      # in-flight stream finish on a rollout instead of being cut at the default
+      # 30; the pod is already out of the Service's endpoints by then, so nothing
+      # new arrives while it drains.
+      terminationGracePeriodSeconds: 60
+      containers:
+        - name: mcp
+          image: ghcr.io/brandonkorous/jotdojo/mcp:latest
+          imagePullPolicy: Always
+          ports:
+            - name: http
+              containerPort: 3402
+          envFrom:
+            - configMapRef: { name: jotdojo-config }
+            - secretRef: { name: jotdojo-secrets }
+          env:
+            # A smaller share than web and api: an agent tool call is one unit of
+            # work at a time, not a concurrent request fan-out.
+            - name: DB_POOL_MAX
+              value: '3'
+          # Same runtime-tsx cold start as api. See the reasoning there.
+          startupProbe:
+            httpGet: { path: /health, port: http }
+            periodSeconds: 5
+            failureThreshold: 30
+          readinessProbe:
+            httpGet: { path: /health, port: http }
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: { path: /health, port: http }
+            periodSeconds: 30
+            failureThreshold: 5
+          resources:
+            requests:
+              cpu: '25m'
+              memory: '256Mi'
+            limits:
+              memory: '512Mi'
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            capabilities: { drop: ['ALL'] }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mcp
+  namespace: jotdojo
+  labels:
+    app: mcp
+    app.kubernetes.io/part-of: jotdojo
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+      protocol: TCP
+  selector:
+    app: mcp

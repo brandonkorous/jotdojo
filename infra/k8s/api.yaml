@@ -1,0 +1,94 @@
+# apps/api -- REST v1, the origin behind api.jotdojo.com.
+#
+# The surface Apple Shortcuts and third parties call. That is why it is a
+# separate hostname rather than a path on the apex: the origin is handed to code
+# on someone else's phone, and a hostname can be re-pointed later without every
+# installed Shortcut breaking.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api
+  namespace: jotdojo
+  labels:
+    app: api
+    app.kubernetes.io/part-of: jotdojo
+spec:
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: api
+  template:
+    metadata:
+      labels:
+        app: api
+        app.kubernetes.io/part-of: jotdojo
+    spec:
+      containers:
+        - name: api
+          image: ghcr.io/brandonkorous/jotdojo/api:latest
+          imagePullPolicy: Always
+          ports:
+            - name: http
+              containerPort: 3401
+          envFrom:
+            - configMapRef: { name: jotdojo-config }
+            - secretRef: { name: jotdojo-secrets }
+          env:
+            # The other large share. api serves concurrent third-party requests.
+            - name: DB_POOL_MAX
+              value: '5'
+          # 150s of startup budget, and it is not padding. This service boots
+          # through `tsx src/index.ts`, so it resolves and type-strips its whole
+          # workspace on every cold start -- exactly when a shared node is most
+          # CPU-contended, because a rollout starts several containers at once.
+          #
+          # The identical shape on sparx's api-rest crashlooped for ~30 hours
+          # (~400 restarts, exit 137) purely because a tight probe killed it
+          # mid-boot. A generous startupProbe costs nothing when boot is fast:
+          # readiness takes over the moment it passes.
+          startupProbe:
+            httpGet: { path: /health, port: http }
+            periodSeconds: 5
+            failureThreshold: 30
+          readinessProbe:
+            httpGet: { path: /health, port: http }
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: { path: /health, port: http }
+            periodSeconds: 30
+            failureThreshold: 5
+          resources:
+            requests:
+              cpu: '25m'
+              # Fastify plus the tsx runtime and the resolved workspace. Measure
+              # and replace -- see the note in web.yaml about eviction ranking.
+              memory: '320Mi'
+            limits:
+              memory: '768Mi'
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            capabilities: { drop: ['ALL'] }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: api
+  namespace: jotdojo
+  labels:
+    app: api
+    app.kubernetes.io/part-of: jotdojo
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+      protocol: TCP
+  selector:
+    app: api

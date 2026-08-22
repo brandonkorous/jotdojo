@@ -1,0 +1,103 @@
+/* Ink: canvases, status, the Scribble hint, lasso selection, transcript.
+   docs/08-ink.md. */
+
+/* ---------------------------------------------------------------------------
+ * Ink. docs/08-ink.md.
+ *
+ * The mount sits over the whole canvas and is transparent to pointers unless
+ * an ink tool is chosen -- so the textarea keeps working while the drawing
+ * stays visible above it, which is what a page with both writing and
+ * handwriting on it should look like.
+ * ------------------------------------------------------------------------- */
+.jd-ink-mount {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+}
+.jd-ink-mount[data-active="true"] { pointer-events: auto; }
+
+.jd-ink-shell { position: relative; width: 100%; height: 100%; }
+
+.jd-ink-layer {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+/* Only the live layer takes input; the committed layer beneath it is paint.
+   Its touch-action is set imperatively by the engine, because a two-finger
+   drag would otherwise scroll the page out from under a stroke in progress. */
+.jd-ink-live { pointer-events: inherit; }
+
+.jd-ink-status {
+  position: absolute;
+  top: 0.75rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 6;
+  pointer-events: none;
+  font-size: 0.75rem;
+  opacity: 0.6;
+}
+
+/* A finger and a pencil want very different targets, and ink is the one place
+   where someone is definitely using their hand. */
+@media (pointer: coarse) {
+  .jd-ink-status { top: 3.5rem; }
+}
+
+/* Tier 1 handwriting, announced once. docs/08-ink.md, ADR-034. */
+.jd-scribble-hint {
+  position: absolute;
+  bottom: 0.75rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 8;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  max-width: min(92vw, 30rem);
+  padding: 0.5rem 0.5rem 0.5rem 0.9rem;
+  border-radius: 999px;
+  font-size: 0.8125rem;
+}
+
+.jd-scribble-hint p { margin: 0; opacity: 0.8; }
+
+.jd-scribble-hint button {
+  flex: none;
+  border-radius: 999px;
+  padding: 0.2rem 0.7rem;
+  background: color-mix(in oklab, var(--color-agent) 14%, transparent);
+  color: var(--color-agent);
+  font-weight: 500;
+}
+
+/* What the machine read, and the way to disagree with it. docs/08-ink.md. */
+.jd-transcript {
+  position: absolute;
+  left: 50%;
+  bottom: 2.5rem;
+  transform: translateX(-50%);
+  z-index: 15;
+  width: min(94vw, 34rem);
+  padding: 0.75rem 0.875rem;
+  border-radius: 1rem;
+  font-size: 0.8125rem;
+}
+
+.jd-transcript-note { opacity: 0.6; }
+.jd-transcript-text { white-space: pre-wrap; line-height: 1.5; }
+
+.jd-transcript-foot {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.625rem;
+}
+/* The badge stays left, the buttons collect on the right. */
+.jd-transcript-foot > :first-child { margin-right: auto; }
+
+.jd-transcript-edit { display: flex; flex-direction: column; gap: 0.25rem; }

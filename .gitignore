@@ -1,0 +1,22 @@
+node_modules/
+.next/
+dist/
+build/
+out/
+.turbo/
+*.tsbuildinfo
+.env
+.env.local
+.env.*.local
+!.env.example
+.DS_Store
+Thumbs.db
+coverage/
+*.log
+.pnpm-store/
+
+# Output of verification builds, kept away from the dev server. See next.config.ts.
+.next-verify/
+
+# Local media store (STORAGE_PROVIDER=local). Never committed.
+.media/

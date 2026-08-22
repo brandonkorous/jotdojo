@@ -1,0 +1,193 @@
+# Verification. Runs the same suites a developer runs, against a real Postgres.
+#
+# WHY A REAL DATABASE AND NOT MOCKS. Every tenancy guarantee this product makes
+# is a row-level-security policy, and RLS is a property of Postgres, not of the
+# application. A mocked database would run the assertions in `db:smoke` and
+# prove precisely nothing about the boundary they exist to defend -- see ADR-019
+# and ADR-020.
+#
+# WHY NO PROVIDER SECRETS. The embedding, vision and speech providers are all
+# `fake` here. That is honest rather than convenient: the suites prove the
+# pipeline -- queue, dispatch, storage, tenancy, the shape of what comes back --
+# and say nothing at all about recognition quality, which is measured against a
+# real model or not at all. CI therefore needs no model credentials, which is
+# also why it cannot leak any.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Matches infra/docker/*.Dockerfile. Node 22 is the floor in package.json.
+  NODE_VERSION: '22'
+
+jobs:
+  verify:
+    name: typecheck and smoke suites
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    services:
+      postgres:
+        # pgvector, not stock postgres: packages/db/migrations/0009 onwards
+        # create vector columns and an index, so a plain image fails at migrate
+        # time rather than at query time.
+        image: pgvector/pgvector:pg17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: jotdojo
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d jotdojo"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # The db scripts and every smoke suite read ../../.env through dotenv-cli,
+      # so CI writes one. DATABASE_URL is the RESTRICTED role and ADMIN is the
+      # owner -- the split is the whole point of ADR-019, and collapsing the two
+      # here would make db:smoke pass while proving nothing.
+      - name: Write .env
+        run: |
+          cat > .env <<'ENV'
+          DATABASE_URL=postgresql://jotdojo_app:jotdojo@localhost:5433/jotdojo
+          DATABASE_ADMIN_URL=postgresql://postgres:postgres@localhost:5433/jotdojo
+          AUTH_SECRET=ci-only-not-a-real-secret-ci-only-not-a-real
+          ALLOW_DEV_LOGIN=true
+          AUTH_GOOGLE_ID=ci-unused
+          AUTH_GOOGLE_SECRET=ci-unused
+          NEXTAUTH_URL=http://localhost:3400
+          APP_URL=http://localhost:3400
+          SITE_URL=http://jotdojo.localhost:3400
+          API_PORT=3401
+          API_URL=http://localhost:3401
+          MCP_PORT=3402
+          MCP_RESOURCE=http://localhost:3402/mcp
+          EMBEDDING_PROVIDER=fake
+          VISION_PROVIDER=fake
+          VISION_FAKE_TEXT=handwritten in CI
+          SPEECH_PROVIDER=fake
+          SPEECH_FAKE_TEXT=spoken in CI
+          TRIAGE_PROVIDER=fake
+          TRIAGE_FAKE_COMMENT=that one has a date on it
+          STORAGE_PROVIDER=local
+          BILLING_PROVIDER=fake
+          BILLING_WEBHOOK_SECRET=ci-billing-secret
+          STORAGE_LOCAL_ROOT=.media
+          ENV
+
+      - name: Migrate and create the restricted role
+        run: pnpm db:setup
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      # These need no HTTP listener: they drive the domain layer and Postgres
+      # directly. Run them first, because when the tenancy boundary is broken
+      # nothing downstream is worth knowing.
+      - name: Smoke - database and domain
+        run: |
+          pnpm db:smoke
+          pnpm oauth:smoke
+          pnpm search:smoke
+          pnpm ink:smoke
+          pnpm worker:smoke
+          pnpm recognize:smoke
+          pnpm media:smoke
+          pnpm members:smoke
+          pnpm metering:smoke
+          pnpm review:smoke
+          pnpm billing:smoke
+          pnpm anon:smoke
+          pnpm lasso:smoke
+          pnpm marks:smoke
+          pnpm reread:smoke
+          pnpm triage:smoke
+
+      # The HTTP suites are the ones that have caught real bugs, because they
+      # exercise the wire format rather than the function signature. They need
+      # the three servers actually listening.
+      - name: Build web
+        run: pnpm --filter @jotdojo/web build
+
+      - name: Start api, mcp and web
+        run: |
+          pnpm --filter @jotdojo/api  start > /tmp/api.log  2>&1 &
+          pnpm --filter @jotdojo/mcp  start > /tmp/mcp.log  2>&1 &
+          pnpm --filter @jotdojo/web  start > /tmp/web.log  2>&1 &
+          # An explicit readiness PATH per service, not a guess at `/`. The api
+          # answers 404 at the root and the mcp server only speaks on its own
+          # endpoints, so "the port accepts a connection" and "the service is
+          # ready" are different claims -- and waiting on the weaker one makes
+          # the suites fail intermittently in a way that reads as flakiness.
+          for probe in "3401 /health" "3402 /.well-known/oauth-protected-resource" "3400 /signin"; do
+            set -- $probe
+            port="$1"; path="$2"
+            for i in $(seq 1 90); do
+              if curl -sf -o /dev/null "http://127.0.0.1:${port}${path}"; then
+                echo "$port$path ready"; break
+              fi
+              if [ "$i" = "90" ]; then
+                echo "::error::$port$path never became ready"
+                tail -50 /tmp/api.log /tmp/mcp.log /tmp/web.log || true
+                exit 1
+              fi
+              sleep 1
+            done
+          done
+        env:
+          # `start` is `tsx src/index.ts` with no dotenv wrapper, so the values
+          # the servers need are passed explicitly rather than read from .env.
+          DATABASE_URL: postgresql://jotdojo_app:jotdojo@localhost:5433/jotdojo
+          AUTH_SECRET: ci-only-not-a-real-secret-ci-only-not-a-real
+          ALLOW_DEV_LOGIN: 'true'
+          NEXTAUTH_URL: http://localhost:3400
+          APP_URL: http://localhost:3400
+          # The apex. site:smoke sends it as x-forwarded-host, the way Caddy
+          # does, so the host routing in apps/web/middleware.ts is exercised
+          # rather than assumed. ADR-040.
+          SITE_URL: http://jotdojo.localhost:3400
+          API_PORT: '3401'
+          MCP_PORT: '3402'
+          MCP_RESOURCE: http://localhost:3402/mcp
+          PORT: '3400'
+          STORAGE_PROVIDER: local
+          STORAGE_LOCAL_ROOT: .media
+
+      - name: Smoke - over real HTTP
+        run: |
+          pnpm api:smoke
+          pnpm mcp:smoke
+          pnpm oauth:http-smoke
+          pnpm billing:http-smoke
+          pnpm site:smoke
+          pnpm mcp:check
+
+      # Server logs are the only way to tell a refusal from a crash once a suite
+      # has failed, and ADR-020 is explicit that the difference matters.
+      - name: Server logs
+        if: failure()
+        run: |
+          for f in /tmp/api.log /tmp/mcp.log /tmp/web.log; do
+            echo "===== $f ====="; tail -100 "$f" || true
+          done

@@ -1,0 +1,20 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg17
+    container_name: jotdojo-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: jotdojo
+    ports:
+      - "5433:5432"
+    volumes:
+      - jotdojo-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d jotdojo"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+volumes:
+  jotdojo-pgdata:

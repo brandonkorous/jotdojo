@@ -1,0 +1,138 @@
+# Non-secret configuration, shared by all four services.
+#
+# THE SPLIT IS "WOULD IT MATTER IF THIS LEAKED", not "does it change per
+# environment". Hostnames, ports and feature switches are here in plain sight;
+# anything that grants access lives in the `jotdojo-secrets` Secret, which this
+# repo does not contain and must never contain. That Secret is written by the
+# deploy pipeline from Key Vault (kv-jotdojo-prod-cus, defined in the sparx repo
+# at terraform/envs/azure/jotdojo.tf) and holds:
+#
+#   DATABASE_URL          the RESTRICTED jotdojo_app role -- never the owner.
+#   DATABASE_ADMIN_URL    owner connection. Migrations only, never the app.
+#   AUTH_SECRET           NextAuth session signing key.
+#   AUTH_GOOGLE_ID        Google OAuth client id.
+#   AUTH_GOOGLE_SECRET    Google OAuth client secret.
+#   AZURE_STORAGE_*       the blob account for ink, audio and renders.
+#   OPENAI_API_KEY        or the AZURE_OPENAI_* trio, if embeddings are on.
+#   ANTHROPIC_API_KEY     if handwriting recognition or triage is on.
+#   STRIPE_SECRET_KEY     if the deployment takes money (ADR-038, ADR-049).
+#                         A RESTRICTED key (rk_), not a secret key (sk_): this
+#                         integration needs write on Checkout Sessions and on
+#                         Billing Portal Sessions and nothing else.
+#   STRIPE_WEBHOOK_SECRET the signing secret for /api/billing/webhook. Without
+#                         it every webhook is refused and nobody is ever
+#                         upgraded, which is silent -- the charge still happens.
+#   STRIPE_PRICE_SOLO     the three price ids. They differ per environment,
+#   STRIPE_PRICE_FAMILY   which is why they are configuration rather than
+#   STRIPE_PRICE_TEAM     constants.
+#
+# To create it by hand for a first deploy:
+#     kubectl create secret generic jotdojo-secrets -n jotdojo --from-env-file=./prod.env
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: jotdojo-config
+  namespace: jotdojo
+  labels:
+    app.kubernetes.io/part-of: jotdojo
+data:
+  NODE_ENV: 'production'
+
+  # --- public origins ------------------------------------------------------
+  # These are what the product tells the outside world about itself, so they must
+  # be the PUBLIC names Caddy terminates, never in-cluster Service DNS. A
+  # `.svc.cluster.local` here would be handed to a browser or an Apple Shortcut
+  # and be unreachable.
+  # The app lives at `app.`, NEVER the apex. ADR-010 and ADR-018 both say so, and
+  # ADR-018 calls it the one part that cannot wait: the PWA install origin is
+  # baked into every home-screen icon at install time, so moving it later does
+  # not redirect -- it forces every user to delete and reinstall. The apex is
+  # parked on a static page until the marketing site lands in M3.
+  #
+  # APP_URL is also the OAuth ISSUER (apps/web serves the AS metadata) and the
+  # origin in the note links apps/api hands back to Apple Shortcuts, so these
+  # three move together or not at all.
+  APP_URL: 'https://app.jotdojo.com'
+  NEXTAUTH_URL: 'https://app.jotdojo.com'
+  API_URL: 'https://api.jotdojo.com'
+
+  # The apex. The same web deployment serves it, chosen by Host (ADR-040), so
+  # this adds a Caddy block to the EXISTING backend rather than a fifth service.
+  # `www.` is matched by the app itself and needs no separate entry here.
+  SITE_URL: 'https://jotdojo.com'
+
+  # RFC 8707 binds every MCP access token to this EXACT string. It has to equal
+  # what apps/mcp advertises and what the Caddy block routes, character for
+  # character -- a trailing slash or a missing `/mcp` mints tokens that validate
+  # as intended-for-someone-else, and the whole agent surface 401s with nothing
+  # in the logs pointing at a config value. This binding is also what stops a
+  # jotDOJO token being replayed against another MCP server.
+  MCP_RESOURCE: 'https://mcp.jotdojo.com/mcp'
+
+  # --- ports ---------------------------------------------------------------
+  # jotdojo owns 3400-3409. Each Service publishes port 80 and targets these, so
+  # the shared Caddy never has to know them.
+  API_PORT: '3401'
+  MCP_PORT: '3402'
+
+  # --- safety --------------------------------------------------------------
+  # The local-only sign-in bypass. apps/web/auth.ts REFUSES TO START if this is
+  # true while NODE_ENV=production, so it is belt-and-braces rather than the only
+  # guard -- but it is set explicitly here so nobody has to go and check which of
+  # the two is load-bearing.
+  ALLOW_DEV_LOGIN: 'false'
+
+  # --- blob storage --------------------------------------------------------
+  # `azure`, and packages/storage/src/resolve.ts REFUSES TO START on `local`
+  # when NODE_ENV=production -- the local driver routes every byte through the
+  # API, which is the one thing docs/04 forbids. That refusal is deliberate; do
+  # not work around it by changing the provider.
+  #
+  # ONE container. Every SAS URL is `<origin>/<container>/<key>` and the artifact
+  # kinds are separated by KEY PREFIX, not by container. This name must match the
+  # container in terraform/envs/azure/jotdojo.tf in the sparx repo.
+  #
+  # AZURE_STORAGE_ACCOUNT and AZURE_STORAGE_KEY are secrets and arrive from Key
+  # Vault; only the two non-sensitive halves are here.
+  STORAGE_PROVIDER: 'azure'
+  AZURE_STORAGE_CONTAINER: 'media'
+
+  # --- providers -----------------------------------------------------------
+  # `fake` is REFUSED OUTRIGHT in production by both packages, which is the right
+  # behaviour and worth knowing before a deploy: a fake embedder has no
+  # semantics, and a fake recognizer returns fixed text that would be written
+  # into real notes as though it had been read off the page.
+  #
+  # Leave these unset to ship with the features OFF rather than wrong. Search
+  # degrades to lexical + trigram and capture is entirely unaffected (ADR-007);
+  # ink still captures, stores and renders, and because the STROKES are kept
+  # rather than a raster, every page ever drawn becomes readable the moment a
+  # provider is configured. Set them -- with the matching key in the Secret --
+  # when the spend is approved.
+  #
+  # EMBEDDING_PROVIDER: 'openai'
+  # VISION_PROVIDER: 'anthropic'
+
+  # The triage agent (ADR-048). Unset means it never runs, for anybody. Even
+  # set, it stays off per space until an owner turns it on, and it is part of
+  # the Team plan -- but this is the one provider whose cost arrives without
+  # anybody asking for it, so it gets its own decision.
+  # TRIAGE_PROVIDER: 'anthropic'
+  # TRIAGE_QUIET: '15 minutes'
+
+  # --- money (ADR-038, ADR-049) --------------------------------------------
+  # Unset means BILLING IS OFF: everyone is on the free plan, the account page
+  # offers nothing to buy, and the webhook answers 503. That is the honest
+  # state for a deployment nobody has approved spend for.
+  #
+  # `stripe` needs the four secrets above AND the webhook registered with
+  # Stripe pointing at https://app.<domain>/api/billing/webhook. A deployment
+  # with the key but no registered webhook takes money and grants nothing.
+  # BILLING_PROVIDER: 'stripe'
+
+  # --- worker tuning -------------------------------------------------------
+  WORKER_IDLE_MS: '2000'
+  WORKER_BATCH: '16'
+  # Smaller on purpose: each unit is a vision call over a whole page.
+  WORKER_RECOGNIZE_BATCH: '4'
+  WORKER_TRIAGE_BATCH: '4'

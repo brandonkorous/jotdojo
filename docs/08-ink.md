@@ -1,0 +1,107 @@
+# 08 — Ink
+
+Handwriting is not a feature bolted onto a notes app. It is load-bearing: **an agent cannot read a stroke.** If a third of the notes are coordinate arrays, we have built an agent-native product whose best content is opaque to agents. Recognition is what makes ink and MCP the same product.
+
+## What the web actually gives us
+
+Honest capabilities on an iPad, because planning against the fantasy version wastes months.
+
+**We get:**
+- Pointer Events with `pressure`, `tiltX`, `tiltY`, and `twist` from Apple Pencil in Safari.
+- `pointerType` cleanly separating `pen` from `touch`, which makes palm rejection nearly free — ignore touch while a pen is down.
+- Real stylus support on Android Chrome too.
+
+**We do not get:**
+- **`getCoalescedEvents()` in Safari.** Apple Pencil samples up to 240Hz; without coalesced events we read `pointermove` at roughly display rate and see a fraction of the samples. Native PencilKit sees all of them.
+- Background sync, so nothing uploads while the tab is closed.
+- Anything close to native latency.
+
+**Amusing inversion:** Chrome on Android *does* support `getCoalescedEvents`, so S Pen ink can be smoother in our web app than Apple Pencil ink is. Expect this to be reported as an iPad bug. It is not one.
+
+**Set expectations accordingly.** Our ink should feel good. It will not feel like Procreate, and no amount of engineering closes that gap in a browser.
+
+## Rendering
+
+- Dedicated `canvas` element, 2D context with `desynchronized: true` for the low-latency path.
+- The in-flight stroke draws on its own compositing layer, committed to the main layer on `pointerup`.
+- Curve fitting to compensate for the missing samples: Catmull-Rom through the captured points, converted to cubic béziers.
+- Width modulated by `pressure`; a subtle tilt response on the pen tool only.
+- **No React re-render in the stroke hot path.** The canvas is an imperative island. Touching component state per `pointermove` will destroy the feel.
+- Render at device pixel ratio, cap at 2x. 3x on a large canvas costs more than it returns.
+
+## Tools
+
+Four. Not fourteen.
+
+| Tool | Behaviour | Settings |
+|---|---|---|
+| Pen | Pressure-modulated width, the default | Five colours, three widths |
+| Highlighter | Fixed width, multiply blend, low alpha | Four colours. Alpha is **always** applied |
+| Eraser | Stroke-wise, not pixel-wise. Removes whole strokes | — |
+| Select | Lasso: move, recolour, resize, delete | Acts on what it caught |
+
+**Style is held per tool** (ADR-045). One shared colour is what made the highlighter
+useless: it inherited the pen's near-black, and a near-black marker at 35% is a grey smear.
+Opacity belongs to the tool and is applied when painting, never baked into a stored colour —
+the schema takes six-digit hex precisely so it cannot be.
+
+**A selection can be changed, not just moved.** Recolour and resize apply to the caught
+strokes in place, so the marquee survives and somebody can try three colours without
+lassoing again. Resizing skips highlighters, because a marker has one width.
+
+Stroke-wise erase keeps the data model clean and matches what people expect from vector ink. Pixel erase would force rasterization and break re-recognition.
+
+## Storage
+
+Vectors, never flattened rasters. Format in [04-data-model.md](04-data-model.md).
+
+Reasons this matters more than it looks:
+- Strokes are small — thousands of points is tens of kilobytes.
+- They can be **re-recognized** by a better model later, so old handwriting silently improves.
+- Vector strokes are what recognition engines consume. A PNG is a one-way door.
+
+We render a raster preview for thumbnails and for VLM-based recognition, but the vectors remain the truth.
+
+### Sync must be eager
+
+Safari evicts script-writable storage under pressure and after disuse. Therefore:
+
+- Upload **stroke batches as they are drawn**, not on save. Roughly every 10 strokes or 2 seconds, whichever first.
+- Never let a completed drawing exist only in IndexedDB.
+- Losing a hand-drawn page is unforgivable in a way that losing a typed paragraph is not — the user cannot retype it from memory.
+
+## Recognition, in three tiers
+
+Ship in this order.
+
+### Tier 1 — Apple Scribble (free, day one)
+
+On iPadOS, Apple Pencil Scribble works in **any text field, including web inputs in Safari**. Handwrite, get real text, zero engineering.
+
+Most people do not know this works on the web. Making it the default pencil-to-text path satisfies a large share of "I want to jot with my pencil" before we write a single recognizer. Surface it in onboarding rather than hiding it.
+
+### Tier 2 — VLM over rendered strokes (the v1 recognizer)
+
+Render the ink to a clean high-contrast PNG, send it to a vision model, store the result as the transcript with a confidence estimate.
+
+Chosen because: no licence, no new infrastructure, no per-seat cost, and frontier models read handwriting well. We already have an LLM budget. **Do not buy an SDK before there are users.**
+
+Practical notes: render at generous resolution with plain black ink on white regardless of the user's pen colour, split long pages into horizontal bands to keep the model focused, and ask for a confidence self-report alongside the text.
+
+### Tier 3 — MyScript iink (only if forced)
+
+The only serious *web* handwriting SDK — `iinkJS` / `iinkTS`, commercial licence. Move here only when accuracy or per-page cost genuinely demands it.
+
+Google's ML Kit Digital Ink Recognition is Android and iOS native only. It is not an option for a web app, regardless of how often it comes up in search results.
+
+## Confidence and honesty
+
+Recognition output always carries a confidence value, and it is always shown — subtly in the UI, explicitly over MCP:
+
+    > [handwritten, confidence 0.82] check with Dana about the margins
+
+Below roughly 0.6, the UI offers a one-tap "fix this" that opens the transcript for editing next to the ink. A user correction sets `transcript_source = 'user'` and confidence to null, and that block is never re-recognized again.
+
+## Not in v1
+
+Shape recognition and beautification, handwriting search that highlights within strokes (search the transcript instead), infinite canvas panning (fixed page size is enough), layers, PDF annotation.

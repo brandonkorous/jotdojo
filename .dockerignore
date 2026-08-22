@@ -1,0 +1,46 @@
+# Build context hygiene. web.Dockerfile does `COPY . .` for its build stage, so
+# anything not excluded here is uploaded to the daemon and baked into a layer.
+#
+# node_modules is the one that matters most. The host's tree is installed for
+# win32-x64 with pnpm's symlink layout; copying it into a node:22-alpine build
+# would shadow the correct linuxmusl install with binaries that cannot execute
+# -- and `sharp` would fail at runtime on the first ink render rather than at
+# build time. The image installs its own dependencies; never send these.
+node_modules
+**/node_modules
+
+# Build output. Regenerated inside the image, and .next in particular would
+# overwrite the standalone tree the build stage produces.
+.next
+**/.next
+.next-verify
+**/.next-verify
+dist
+**/dist
+build
+out
+.turbo
+**/.turbo
+*.tsbuildinfo
+
+# Secrets. .env must never reach a layer -- an image is not a private place, and
+# DATABASE_URL in one is a credential leak that outlives the container.
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# Local media store (STORAGE_PROVIDER=local).
+.media
+
+# Not needed at build or runtime.
+.git
+.github
+.vscode
+.idea
+docs
+infra/k8s
+*.log
+coverage
+.DS_Store
+Thumbs.db

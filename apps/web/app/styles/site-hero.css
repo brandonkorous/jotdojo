@@ -1,0 +1,93 @@
+/* The hero canvas. ADR-010, ADR-040.
+ *
+ * Split out of site.css at the size limit, and it belongs apart: everything
+ * here is about ONE element that is not really marketing at all -- it is the
+ * product, running, on the front page. The rest of that file styles a
+ * brochure.
+ */
+
+/* The hero IS the canvas: full width, and as tall as the screen allows. A
+   headline above a small demo box says "here is a picture of the product". A
+   headline written ON the writing surface says "this is it, go on".
+
+   --stage is a named length rather than 100dvh inline because the headline is
+   translated by it when it drops to the foot, and the two must agree exactly. */
+.jd-hero-stage {
+  --gutter: clamp(1rem, 6vw, 5rem);
+  --pad-block: clamp(1.25rem, 5vh, 3rem);
+  /* The room reserved for the headline in either resting place. */
+  --titles: clamp(9rem, 32vh, 15rem);
+  --foot: 3.25rem;
+  /* The whole viewport under the bar. No upper bound: capping it left a
+     third of a tall screen as dead paper below the writing. */
+  --stage: max(26rem, calc(100dvh - 4.25rem));
+
+  position: relative;
+  height: var(--stage);
+  overflow: hidden;
+  background: var(--color-base-200);
+  border-block: 1px solid var(--color-base-300);
+}
+
+/* Transparent to pointers, so a click anywhere on the headline lands on the
+   canvas underneath and the headline gets out of its own way. */
+.jd-hero-titles {
+  position: absolute;
+  top: var(--pad-block);
+  left: 0;
+  right: 0;
+  z-index: 6;
+  padding-inline: var(--gutter);
+  pointer-events: none;
+  transition: transform 520ms var(--ease, cubic-bezier(0.4, 0, 0.2, 1)),
+              opacity 300ms var(--ease, ease);
+}
+.jd-hero-stage[data-engaged="true"] .jd-hero-titles {
+  transform: translateY(calc(var(--stage) - var(--pad-block) - var(--titles) - var(--foot)));
+  opacity: 0.55;
+}
+.jd-hero-titles .jd-lede { margin-bottom: 0; }
+
+.jd-hero-input {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  padding: calc(var(--pad-block) + var(--titles)) var(--gutter) calc(var(--foot) + 1rem);
+  transition: padding 520ms var(--ease, cubic-bezier(0.4, 0, 0.2, 1));
+}
+.jd-hero-stage[data-engaged="true"] .jd-hero-input {
+  padding-top: calc(var(--pad-block) + 3rem);
+  padding-bottom: calc(var(--titles) + var(--foot));
+}
+.jd-hero-input::placeholder { opacity: 0.4; }
+
+/* The same pill as the app, in the same place on the surface. */
+.jd-hero-rail { gap: 0.125rem; }
+
+.jd-hero-foot {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 7;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  min-height: var(--foot);
+  padding: 0.6rem var(--gutter);
+  border-top: 1px solid var(--color-base-300);
+  background: color-mix(in oklch, var(--color-base-200) 90%, transparent);
+  backdrop-filter: blur(8px);
+}
+.jd-hero-status { font-size: 0.8rem; opacity: 0.6; margin: 0; }
+
+/* The selection bar anchors to the bottom of the ink layer, which on the hero
+   is exactly where the status bar is. Lift it clear. The app has nothing along
+   that edge, so this belongs here rather than in chrome.css. */
+.jd-hero-stage .jd-selection-bar { bottom: calc(var(--foot) + 0.75rem); }
+
+@media (prefers-reduced-motion: reduce) {
+  .jd-hero-titles, .jd-hero-input { transition: none; }
+}
+

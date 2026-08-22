@@ -1,0 +1,38 @@
+# jotDOJO's namespace.
+#
+# The cluster is shared. It belongs to sparx (a different product, a different
+# repository) and already hosts sparx itself, the piggles brand, and kanNINJA --
+# each in its own namespace, reached by ONE shared Caddy ingress that routes
+# cross-namespace via ClusterIP Services.
+#
+# What that means for everything in this directory:
+#
+#   1. THE NAMESPACE IS THE BOUNDARY. Nothing here may assume it is alone on the
+#      node. Requests are honest (see the note in each Deployment) because the
+#      kubelet evicts by usage-above-request when the node tightens, so a pod
+#      that under-declares is volunteering to be killed first -- and it would be
+#      killed to protect somebody else's workload.
+#   2. THE ROUTING TABLE IS NOT OURS. app., api. and mcp. are Caddy
+#      site blocks in the sparx repo (k8s/ingress/Caddyfile), and each hostname
+#      must ALSO be allow-listed in that repo's
+#      wizeworks/services/api-rest/src/routes/internal/domain-check.ts or Caddy
+#      cannot mint a certificate for it. Adding a hostname here is therefore a
+#      two-repo change; there is no way to make it a one-repo change without
+#      running a second ingress, which would mean a second load balancer.
+#   3. THE DATABASE SERVER IS NOT OURS EITHER. jotDOJO gets its own DATABASE on
+#      sparx's Postgres Flexible Server. Connection budget is the shared,
+#      exhaustible resource -- see DB_POOL_MAX in config.yaml.
+#
+# No Helm and no Kustomize (ADR-026). Apply the directory in filename order:
+#     kubectl apply -f infra/k8s/
+# and move image tags with `kubectl set image`, never by editing a `:latest`.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: jotdojo
+  labels:
+    app.kubernetes.io/part-of: jotdojo
+    # The shared Caddy resolves `<service>.jotdojo.svc.cluster.local`, which needs
+    # no label. This one is for humans reading `kubectl get ns` on a cluster with
+    # four products in it.
+    wizeworks.com/product: jotdojo

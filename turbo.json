@@ -1,0 +1,74 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "globalEnv": [
+    "DATABASE_URL",
+    "DATABASE_ADMIN_URL",
+    "AUTH_SECRET",
+    "AUTH_GOOGLE_ID",
+    "AUTH_GOOGLE_SECRET",
+    "NEXTAUTH_URL",
+    "NODE_ENV",
+    "EMBEDDING_PROVIDER",
+    "EMBEDDING_MODEL",
+    "EMBEDDING_MAX_DISTANCE",
+    "OPENAI_API_KEY",
+    "OPENAI_BASE_URL",
+    "AZURE_OPENAI_ENDPOINT",
+    "AZURE_OPENAI_API_KEY",
+    "AZURE_OPENAI_EMBEDDING_DEPLOYMENT",
+    "AZURE_OPENAI_API_VERSION",
+    "WORKER_IDLE_MS",
+    "WORKER_BATCH",
+    "VISION_PROVIDER",
+    "VISION_MODEL",
+    "VISION_FAKE_TEXT",
+    "ANTHROPIC_API_KEY",
+    "ANTHROPIC_BASE_URL",
+    "AZURE_OPENAI_VISION_DEPLOYMENT",
+    "WORKER_RECOGNIZE_BATCH",
+    "STORAGE_PROVIDER",
+    "STORAGE_LOCAL_ROOT",
+    "AZURE_STORAGE_ACCOUNT",
+    "AZURE_STORAGE_CONTAINER",
+    "AZURE_STORAGE_KEY",
+    "API_URL",
+    "APP_URL",
+    "SITE_URL",
+    "SPEECH_PROVIDER",
+    "SPEECH_MODEL",
+    "SPEECH_FAKE_TEXT",
+    "AZURE_OPENAI_SPEECH_DEPLOYMENT",
+    "BILLING_PROVIDER",
+    "BILLING_WEBHOOK_SECRET",
+    "STRIPE_SECRET_KEY",
+    "STRIPE_WEBHOOK_SECRET",
+    "STRIPE_PRICE_SOLO",
+    "STRIPE_PRICE_FAMILY",
+    "STRIPE_PRICE_TEAM"
+  ],
+  "tasks": {
+    "build": {
+      "dependsOn": [
+        "^build"
+      ],
+      "outputs": [
+        ".next/**",
+        "!.next/cache/**",
+        "dist/**"
+      ]
+    },
+    "dev": {
+      "cache": false,
+      "persistent": true
+    },
+    "typecheck": {
+      "dependsOn": [
+        "^build"
+      ]
+    },
+    "lint": {},
+    "migrate": {
+      "cache": false
+    }
+  }
+}

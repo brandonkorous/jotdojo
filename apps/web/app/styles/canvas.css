@@ -1,0 +1,90 @@
+/* The writing surface itself. docs/10-design-system.md. */
+
+.jd-canvas-shell { height: 100dvh; width: 100%; overflow: hidden; position: relative; }
+
+/* 16px minimum on anything editable: smaller triggers zoom-on-focus in iOS
+ * Safari, which breaks the canvas layout. docs/10-design-system.md. */
+.jd-canvas-input {
+  font-size: 16px;
+  line-height: 1.7;
+  resize: none;
+  outline: none;
+  background: transparent;
+  width: 100%;
+  height: 100%;
+}
+
+/* ---------------------------------------------------------------------------
+ * Floating chrome.
+ *
+ * One glass pill along the top edge, not a toolbar. Silica's `glass` class
+ * carries the blur and translucency, so the chrome barely registers over a
+ * still canvas and only resolves into a surface when content moves under it.
+ * Nothing docks, nothing takes a column, and no border is drawn -- a hairline
+ * would reassert the "panel" the glass exists to avoid.
+ * ------------------------------------------------------------------------- */
+.jd-chrome[class][class] {
+  /* The repeated [class] is not decoration and must not be "tidied up".
+   *
+   * Silica ships `glass` as `.glass[class]`, which is two selectors' worth of
+   * specificity. That beats Tailwind's single-class `.absolute`, so `class="glass
+   * absolute"` silently resolves to position: relative -- and a pill that was
+   * meant to float over the canvas instead sits at its static position, which is
+   * after a 100dvh textarea inside an overflow:hidden shell. It renders, it is in
+   * the DOM, it is simply below the fold and clipped. Nothing errors.
+   *
+   * Doubling it here fixes every piece of chrome at once. Matching `glass`
+   * exactly would work today purely because globals.css is emitted later in the
+   * same cascade layer -- and would break silently the day Silica reorders its
+   * output, which is the same invisible failure all over again. Outranking it
+   * does not depend on order.
+   * The offset utilities (bottom-3, left-1/2, top-1/2) are untouched by `glass`
+   * and keep working normally.
+   */
+  position: absolute;
+  transition: opacity 400ms var(--ease, ease);
+
+  /* `glass` tints from --u-accent, and --u-accent INHERITS.
+   *
+   * <body> carries `text-base-content`, which sets --u-accent to the ink
+   * colour. The pill therefore inherited near-black, tinted itself 55% of it,
+   * and rendered as a dark slab -- with icons drawn in that same near-black on
+   * top of it. Legible in the DOM, invisible on screen.
+   *
+   * Declaring it here means the chrome tints from the paper it floats over,
+   * whatever an ancestor happens to be doing with text colour. Any new glass
+   * surface needs the same declaration or it will inherit the same problem. */
+  --u-accent: var(--color-base-100);
+  --glass-tint: 72%;
+
+  /* Not a border. A soft, wide shadow lifts the pill off the canvas without
+     drawing the hairline that would make it read as a docked panel. */
+  box-shadow: 0 6px 24px -8px color-mix(in oklch, var(--color-base-content) 22%, transparent);
+}
+.jd-chrome[data-dimmed="true"] { opacity: 0.55; }
+.jd-chrome:hover,
+.jd-chrome:focus-within { opacity: 1; }
+
+/* What an agent said, at the foot of the page. ADR-048.
+ *
+ * Bottom LEFT, because the toolbar owns the top and a remark must never sit
+ * where the next word is about to be typed.
+ *
+ * Lifted clear of the save line rather than sitting on it: on a phone the card
+ * is nearly the full width, and covering "Saved" would hide the one piece of
+ * feedback the capture contract actually promises. */
+.jd-notices {
+  position: fixed;
+  bottom: calc(2.75rem + env(safe-area-inset-bottom));
+  left: max(1rem, env(safe-area-inset-left));
+  z-index: 20;
+  width: min(26rem, calc(100vw - 2rem));
+}
+
+.jd-notices > * {
+  /* Same argument as .jd-chrome: `glass` tints from --u-accent, which
+     inherits, so a card inside a text-coloured body would tint itself
+     near-black and vanish. */
+  --u-accent: var(--color-base-100);
+  --glass-tint: 82%;
+}

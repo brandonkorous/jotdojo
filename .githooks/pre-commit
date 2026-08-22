@@ -1,0 +1,42 @@
+#!/bin/sh
+# Refuse to commit a live credential.
+#
+#     git config core.hooksPath .githooks
+#
+# Stripe's own guidance is blunt about why: key exposure in a repository is the
+# leading cause of API key takeover. A key committed once is in the history for
+# ever, and rewriting history is a far worse afternoon than this hook is.
+#
+# Checks the STAGED diff, not the working tree, so an experiment in a scratch
+# file is your business right up until you try to commit it.
+
+set -e
+
+staged=$(git diff --cached --name-only --diff-filter=ACM)
+[ -z "$staged" ] && exit 0
+
+# Stripe secret and restricted keys, live and test. `.env.example` is exempt --
+# it exists to show the SHAPE of a key and holds no value.
+pattern='(sk|rk)_(live|test)_[A-Za-z0-9]{16,}'
+found=""
+
+for file in $staged; do
+  case "$file" in
+    .env.example|*.md|.githooks/pre-commit) continue ;;
+  esac
+  [ -f "$file" ] || continue
+  if git diff --cached -- "$file" | grep -qE "^\+.*$pattern"; then
+    found="$found  $file\n"
+  fi
+done
+
+if [ -n "$found" ]; then
+  printf '\nRefusing to commit: a Stripe key is in the staged changes.\n\n'
+  printf "$found"
+  printf '\nA key in a commit is in the history for ever, even if the next commit\n'
+  printf 'removes it. Take it out, put it in the vault, and if it has ever been\n'
+  printf 'pushed anywhere, roll it: https://docs.stripe.com/keys-best-practices\n\n'
+  exit 1
+fi
+
+exit 0

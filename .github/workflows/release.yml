@@ -1,0 +1,412 @@
+# The deployment. Push to main, and these stages ARE the release:
+#
+#     build  ->  data  ->  containers
+#
+# THE ORDER IS LOAD-BEARING, and it is the same order sparx uses on the same
+# cluster for the same reason: **data before containers**. If a migration fails,
+# the old pods are still serving. Roll the images first and a failed migration
+# leaves new code running against an old schema, which is the one failure mode
+# that corrupts rather than merely breaks.
+#
+# Everything this needs from Azure — the database, the Key Vault, the blob
+# account, and the identity this workflow assumes — is Terraform in the SPARX
+# repo at `terraform/envs/azure/jotdojo.tf`. This workflow creates no
+# infrastructure; it only deploys onto it. See docs/17-shared-infrastructure.md.
+name: Release
+
+on:
+  push:
+    branches: [main]
+  # A manual re-run, for redeploying the current main without an empty commit.
+  workflow_dispatch:
+
+permissions:
+  # OIDC. There is no stored Azure credential anywhere in this repo — the runner
+  # exchanges a short-lived GitHub token for an Azure one, and the trust is
+  # pinned to `repo:brandonkorous/jotdojo:ref:refs/heads/main` on the Azure side.
+  id-token: write
+  contents: read
+  # Push images to GHCR.
+  packages: write
+
+concurrency:
+  # NEVER cancel a release in progress. Two deploys interleaving on one cluster
+  # is how a half-migrated schema meets half-rolled pods; a queued second run is
+  # merely slower.
+  group: release
+  cancel-in-progress: false
+
+env:
+  REGISTRY: ghcr.io/${{ github.repository }}
+  NAMESPACE: jotdojo
+  RESOURCE_GROUP: rg-sparx-prod-cus
+  CLUSTER: aks-sparx-prod-cus
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # 1. BUILD — four images, in parallel, tagged with the commit SHA.
+  #
+  # NEVER `:latest`. The manifests carry `:latest` as a placeholder that should
+  # never actually run; the deploy job replaces each tag with an immutable SHA,
+  # which is what makes `kubectl rollout undo` mean something.
+  # ---------------------------------------------------------------------------
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      # One failure should not hide the other three. A partial build fails the
+      # release anyway (deploy `needs` this job), so there is nothing to protect
+      # by stopping early — only information to lose.
+      fail-fast: false
+      matrix:
+        service: [web, api, mcp, worker]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+
+      # Context is the REPO ROOT for all four. Every Dockerfile copies workspace
+      # manifests before source so a code edit does not reinstall the workspace,
+      # and that only works if the whole repo is the context.
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: infra/docker/${{ matrix.service }}.Dockerfile
+          push: true
+          tags: ${{ env.REGISTRY }}/${{ matrix.service }}:${{ github.sha }}
+          # GitHub Actions layer cache. Without it every release reinstalls the
+          # workspace four times over.
+          cache-from: type=gha,scope=${{ matrix.service }}
+          cache-to: type=gha,scope=${{ matrix.service }},mode=max
+
+  # ---------------------------------------------------------------------------
+  # 2 + 3. DATA, then CONTAINERS. One job, because the ordering between them is
+  # the whole point and splitting it into two would make the barrier a matter of
+  # `needs:` rather than of sequence.
+  # ---------------------------------------------------------------------------
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    # Binds to the `prod` GitHub Environment, which is one of the two federated
+    # subjects Azure trusts. Add required reviewers there to gate deploys.
+    environment: prod
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Get cluster credentials
+        run: |
+          set -euo pipefail
+          az aks get-credentials \
+            --resource-group "$RESOURCE_GROUP" \
+            --name "$CLUSTER" \
+            --overwrite-existing
+
+      # The namespace and the ConfigMap must exist before anything reads them —
+      # including the migration Job below, which mounts nothing but does run in
+      # the namespace.
+      - name: Apply namespace and config
+        run: |
+          set -euo pipefail
+          kubectl apply -f infra/k8s/00-namespace.yaml
+          kubectl apply -f infra/k8s/01-config.yaml
+
+      # -----------------------------------------------------------------------
+      # Secrets: Key Vault -> a Kubernetes Secret.
+      #
+      # Key Vault secret names allow only alphanumerics and hyphens, so an env
+      # var `DATABASE_URL` is stored as `DATABASE-URL` and mapped back here.
+      #
+      # A MISSING REQUIRED SECRET FAILS THE RELEASE. That is the entire reason
+      # this step is written out rather than looped silently: every one of these
+      # has a graceful-looking failure downstream. An absent DATABASE_URL is a
+      # crashloop; an absent AZURE_STORAGE_KEY is a capture that accepts bytes
+      # and cannot keep them. A deploy that goes green while the thing it exists
+      # to configure did not arrive is the failure mode worth refusing.
+      # -----------------------------------------------------------------------
+      - name: Read secrets from Key Vault
+        env:
+          VAULT: ${{ vars.AZURE_KEY_VAULT_NAME }}
+        run: |
+          set -euo pipefail
+          : > /tmp/jotdojo.env
+
+          required=(
+            DATABASE_URL
+            DATABASE_ADMIN_URL
+            JOTDOJO_APP_PASSWORD
+            AUTH_SECRET
+            AUTH_GOOGLE_ID
+            AUTH_GOOGLE_SECRET
+            AZURE_STORAGE_ACCOUNT
+            AZURE_STORAGE_KEY
+          )
+
+          # Present only when the paid features are switched on. `fake` is
+          # refused outright in production by both packages, so the honest
+          # deployment without a key is the feature OFF, not the feature faked.
+          #
+          # KEEP THIS LIST IN STEP WITH THE CODE. A secret that is set in the
+          # vault but absent here never reaches the container, and the feature
+          # is simply off in production while the vault looks right -- which is
+          # the same silent-green failure the required list above exists to
+          # refuse, arriving through the back door.
+          optional=(
+            OPENAI_API_KEY
+            EMBEDDING_MODEL
+            ANTHROPIC_API_KEY
+            VISION_MODEL
+            SPEECH_MODEL
+            TRIAGE_MODEL
+            AZURE_OPENAI_ENDPOINT
+            AZURE_OPENAI_API_KEY
+            AZURE_OPENAI_EMBEDDING_DEPLOYMENT
+            AZURE_OPENAI_VISION_DEPLOYMENT
+            AZURE_OPENAI_SPEECH_DEPLOYMENT
+            AZURE_OPENAI_TRIAGE_DEPLOYMENT
+            STRIPE_SECRET_KEY
+            STRIPE_WEBHOOK_SECRET
+            STRIPE_PRICE_SOLO
+            STRIPE_PRICE_FAMILY
+            STRIPE_PRICE_TEAM
+          )
+
+          missing=()
+          for name in "${required[@]}"; do
+            kv_name="${name//_/-}"
+            if value=$(az keyvault secret show --vault-name "$VAULT" --name "$kv_name" \
+                         --query value -o tsv 2>/dev/null); then
+              printf '%s=%s\n' "$name" "$value" >> /tmp/jotdojo.env
+            else
+              missing+=("$kv_name")
+            fi
+          done
+
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "::error::Missing required secrets in $VAULT: ${missing[*]}"
+            echo "Set one with: az keyvault secret set --vault-name $VAULT --name <NAME> --value '...'"
+            exit 1
+          fi
+
+          for name in "${optional[@]}"; do
+            kv_name="${name//_/-}"
+            if value=$(az keyvault secret show --vault-name "$VAULT" --name "$kv_name" \
+                         --query value -o tsv 2>/dev/null); then
+              printf '%s=%s\n' "$name" "$value" >> /tmp/jotdojo.env
+              echo "optional secret present: $name"
+            fi
+          done
+
+      - name: Apply the Secret
+        run: |
+          set -euo pipefail
+          kubectl create secret generic jotdojo-secrets \
+            -n "$NAMESPACE" \
+            --from-env-file=/tmp/jotdojo.env \
+            --dry-run=client -o yaml | kubectl apply -f -
+          rm -f /tmp/jotdojo.env
+
+      # -----------------------------------------------------------------------
+      # DATA — migrations, as a Job INSIDE the cluster.
+      #
+      # THIS CANNOT RUN ON THE RUNNER. The Postgres server has
+      # `public_network_access_enabled = false` and lives in a delegated subnet
+      # inside the VNet, so a GitHub-hosted runner cannot reach it at all — not
+      # with a firewall rule, not with a connection string. `pnpm db:migrate`
+      # here would hang and then fail. A pod in the cluster is inside the VNet
+      # and can.
+      #
+      # Runs the API IMAGE AT THIS SHA rather than a purpose-built migrate
+      # image, which is deliberate: that image already carries packages/db —
+      # migrations, runner and the `postgres` driver — so the schema applied is
+      # guaranteed to be the one the code being deployed expects. A separate
+      # migrate image is a second thing to keep in step.
+      #
+      # `backoffLimit: 0`. The runner is idempotent (it records applied names in
+      # `_migrations` and skips them), but a retry of a migration that failed
+      # PART WAY is not obviously safe — each file runs in a transaction, so a
+      # failure rolls back, and the right response is a human reading the error
+      # rather than a second automatic attempt.
+      # -----------------------------------------------------------------------
+      - name: Migrate the schema
+        run: |
+          set -euo pipefail
+          kubectl delete job db-migrate -n "$NAMESPACE" --ignore-not-found
+
+          # QUOTED heredoc. Everything inside is literal YAML or already
+          # substituted by the shell's own expansion of $REGISTRY/$GITHUB_SHA
+          # below — so nothing needs bash to interpret it, and allowing it is
+          # pure downside: an unquoted heredoc runs command substitution on any
+          # backtick in the body, including ones inside YAML comments.
+          kubectl apply -n "$NAMESPACE" -f - <<YAML
+          apiVersion: batch/v1
+          kind: Job
+          metadata:
+            name: db-migrate
+          spec:
+            backoffLimit: 0
+            ttlSecondsAfterFinished: 600
+            template:
+              spec:
+                restartPolicy: Never
+                enableServiceLinks: false
+                containers:
+                  - name: migrate
+                    image: ${REGISTRY}/api:${GITHUB_SHA}
+                    # Run FROM packages/db so the runner's `../migrations`
+                    # resolves, but borrow tsx from the API app, where it is a
+                    # production dependency rather than one of db's devDeps.
+                    #
+                    # `tsx/dist/cli.mjs`, never `node_modules/.bin/tsx`: pnpm's
+                    # `.bin` entries are shell shims, not JavaScript, and handing
+                    # one to `node` fails with a MODULE_NOT_FOUND that names the
+                    # shim and explains nothing.
+                    #
+                    # `postgres` still resolves correctly — node resolves a
+                    # package from the importing FILE's location, so
+                    # packages/db/src reaches packages/db/node_modules.
+                    workingDir: /repo/packages/db
+                    command:
+                      - node
+                      - /repo/apps/api/node_modules/tsx/dist/cli.mjs
+                      - scripts/migrate.ts
+                    env:
+                      - name: DATABASE_ADMIN_URL
+                        valueFrom:
+                          secretKeyRef: { name: jotdojo-secrets, key: DATABASE_ADMIN_URL }
+          YAML
+
+          # Wait, and FAIL THE RELEASE if it fails. A migration whose result is
+          # not awaited is the same as no migration at all — discovered later, by
+          # a user, against code that assumed it ran.
+          if ! kubectl wait --for=condition=complete job/db-migrate \
+                 -n "$NAMESPACE" --timeout=600s; then
+            echo "::error::Migration job did not complete. Logs follow."
+            kubectl logs job/db-migrate -n "$NAMESPACE" --tail=200 || true
+            exit 1
+          fi
+          kubectl logs job/db-migrate -n "$NAMESPACE" --tail=50
+
+      # -----------------------------------------------------------------------
+      # The application role's password.
+      #
+      # `0001_app_role.sql` creates `jotdojo_app` with NO PASSWORD, on purpose —
+      # a credential does not belong in a migration that is replayed everywhere.
+      # Local development sets one with `pnpm db:dev-role`; production sets it
+      # here, from Key Vault.
+      #
+      # AFTER the migration, not before: the role does not exist until 0001 has
+      # run, so on a first deploy the order is the only one that works. `ALTER
+      # ROLE` is idempotent, so every subsequent run is a no-op that keeps the
+      # password in step with the vault.
+      #
+      # psql, not the app image: this is one DDL statement and the official
+      # postgres image is the smaller, more obvious tool for it.
+      # -----------------------------------------------------------------------
+      - name: Set the application role password
+        run: |
+          set -euo pipefail
+          kubectl delete job db-role-password -n "$NAMESPACE" --ignore-not-found
+          kubectl apply -n "$NAMESPACE" -f - <<'YAML'
+          apiVersion: batch/v1
+          kind: Job
+          metadata:
+            name: db-role-password
+          spec:
+            backoffLimit: 1
+            ttlSecondsAfterFinished: 600
+            template:
+              spec:
+                restartPolicy: Never
+                enableServiceLinks: false
+                containers:
+                  - name: psql
+                    image: postgres:18-alpine
+                    command: ['sh', '-c']
+                    # The password is passed as a psql VARIABLE and quoted with
+                    # :'app_password', so psql escapes it -- interpolating it
+                    # into the SQL string would break on any password containing
+                    # a quote.
+                    #
+                    # THE SQL ARRIVES ON STDIN, NOT VIA -c. psql only expands
+                    # `:'var'` while lexing input it reads; a -c string is handed
+                    # to the server verbatim, so `:'app_password'` reaches
+                    # Postgres literally and fails with `syntax error at or near
+                    # ":"`. Verified against postgres:18-alpine both ways.
+                    args:
+                      - echo "ALTER ROLE jotdojo_app LOGIN PASSWORD :'app_password';"
+                        | psql "$DATABASE_ADMIN_URL" -v ON_ERROR_STOP=1
+                        -v app_password="$JOTDOJO_APP_PASSWORD"
+                    env:
+                      - name: DATABASE_ADMIN_URL
+                        valueFrom:
+                          secretKeyRef: { name: jotdojo-secrets, key: DATABASE_ADMIN_URL }
+                      - name: JOTDOJO_APP_PASSWORD
+                        valueFrom:
+                          secretKeyRef: { name: jotdojo-secrets, key: JOTDOJO_APP_PASSWORD }
+          YAML
+
+          if ! kubectl wait --for=condition=complete job/db-role-password \
+                 -n "$NAMESPACE" --timeout=180s; then
+            echo "::error::Role password job did not complete. Logs follow."
+            kubectl logs job/db-role-password -n "$NAMESPACE" --tail=100 || true
+            exit 1
+          fi
+
+      # -----------------------------------------------------------------------
+      # CONTAINERS — last, so everything above is already true.
+      # -----------------------------------------------------------------------
+      - name: Apply the workloads
+        run: |
+          set -euo pipefail
+          kubectl apply \
+            -f infra/k8s/web.yaml \
+            -f infra/k8s/api.yaml \
+            -f infra/k8s/mcp.yaml \
+            -f infra/k8s/worker.yaml
+
+      - name: Roll to this commit
+        run: |
+          set -euo pipefail
+          for svc in web api mcp worker; do
+            kubectl set image -n "$NAMESPACE" \
+              "deploy/$svc" "$svc=${REGISTRY}/${svc}:${GITHUB_SHA}"
+          done
+
+      # A wedged rollout must FAIL the release rather than leave it green. The
+      # worker is `Recreate`, so it is briefly down by design and gets the same
+      # timeout as the rest.
+      - name: Wait for the rollouts
+        run: |
+          set -euo pipefail
+          failed=0
+          for svc in web api mcp worker; do
+            if ! kubectl rollout status -n "$NAMESPACE" "deploy/$svc" --timeout=600s; then
+              echo "::error::Rollout of $svc did not complete."
+              kubectl describe deploy "$svc" -n "$NAMESPACE" || true
+              kubectl logs -n "$NAMESPACE" "deploy/$svc" --tail=100 || true
+              failed=1
+            fi
+          done
+          exit "$failed"
+
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo "### jotDOJO release"
+            echo
+            echo "Commit \`${GITHUB_SHA:0:7}\` -> namespace \`$NAMESPACE\` on \`$CLUSTER\`."
+            echo
+            kubectl get deploy -n "$NAMESPACE" -o wide 2>/dev/null || echo "(cluster unreachable)"
+          } >> "$GITHUB_STEP_SUMMARY"

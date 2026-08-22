@@ -1,0 +1,34 @@
+{
+  "name": "@jotdojo/domain",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "smoke:rls": "dotenv -e ../../.env -- tsx scripts/smoke-rls.ts",
+    "smoke:oauth": "dotenv -e ../../.env -- tsx scripts/smoke-oauth.ts",
+    "smoke:search": "dotenv -e ../../.env -- tsx scripts/smoke-search.ts",
+    "smoke:ink": "dotenv -e ../../.env -- tsx scripts/smoke-ink.ts",
+    "smoke:members": "dotenv -e ../../.env -- tsx scripts/smoke-members.ts",
+    "smoke:review": "dotenv -e ../../.env -- tsx scripts/smoke-review.ts",
+    "smoke:billing": "dotenv -e ../../.env -- tsx scripts/smoke-billing.ts",
+    "smoke:anon": "dotenv -e ../../.env -- tsx scripts/smoke-anon.ts"
+  },
+  "dependencies": {
+    "@jotdojo/db": "workspace:*",
+    "drizzle-orm": "^0.38.3",
+    "@jotdojo/embeddings": "workspace:*",
+    "@jotdojo/storage": "workspace:*",
+    "@jotdojo/billing": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.3",
+    "@types/node": "^22.10.5",
+    "tsx": "^4.19.2"
+  }
+}

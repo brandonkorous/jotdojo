@@ -1,0 +1,148 @@
+/* The one glass pill: search, tools, avatar. ADR-022, ADR-025. */
+
+/* The search field: the widest thing in the pill, because it is the thing
+ * people reach for most. It is a button that opens the palette, not an input --
+ * a real input here would be a second place to type on a page whose entire
+ * point is that the cursor is already in the canvas. It has to *look* like a
+ * field so it reads as somewhere to type, and behave like a button so focus
+ * never leaves the note. */
+.jd-search {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  height: 2rem;
+  padding: 0 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.8125rem;
+  text-align: left;
+  color: var(--color-base-content);
+  background: color-mix(in oklch, var(--color-base-content) 5%, transparent);
+  transition: background-color var(--duration, 120ms) var(--ease, ease);
+}
+.jd-search:hover { background: color-mix(in oklch, var(--color-base-content) 9%, transparent); }
+.jd-search:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 1px; }
+
+.jd-search-label {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  opacity: 0.55;
+}
+
+.jd-search-kbd {
+  flex: none;
+  font-size: 0.6875rem;
+  opacity: 0.45;
+}
+
+/* On a narrow screen the hint is the first thing to go: the field still reads
+   as a search box from its shape, and ⌘K means nothing on a phone anyway. */
+@media (max-width: 480px) {
+  .jd-search-label { font-size: 0.75rem; }
+  .jd-search-kbd { display: none; }
+}
+
+/* Compact by default; touch targets grow only where a finger is the input. */
+.jd-tool {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 9999px;
+  font-size: 0.875rem;
+  color: var(--color-base-content);
+  transition: background-color var(--duration, 120ms) var(--ease, ease);
+}
+/* Sized here rather than by lucide's `size` prop, so the coarse-pointer bump
+   below is one rule instead of a second prop threaded through every caller. */
+.jd-tool svg { width: 1rem; height: 1rem; }
+.jd-tool:hover:not(:disabled) { background: color-mix(in oklch, var(--color-base-content) 8%, transparent); }
+.jd-tool:disabled { opacity: 0.45; cursor: default; }
+.jd-tool-active { background: color-mix(in oklch, var(--color-primary) 18%, transparent); }
+
+@media (pointer: coarse) {
+  .jd-tool { width: 2.75rem; height: 2.75rem; }
+  .jd-tool svg { width: 1.2rem; height: 1.2rem; }
+}
+
+/* Seams inside the pill, drawn in the ink rather than a border colour so they
+   read as a fold and not an edge. */
+.jd-rail-sep-v {
+  width: 1px;
+  height: 1.25rem;
+  margin: auto 0.25rem;
+  background: color-mix(in oklch, var(--color-base-content) 15%, transparent);
+}
+
+/* ---------------------------------------------------------------------------
+ * Tool options: the second pill, under the rail. ADR-045.
+ *
+ * Every control here is the thing it does -- a dot the size of the line, a
+ * swatch in the colour it paints. A row of labels would be smaller and would
+ * make somebody read before they could draw.
+ * ------------------------------------------------------------------------- */
+
+/* Letters rather than an icon: B, H1 and H2 ARE their own symbols. */
+.jd-tool-text {
+  width: auto;
+  min-width: 2rem;
+  padding-inline: 0.4rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.jd-chip {
+  display: block;
+  width: 1rem;
+  height: 1rem;
+  border-radius: 9999px;
+  box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--color-base-content) 18%, transparent);
+}
+
+/* Drawn as a swipe at roughly the alpha it paints at, so the swatch is not a
+   promise the canvas breaks: a marker is translucent, always. */
+.jd-chip-marker {
+  height: 0.6rem;
+  border-radius: 2px;
+  opacity: 0.75;
+}
+
+.jd-swatch-on {
+  box-shadow: inset 0 0 0 2px color-mix(in oklch, var(--color-base-content) 55%, transparent);
+}
+
+/* The nib is drawn at the width it will actually stroke. */
+.jd-nib {
+  display: block;
+  border-radius: 9999px;
+  background: var(--color-base-content);
+}
+
+.jd-tool-danger:hover:not(:disabled) {
+  background: color-mix(in oklch, var(--color-accent) 16%, transparent);
+  color: var(--color-accent);
+}
+
+/* ---------------------------------------------------------------------------
+ * The selection bar. ADR-033, ADR-045.
+ *
+ * At the FOOT, not beside the marquee: a bar that follows the selection covers
+ * the strokes next to whatever was caught, which is exactly what somebody is
+ * looking at when they are deciding what to do with it.
+ * ------------------------------------------------------------------------- */
+.jd-selection-count {
+  padding-inline: 0.6rem 0.2rem;
+  font-size: 0.75rem;
+  opacity: 0.6;
+  white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .jd-chrome, .jd-tool, .jd-search { transition: none; }
+}

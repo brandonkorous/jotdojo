@@ -1,0 +1,59 @@
+{
+  "name": "jotdojo",
+  "private": true,
+  "version": "0.0.0",
+  "packageManager": "pnpm@10.9.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "typecheck": "turbo run typecheck",
+    "lint": "turbo run lint",
+    "db:up": "docker compose up -d postgres",
+    "db:down": "docker compose down",
+    "db:migrate": "pnpm --filter @jotdojo/db migrate",
+    "db:studio": "pnpm --filter @jotdojo/db studio",
+    "db:dev-role": "pnpm --filter @jotdojo/db dev-role",
+    "db:setup": "pnpm db:migrate && pnpm db:dev-role",
+    "icons": "node scripts/make-icons.mjs",
+    "stripe:catalog": "dotenv -e .env -- node scripts/stripe-catalog.mjs",
+    "db:smoke": "pnpm --filter @jotdojo/domain smoke:rls",
+    "api:smoke": "pnpm --filter @jotdojo/api smoke:capture",
+    "oauth:smoke": "pnpm --filter @jotdojo/domain smoke:oauth",
+    "oauth:http-smoke": "pnpm --filter @jotdojo/web smoke:oauth-http",
+    "mcp:smoke": "pnpm --filter @jotdojo/mcp smoke:mcp",
+    "search:smoke": "pnpm --filter @jotdojo/domain smoke:search",
+    "worker:smoke": "pnpm --filter @jotdojo/worker smoke:worker",
+    "mcp:check": "pnpm --filter @jotdojo/mcp check:discovery",
+    "ink:smoke": "pnpm --filter @jotdojo/domain smoke:ink",
+    "recognize:smoke": "pnpm --filter @jotdojo/worker smoke:recognize",
+    "web:build": "pnpm --filter @jotdojo/web build:verify",
+    "media:smoke": "pnpm --filter @jotdojo/worker smoke:media",
+    "lasso:smoke": "pnpm --filter @jotdojo/web smoke:lasso",
+    "members:smoke": "pnpm --filter @jotdojo/domain smoke:members",
+    "metering:smoke": "pnpm --filter @jotdojo/worker smoke:metering",
+    "review:smoke": "pnpm --filter @jotdojo/domain smoke:review",
+    "billing:smoke": "pnpm --filter @jotdojo/domain smoke:billing",
+    "billing:http-smoke": "pnpm --filter @jotdojo/web smoke:billing-http",
+    "anon:smoke": "pnpm --filter @jotdojo/domain smoke:anon",
+    "site:smoke": "pnpm --filter @jotdojo/web smoke:site",
+    "marks:smoke": "pnpm --filter @jotdojo/web smoke:marks",
+    "reread": "pnpm --filter @jotdojo/worker reread",
+    "reread:smoke": "pnpm --filter @jotdojo/worker smoke:reread",
+    "triage:smoke": "pnpm --filter @jotdojo/worker smoke:triage"
+  },
+  "devDependencies": {
+    "turbo": "^2.5.0",
+    "typescript": "^5.7.3",
+    "dotenv-cli": "^8.0.0",
+    "sharp": "^0.33.5"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild",
+      "sharp"
+    ]
+  }
+}
