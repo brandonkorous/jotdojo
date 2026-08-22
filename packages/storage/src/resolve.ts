@@ -15,7 +15,10 @@ export function resolveStorage(env = process.env): BlobStore | null {
   const provider = env.STORAGE_PROVIDER?.trim().toLowerCase();
 
   if (provider === "local") {
-    if (env.NODE_ENV === "production") {
+    // ADR-052. The CI flag is the ONLY exemption, and release.yml cannot
+    // forward it: the container env is built solely from vault entries on
+    // its allow-lists, and this name is deliberately absent from both.
+    if (env.NODE_ENV === "production" && env.JOTDOJO_FAKE_PROVIDERS_OK !== "1") {
       // Not a nicety. The local driver routes every byte through the API,
       // which is the exact thing docs/04 forbids -- one photo per second from
       // a hundred phones would be flowing through a Node process sized for

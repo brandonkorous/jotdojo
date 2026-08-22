@@ -161,6 +161,12 @@ jobs:
           # is simply off in production while the vault looks right -- which is
           # the same silent-green failure the required list above exists to
           # refuse, arriving through the back door.
+          # NEVER ADD `JOTDOJO_FAKE_PROVIDERS_OK` TO EITHER LIST. It exempts the
+          # fake drivers from their refusal to run in production, and CI sets it
+          # so it can test a production build (ADR-052). A name absent from both
+          # lists cannot reach a container, and that absence is the whole
+          # mechanism -- adding it here would hand out paid plans for free and
+          # record that somebody paid.
           optional=(
             # The four switches that SELECT a driver. Without these the keys
             # below are inert: each resolve() falls through to null and the

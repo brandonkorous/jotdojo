@@ -18,7 +18,18 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 export async function POST(req: Request): Promise<Response> {
-  const provider = billing();
+  let provider;
+  try {
+    provider = billing();
+  } catch (err) {
+    // A MISCONFIGURED provider, not an absent one -- resolveBilling throws when
+    // the driver is named and unusable. Unhandled it reaches the caller as an
+    // opaque 500 with no body, which is how eighteen checks once failed without
+    // naming a cause. The log is the signal; 503 asks the provider to retry.
+    console.error("[billing] provider is configured but unusable:", err);
+    return text(503, "billing is misconfigured here");
+  }
+
   // 503 rather than 500: nothing is broken, we simply do not take money in
   // this deployment. A provider retrying against it will eventually stop.
   if (!provider) return text(503, "billing is not configured here");

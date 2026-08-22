@@ -1303,3 +1303,53 @@ no error anywhere. They were missing from `release.yml`'s optional list, which m
 fully configured vault would have produced a deployment that looked healthy and did
 nothing. That is the same silent-green failure the required list exists to refuse,
 arriving through the back door.
+
+### ADR-052 — CI tests the artifact that ships, so the fakes need one exemption
+**Settled 2026-08-22.** Three decisions in this repo were each correct and jointly
+impossible, and `billing:http-smoke` was the first suite to stand where they meet.
+
+- CI builds and serves the PRODUCTION Next artifact, which is most of what the HTTP
+  suites are for -- they catch wire-format bugs a function signature cannot.
+- CI configures FAKE providers, because it holds no payment or model credentials and
+  should not.
+- Every fake REFUSES to run under `NODE_ENV=production` (ADR-007, ADR-028), because a
+  fake billing driver in a real deployment hands out paid plans for free and records
+  that somebody paid.
+
+`next start` sets `NODE_ENV=production` and `web start` is `dotenv -e ../../.env --
+next start`, so the CI web server is a production process holding
+`BILLING_PROVIDER=fake`. `resolveBilling` threw, Next surfaced it as a 500 with an
+EMPTY BODY, and all eighteen checks failed -- including the ones asserting a refusal,
+which "passed" as failures for the wrong reason.
+
+**The exemption is one environment variable, `JOTDOJO_FAKE_PROVIDERS_OK=1`, and what
+makes it safe is structural rather than a promise.** `release.yml` builds the
+container's environment SOLELY from Key Vault entries named in its `required` and
+`optional` lists. A name absent from both cannot reach a deployment by any path. This
+name is deliberately absent from both, and there is a comment above those lists saying
+so, because the only way to break this is to add it there.
+
+**Rejected: run the web app in dev mode for the HTTP suites.** It keeps every guard
+untouched and it also stops the suites testing the thing that ships, which is the
+entire reason they exist.
+
+**Rejected: drop the suite from CI.** This is the only unauthenticated write endpoint
+in the product and the one deciding who has paid us. It is the last suite that should
+run only on somebody's laptop.
+
+**Six copies of the guard, exercised by `pnpm fakes:check`.** The provider packages are
+leaves with no dependencies -- deliberately, so nothing in that layer can reach the
+database or another provider -- which leaves no shared module to hold a safety
+predicate. Six copies of a rule is how one of them quietly drifts, so the check CALLS
+all six resolvers in all three states: refusing under production, building with the
+flag, building in development. It also proves the flag is exact rather than truthy --
+`"true"`, `"yes"` and `"0"` all still refuse -- because a guard that opens for any
+non-empty string is a guard that opens by accident.
+
+No app depends on all six, so the check is a root script importing them by relative
+path. That is honest about what it is: a root script belongs to no workspace package.
+
+**The webhook also stopped answering an opaque 500.** A provider that is named and
+unusable is a different thing from one that is absent; both now answer 503 with a
+distinguishable message and a logged cause. Eighteen failing checks that named no cause
+is what that costs.

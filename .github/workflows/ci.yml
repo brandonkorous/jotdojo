@@ -27,6 +27,20 @@ env:
   # Matches infra/docker/*.Dockerfile. Node 22 is the floor in package.json.
   NODE_VERSION: '22'
 
+  # The one thing that lets a FAKE provider run under NODE_ENV=production, and
+  # the reason this job can test the artifact that actually ships. ADR-052.
+  #
+  # `next start` sets NODE_ENV=production, and `pnpm --filter @jotdojo/web start`
+  # loads .env -- so the web server here is a production process holding
+  # BILLING_PROVIDER=fake, which every provider deliberately refuses. Without
+  # this flag the billing webhook answers an opaque 500 to all eighteen checks.
+  #
+  # IT MUST NEVER BE ADDED TO release.yml. That workflow builds the container's
+  # environment SOLELY from Key Vault entries named in its required/optional
+  # lists, so a name absent from both cannot reach a deployment. That is the
+  # property making this safe, and it is structural rather than a promise.
+  JOTDOJO_FAKE_PROVIDERS_OK: '1'
+
 jobs:
   verify:
     name: typecheck and smoke suites
@@ -101,6 +115,12 @@ jobs:
 
       - name: Typecheck
         run: pnpm typecheck
+
+      # Six packages carry the same refusal and none of them can share a module
+      # to hold it -- they are leaves on purpose. This asserts the six copies
+      # still agree. ADR-052.
+      - name: Check the fake-provider guards agree
+        run: pnpm fakes:check
 
       # These need no HTTP listener: they drive the domain layer and Postgres
       # directly. Run them first, because when the tenancy boundary is broken
