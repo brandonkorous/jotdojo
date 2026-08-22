@@ -90,7 +90,7 @@ jobs:
           ALLOW_DEV_LOGIN=true
           AUTH_GOOGLE_ID=ci-unused
           AUTH_GOOGLE_SECRET=ci-unused
-          NEXTAUTH_URL=http://localhost:3400
+          AUTH_URL=http://localhost:3400
           APP_URL=http://localhost:3400
           SITE_URL=http://jotdojo.localhost:3400
           API_PORT=3401
@@ -187,7 +187,7 @@ jobs:
           DATABASE_URL: postgresql://jotdojo_app:jotdojo@localhost:5433/jotdojo
           AUTH_SECRET: ci-only-not-a-real-secret-ci-only-not-a-real
           ALLOW_DEV_LOGIN: 'true'
-          NEXTAUTH_URL: http://localhost:3400
+          AUTH_URL: http://localhost:3400
           APP_URL: http://localhost:3400
           # The apex. site:smoke sends it as x-forwarded-host, the way Caddy
           # does, so the host routing in apps/web/middleware.ts is exercised

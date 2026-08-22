@@ -53,8 +53,16 @@ data:
   # origin in the note links apps/api hands back to Apple Shortcuts, so these
   # three move together or not at all.
   APP_URL: 'https://app.jotdojo.com'
-  NEXTAUTH_URL: 'https://app.jotdojo.com'
   API_URL: 'https://api.jotdojo.com'
+
+  # AUTH_URL, not NEXTAUTH_URL: Auth.js v5 only trusts the incoming Host when
+  # AUTH_URL or AUTH_TRUST_HOST is set, and the v4 name is not on that list. Set
+  # to the v4 name in production it reads as configured and rejects every login.
+  #
+  # Pinning the ORIGIN is also the point rather than a side effect. ADR-040 has
+  # one deployment answering to three hostnames, and this is what stops a sign-in
+  # begun on the apex from issuing its callback there.
+  AUTH_URL: 'https://app.jotdojo.com'
 
   # The apex. The same web deployment serves it, chosen by Host (ADR-040), so
   # this adds a Caddy block to the EXISTING backend rather than a fifth service.
