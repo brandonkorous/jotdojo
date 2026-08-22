@@ -39,19 +39,51 @@ async function release(blockId: string) {
   );
 }
 
-/** Drain what other suites left behind so the counts below are ours. */
-async function drain() {
-  const r = fakeRecognizer("leftover");
-  for (let i = 0; i < 20; i++) if ((await runRecognitionCycle(r, null, 16)).claimed === 0) return;
-}
-await drain();
-
 const stamp = Date.now();
 const user = await upsertUserFromGoogle({
   googleSub: `met-${stamp}`, email: `met-${stamp}@example.test`, displayName: "Meter",
 });
 const actor = asUser(user.id);
 const space = await defaultSpaceId(actor);
+
+/**
+ * Our own blocks. Foreign work is told apart by ID, never by a join.
+ *
+ * `blocks` is FORCE ROW LEVEL SECURITY under `app_can_reach_space`, and this
+ * connection sets no actor -- so a subquery against it returns nothing at all
+ * and a `NOT EXISTS` built on one matches EVERY row, closing our own jobs
+ * along with everyone else's. Matching on the payload touches no policy.
+ */
+const ours: string[] = [];
+
+/**
+ * Take everybody else's queued reading out of the picture, like smoke-triage.
+ *
+ * The CLAIM is global -- a worker takes the oldest jobs, whoever they belong to
+ * -- so a leftover job from another suite lands in our batch and every count
+ * below becomes somebody else's. This suite also passes NO TRANSCRIBER, so a
+ * foreign AUDIO job does not merely inflate a count: it throws "no provider"
+ * and is recorded as `failed`, which is the assertion that broke in CI.
+ *
+ * Draining once at startup could not fix that. Recognition is queued with a
+ * 30-second quiet period, so a job enqueued just before this suite began is not
+ * yet claimable when a drain runs -- and is claimable by the time we assert.
+ */
+async function clearForeign() {
+  const { db } = await import("@jotdojo/db");
+  const mine = ours.map((id) => `'${id}'`).join(",");
+  await db.execute(
+    `UPDATE outbox SET completed_at = now(), locked_until = NULL
+      WHERE topic = 'block.recognize' AND completed_at IS NULL
+        ${mine ? `AND payload->>'blockId' NOT IN (${mine})` : ""}`,
+  );
+}
+
+/** Every measured cycle is ours only. Foreign work is closed, never read. */
+async function cycle(text: string) {
+  await clearForeign();
+  return runRecognitionCycle(fakeRecognizer(text), null, 8);
+}
 
 console.log("\nwhat a new space is allowed");
 const fresh = await spaceUsage(actor, space);
@@ -64,10 +96,11 @@ check("the period is the calendar month", fresh.periodStart.getUTCDate() === 1);
 console.log("\na reading is metered");
 const note = await createNote(actor, space, "");
 const ink = await createInkBlock(actor, note.id, { w: 800, h: 600 });
+ours.push(ink.blockId);
 await appendStrokes(actor, ink.blockId, 0, [scrawl(100), scrawl(300)]);
 await release(ink.blockId);
 
-const first = await runRecognitionCycle(fakeRecognizer("metered"), null, 8);
+const first = await cycle("metered");
 check("the page is read", first.read === 1, JSON.stringify(first));
 const afterOne = await spaceUsage(actor, space);
 check("one page costs one unit", afterOne.used === 1, String(afterOne.used));
@@ -85,13 +118,14 @@ console.log("\ncapture keeps working, which is the point");
 const second = await createNote(actor, space, "still jotting while over quota");
 check("a note is still created", second.id.length > 0);
 const ink2 = await createInkBlock(actor, second.id, { w: 800, h: 600 });
+ours.push(ink2.blockId);
 await appendStrokes(actor, ink2.blockId, 0, [scrawl(120)]);
 await release(ink2.blockId);
 const stored = await getInk(actor, ink2.blockId);
 check("the strokes are still stored", stored.strokeCount === 1, String(stored.strokeCount));
 
 console.log("\nthe reading is deferred, not failed");
-const overCycle = await runRecognitionCycle(fakeRecognizer("metered"), null, 8);
+const overCycle = await cycle("metered");
 check("nothing was read", overCycle.read === 0, JSON.stringify(overCycle));
 check("...and nothing was recorded as failed", overCycle.failed === 0, JSON.stringify(overCycle));
 const deferred = await getInk(actor, ink2.blockId);
@@ -101,7 +135,7 @@ check("NOT failed -- it will be read when the period rolls over",
 check("the strokes are untouched", deferred.strokeCount === 1);
 
 console.log("\nthe deferred job is not lost");
-const again = await runRecognitionCycle(fakeRecognizer("metered"), null, 8);
+const again = await cycle("metered");
 check("a second pass does not spin the queue", again.claimed === 0, JSON.stringify(again));
 const afterDefer = await spaceUsage(actor, space);
 check("a deferred reading costs nothing", afterDefer.used === spent.used,
