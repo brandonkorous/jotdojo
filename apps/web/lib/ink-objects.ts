@@ -1,4 +1,5 @@
 import type { Point, TextBox } from "@jotdojo/domain";
+import { textBounds } from "@jotdojo/ink-render";
 import { pointInPolygon, type Bounds } from "./ink-geometry";
 
 /**
@@ -10,19 +11,15 @@ import { pointInPolygon, type Bounds } from "./ink-geometry";
  * can be tested without a browser.
  */
 
-/** Rough, and rough is right: the real height comes from the DOM once the box
- *  is laid out. This is what hit-testing uses before that has happened. */
-export const LINE_HEIGHT = 1.35;
-
-export function boxBounds(box: TextBox, measured?: number): Bounds {
-  const perLine = Math.max(1, Math.floor(box.w / (box.size * 0.55)));
-  const lines = box.text.split("\n")
-    .reduce((n, p) => n + Math.max(1, Math.ceil(p.length / perLine)), 0);
-  return {
-    x: box.x, y: box.y, w: box.w,
-    h: measured ?? Math.max(1, lines) * box.size * LINE_HEIGHT,
-  };
-}
+/**
+ * One box's rectangle -- from `@jotdojo/ink-render`, never a copy.
+ *
+ * There WAS a copy here, and it multiplied by 1.35 where the renderer used
+ * 1.25, so a lasso and an export disagreed about where a box ended. Invisible
+ * while a box had no edges drawn; a wrong-sized card the moment one did.
+ * ink-index.ts states the rule this broke. ADR-078.
+ */
+export const boxBounds = (box: TextBox): Bounds => textBounds(box);
 
 export function boxesBounds(boxes: readonly TextBox[]): Bounds | null {
   let out: Bounds | null = null;
@@ -85,14 +82,30 @@ export function translateBoxes(boxes: readonly TextBox[], dx: number, dy: number
  */
 export function newBox(
   x: number, y: number, style: { size: number; color: string }, width: number,
+  height?: number,
 ): TextBox {
   return {
     id: crypto.randomUUID(),
     x, y: y - style.size * 0.8,
     w: width,
+    // Only a dragged box gets a height. A tapped one has no opinion about how
+    // tall it is, which is what keeps a tap a tap. ADR-078.
+    ...(height === undefined ? {} : { h: height }),
     size: style.size,
     color: style.color,
     text: "",
+  };
+}
+
+/** A box drawn corner to corner, rather than tapped. The rectangle IS the box,
+ *  so unlike `newBox` the y is where the pointer went down. */
+export function drawnBox(
+  rect: Bounds, style: { size: number; color: string },
+): TextBox {
+  return {
+    id: crypto.randomUUID(),
+    x: rect.x, y: rect.y, w: rect.w, h: rect.h,
+    size: style.size, color: style.color, text: "",
   };
 }
 

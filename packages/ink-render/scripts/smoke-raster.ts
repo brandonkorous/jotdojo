@@ -128,6 +128,14 @@ console.log("\nthe recogniser does not see typed text");
   const forPerson = toSvg(typed, { mode: "viewing", text: true });
   check("a person's export DOES show it", forPerson.includes("mooring fee"));
   check("...as real text, not a picture of it", forPerson.includes("<text"));
+
+  // SVG paints in document order, so the last thing written is on top. The
+  // editor puts the object plane above both canvases, and these were reversed
+  // -- invisible while text was transparent, and a card buried under somebody's
+  // handwriting the moment a box had a fill. ADR-078.
+  check("typed text sits OVER the ink, as it does on screen",
+    forPerson.indexOf("<text") > forPerson.lastIndexOf("<path"),
+    `text at ${forPerson.indexOf("<text")}, last path at ${forPerson.lastIndexOf("<path")}`);
 }
 
 console.log("\na page that is nothing but typed text");

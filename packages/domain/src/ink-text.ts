@@ -30,8 +30,21 @@ export type TextBox = {
   /** Top-left, in DOCUMENT units -- the same space strokes live in. */
   x: number;
   y: number;
-  /** Width in document units. Height is whatever the text needs. */
+  /** Width in document units. */
   w: number;
+  /**
+   * Height in document units, when somebody drew one. Absent means "whatever
+   * the text needs", which is what every box before ADR-078 stored.
+   *
+   * AUTHORITATIVE WHEN PRESENT, and that is the point of it. Without a height
+   * the browser and the renderer each estimate one from a character-width
+   * guess, and they are free to disagree -- invisibly, until something is drawn
+   * at the box's edge. A stored height is one number both of them read.
+   *
+   * It is a FLOOR, never a ceiling: text that outgrows it grows the box. A
+   * capture surface may not hide a word somebody typed behind an overflow.
+   */
+  h?: number;
   text: string;
   /** Size in document units at k=1, so a box keeps its size as the camera moves. */
   size: number;
@@ -65,12 +78,26 @@ export function validateTexts(input: unknown): TextBox[] {
     if (t.w! <= 0 || t.size! <= 0 || t.size! > 2_000) {
       throw new DomainError(`${where}: implausible size`, "bad_texts", 400);
     }
+    // Optional, because every box written before ADR-078 has no height at all.
+    // Rejecting those would make an old page unreadable rather than unstyled.
+    const h = optionalHeight(t.h, where);
     return {
       id: textId(t.id, where),
       x: t.x!, y: t.y!, w: t.w!, size: t.size!,
+      ...(h === undefined ? {} : { h }),
       text: t.text, color: t.color,
     };
   });
+}
+
+const MAX_BOX = 100_000;
+
+function optionalHeight(given: unknown, where: string): number | undefined {
+  if (given === undefined || given === null) return undefined;
+  if (typeof given !== "number" || !Number.isFinite(given) || given <= 0 || given > MAX_BOX) {
+    throw new DomainError(`${where}: h must be a positive number under ${MAX_BOX}`, "bad_texts", 400);
+  }
+  return given;
 }
 
 function textId(given: unknown, where: string): string {

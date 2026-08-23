@@ -1,7 +1,7 @@
 import type { TextBox } from "@jotdojo/domain";
 import type { ViewSnapshot } from "./ink-viewport";
 import type { Bounds } from "./ink-geometry";
-import { boxAt, boxesBounds, isEmpty, newBox } from "./ink-objects";
+import { boxAt, boxesBounds, drawnBox, isEmpty, newBox } from "./ink-objects";
 import { InkPlane, MIN_SIZE } from "./ink-plane";
 import type { InkTool } from "./canvas-tool";
 
@@ -99,6 +99,23 @@ export class InkTextLayer {
     // Not published yet. An empty box is not a fact about the page, and saving
     // one would put a rectangle on every other device the moment somebody
     // tapped and changed their mind.
+    return true;
+  }
+
+  /**
+   * A box at exactly the rectangle somebody dragged out. ADR-078.
+   *
+   * Unlike `tapAt` this never hits an existing box: the drag started on empty
+   * ground, and a rectangle drawn across one is a new box over it rather than
+   * an instruction to edit what is underneath.
+   */
+  drawAt(rect: Bounds, style: { color: string }): boolean {
+    const box = drawnBox(rect, { size: MIN_SIZE, color: style.color });
+    this.boxes.push(box);
+    this.plane.render(this.boxes);
+    this.plane.focus(box.id);
+    // Not published, for the same reason a tapped box is not: an empty box is
+    // not a fact about the page.
     return true;
   }
 

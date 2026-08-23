@@ -186,8 +186,12 @@ export function toSvg(doc: InkDocument, options: RenderOptions): string {
     // lands off-screen and the PNG rasterises transparent. ADR-053.
     `<rect x="${n(vx)}" y="${n(vy)}" width="${n(vw)}" height="${n(vh)}"`,
     ` fill="${paper ? "#FFFFFF" : "none"}"/>`,
-    ...typed,
+    // Ink first, then typed text over it -- the order the editor shows, where
+    // the object plane sits above both canvases. These were reversed, which
+    // nothing could see while text was transparent and everything would see the
+    // moment a box had a fill. ADR-078.
     ...body,
+    ...typed,
     "</svg>",
   ].join("");
 }

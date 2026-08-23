@@ -7,7 +7,8 @@
  */
 
 export {
-  bounds, contentBounds, textBounds, strokesBounds, strokeBounds, intersects, union,
+  bounds, contentBounds, textBounds, textContentHeight, TEXT_LINE_HEIGHT,
+  strokesBounds, strokeBounds, intersects, union,
   medianWidth, widthAt, control,
   type Bounds,
 } from "./geometry";

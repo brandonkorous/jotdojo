@@ -7,9 +7,11 @@
  * settled what that standard is.
  */
 import type { Point, TextBox } from "@jotdojo/domain";
-import { boxAt, boxBounds, boxesBounds, boxInPolygon, isEmpty, newBox, translateBoxes }
+import { textBounds } from "@jotdojo/ink-render";
+import { boxAt, boxBounds, boxesBounds, boxInPolygon, drawnBox, isEmpty, newBox, translateBoxes }
   from "../lib/ink-objects";
 import { MIN_SIZE } from "../lib/ink-plane";
+import { TextDrag } from "../lib/ink-text-drag";
 
 let failures = 0;
 const check = (label: string, ok: boolean, detail?: string) => {
@@ -60,9 +62,21 @@ console.log("\nhow big a box is");
     boxBounds(box({ text: "x".repeat(400) })).h > boxBounds(box()).h);
   check("explicit newlines count",
     boxBounds(box({ text: "a\nb\nc" })).h > boxBounds(box({ text: "a" })).h);
-  // A measured height from the DOM wins: the estimate is what hit-testing uses
-  // before layout has happened, not a second source of truth after it.
-  check("a measured height overrides the estimate", boxBounds(box(), 999).h === 999);
+  // A drawn height is a FLOOR, not a ceiling. Both halves matter: a card keeps
+  // the size it was dragged to when it holds one word, and grows rather than
+  // clipping when it holds a paragraph. ADR-078.
+  check("a drawn height is kept when the text is short",
+    boxBounds(box({ h: 400 })).h === 400, String(boxBounds(box({ h: 400 })).h));
+  check("...and text that outgrows it wins instead of being clipped",
+    boxBounds(box({ h: 20, text: "x".repeat(600) })).h > 20,
+    String(boxBounds(box({ h: 20, text: "x".repeat(600) })).h));
+
+  // The bug this replaced: the browser laid text out at 1.35 and the renderer
+  // framed it at 1.25, so a lasso and an export disagreed about where a box
+  // ended. One implementation now, imported rather than copied.
+  check("the client measures a box exactly as the renderer does",
+    boxBounds(box({ text: "several words that will wrap around a line or two" })).h
+      === textBounds(box({ text: "several words that will wrap around a line or two" })).h);
 
   const many = boxesBounds([box({ x: 0, y: 0 }), box({ id: "t2", x: 400, y: 300 })]);
   check("several boxes union", (many?.w ?? 0) >= 520 && (many?.h ?? 0) >= 300, JSON.stringify(many));
@@ -95,6 +109,70 @@ console.log("\nstarting one");
   check("text is never declared below 16px", MIN_SIZE === 16);
   check("a box with a space in it is still empty", isEmpty(box({ text: "   " })));
   check("...and one with a word in it is not", !isEmpty(box({ text: "x" })));
+}
+
+console.log("\ndrawing a box out, without costing the tap");
+{
+  const at = (x: number, y: number): Point => [x, y, 0, 0.5, 0, 0];
+
+  // THE ONE THAT MATTERS. docs/02 calls sub-second capture non-negotiable, so
+  // a text tool that only worked by dragging would have put an interaction in
+  // front of the thing the product exists to do. Down and up in one place is
+  // still a tap. ADR-078.
+  const tap = new TextDrag();
+  tap.begin(at(100, 100));
+  const tapped = tap.end(at(100, 100), 1);
+  check("a tap is still a tap", tapped?.kind === "tap");
+
+  // And a finger is never perfectly still. Below the threshold the drag simply
+  // did not happen -- the same bargain hold-to-snap makes.
+  const wobble = new TextDrag();
+  wobble.begin(at(100, 100));
+  check("...and so is a tap with a shaky hand",
+    wobble.end(at(104, 103), 1)?.kind === "tap");
+
+  const drag = new TextDrag();
+  drag.begin(at(100, 100));
+  const drawn = drag.end(at(300, 250), 1);
+  check("a real drag draws a box", drawn?.kind === "drawn");
+  if (drawn?.kind === "drawn") {
+    check("...the size it was dragged to",
+      drawn.rect.w === 200 && drawn.rect.h === 150, JSON.stringify(drawn.rect));
+  }
+
+  // Up and to the left is an ordinary way to draw a box, and a naive
+  // subtraction gives it a negative width that validateTexts would refuse.
+  const backwards = new TextDrag();
+  backwards.begin(at(300, 250));
+  const rev = backwards.end(at(100, 100), 1);
+  check("dragging up and left is the same box",
+    rev?.kind === "drawn" && rev.rect.x === 100 && rev.rect.y === 100
+      && rev.rect.w === 200 && rev.rect.h === 150, JSON.stringify(rev));
+
+  // The threshold is SCREEN pixels, so it means the same thing to a finger at
+  // every zoom. Zoomed out, the same document distance is a smaller gesture.
+  const zoomed = new TextDrag();
+  zoomed.begin(at(0, 0));
+  check("zoomed out, the same document drag is still a tap",
+    zoomed.end(at(20, 20), 0.1)?.kind === "tap");
+
+  const tapPoint = new TextDrag();
+  tapPoint.begin(at(42, 84));
+  const where = tapPoint.end(at(45, 85), 1);
+  check("a tap lands where the finger went down, not where it came up",
+    where?.kind === "tap" && where.x === 42 && where.y === 84, JSON.stringify(where));
+
+  const abandoned = new TextDrag();
+  abandoned.begin(at(0, 0));
+  abandoned.cancel();
+  check("a cancelled drag places nothing", abandoned.end(at(500, 500), 1) === null);
+
+  // A drawn box carries its height; a tapped one has no opinion about how tall
+  // it is, which is what lets its text decide.
+  check("a drawn box stores the height",
+    drawnBox({ x: 0, y: 0, w: 200, h: 150 }, { size: 16, color: "#111418" }).h === 150);
+  check("...and a tapped one stores none",
+    newBox(0, 0, { size: 16, color: "#111418" }, 200).h === undefined);
 }
 
 console.log(failures === 0 ? "\nobjects: all good\n" : `\nobjects: ${failures} failed\n`);

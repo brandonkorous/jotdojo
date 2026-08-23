@@ -2667,3 +2667,384 @@ FORCE included. Same shape as ADR-057, one verb over.
   bolted, fitted to a frame the hinges pass through.
 
 **A read is not the lesser case. It is the one that fails quietly.**
+
+---
+
+### ADR-072 — The product is called Jotacular, and the plumbing is not
+
+**2026-08-23.** The product is renamed from jotdojo to **Jotacular**, on `jotacular.com`,
+with a new palette, a new type pairing, and a new mark. [design.md](../design.md) is
+canonical for the identity; [19-rebrand.md](19-rebrand.md) is the plan this executed.
+
+#### What changed
+
+The user-visible surface, and only that: metadata, the manifest, the marketing copy, the
+blog and legal prose, the MCP server's own name and every tool description Claude reads,
+the ink swatch names, the export filename, and the icons. `docs/10` and `docs/11` were
+rewritten rather than patched, because both had a *thesis* — inherit kanninja's brand kit,
+inherit kanninja's register — that the rename made false.
+
+#### What deliberately did not change
+
+Renaming these would cost a migration with downtime and buy nothing a user can see:
+
+- `@jotdojo/*` package names, and every import of them
+- `jotdojo_app` / `jotdojo_owner` / `jotdojo_worker`, and the `jotdojo` database itself —
+  renaming a role rewrites grants and RLS policies on a live database
+- the `jotdojo` Kubernetes namespace, and the Azure Key Vault and storage account, which
+  live in sparx's `terraform/envs/azure/jotdojo.tf` and are globally-unique immutable names
+- `token.jotdojoUserId` — a JWT claim. Renaming it invalidates every live session, logging
+  out every user to change a string none of them can see
+- the `jotdojo.scribble-hint.dismissed` localStorage key, for the same reason one step down:
+  a new key re-shows a hint people already dismissed
+- the `jd-` CSS prefix, 100 classes across 36 files, invisible and high-churn
+- **the ADRs above this one.** They are a dated record of what was decided when, under the
+  name it had then. Rewriting them to say Jotacular would make the log lie
+
+**The brand is a name for the product, not a name for the plumbing.** The two only look like
+the same string.
+
+#### Consequences
+
+- `apps/web/lib/brand.ts` holds the name, the lines and the pigments. It exists because the
+  name used to be a literal in eight places, which is what made the rename large.
+- `connect-jotdojo-to-claude` became `connect-jotacular-to-claude`, with a permanent
+  redirect in `next.config.ts`. It is our most-linked post and a 404 there costs the one
+  piece of SEO we have.
+- `scripts/make-icons.mjs` now rasterizes committed artwork in `assets/brand/` instead of
+  drawing a font glyph. The old script produced a blank tile on any machine without the CJK
+  font, and failed loudly only because somebody had written a flatness check.
+- Hostnames were **not** touched. See ADR-074.
+
+---
+
+### ADR-073 — The accent stops being a seal
+
+**2026-08-23.** Vermillion was "one per screen": the seal marked the single most important
+thing in a view and nothing else, and `docs/10` called it the strongest constraint in the
+visual system. It is retired.
+
+#### Why
+
+design.md §11 makes mint the primary — CTAs, active states, helpful highlights. A colour
+cannot be both the button colour and a rationed mark. Keeping the rule would have meant
+finding a third colour for ordinary controls, which is a worse system than dropping it.
+
+The rule also came from somewhere. A scarce ceremonial accent is a kanninja idea, fitted to
+a product about discipline. Jotacular is friendly and immediate, and rationing its primary
+would read as restraint the brand is not asking for.
+
+#### Consequences
+
+- Mint `#00C2A8` is `--color-primary` and used freely.
+- Violet `#6A39FF` takes `--color-agent`, which is the job that token already had — design.md
+  §11 assigns violet the "AI/agent association" independently. It is the one accent that
+  never appears on a control the user drives, so agent content still reads as visiting.
+- What carries the discipline now is the flat surface and the whitespace. A screen that
+  feels loud gets fewer elements, not a rationed colour.
+- The 覚 seal is gone from the site bar, the footer and the sign-in screen, replaced by the
+  wordmark. `.jd-site-seal` was deleted rather than left unused.
+
+---
+
+### ADR-074 — The name moved before the hostnames did
+
+**2026-08-23.** The product is called Jotacular everywhere a person can read it. It is still
+served from `jotdojo.com`, and that is deliberate rather than unfinished.
+
+#### Why the hostnames lag
+
+Two of the four are load-bearing in a way the marketing apex is not:
+
+- **`app.jotdojo.com` is the PWA install origin.** It is written into every installed
+  home-screen icon and does not follow a redirect (ADR-010, and `16-web-presence.md` flagged
+  this before the rebrand existed). Moving it forces every existing user to reinstall.
+- **`mcp.jotdojo.com/mcp` is `MCP_RESOURCE`**, and every access token is bound to that exact
+  string as its audience. Changing it invalidates every live agent connection at once, and
+  every user reconnects Claude by hand.
+
+Neither cost buys anything the rename needed. A user reading "Jotacular" on a page served
+from the old host notices nothing; a user whose Claude connector silently stopped working
+notices immediately.
+
+#### Consequences
+
+- Content prose says Jotacular. Hostnames and `legal@` / `hello@` addresses in that prose
+  still say jotdojo, because documenting a URL that does not resolve is worse than an
+  inconsistency a reader will forgive.
+- Adding the new hostnames is a **two-repo change**: a Caddy site block and an allow-list
+  entry in sparx, per `17-shared-infrastructure.md`. It cannot be done from this repo.
+- `siteOrigin()`'s fallback still reads `https://jotdojo.com`, which stays correct until the
+  same commit that flips `SITE_URL`. Moving one without the other silently un-rebrands the
+  site or breaks it, depending on which.
+- When the cutover happens, `isMarketingHost` must accept **both** apexes for the overlap,
+  or the old domain serves the app tree at its apex — which ADR-010 says can never happen.
+
+**Rename what people read first. Move what machines are bound to on its own schedule.**
+
+---
+
+### ADR-075 — The site stopped arguing with Obsidian
+
+**2026-08-23.** The marketing narrative is rebuilt to design.md §18. This is a separate
+decision from the rename (ADR-072) and it is the larger of the two: renaming changed what
+the site is called, this changed what it says.
+
+#### What was there
+
+A five-band argument, and every band was aimed at somebody already shopping for a notes app:
+
+    Problem      "It never arrives at your desk"
+    Beats        Jot / Connect / Ask
+    AgentDemo    "The part that sounds made up"
+    Objection    Obsidian needs a plugin, Apple Notes needs a script,
+                 all of them need a machine left on
+    Promises     what the software guarantees
+
+It was well written and it was fighting the wrong fight. `Objection` in particular spent
+its whole length describing other people's products to a reader who has not yet decided
+they want any of this — and it led on "no computer left running", which is a fact about our
+architecture rather than about their afternoon.
+
+#### What replaced it
+
+design.md §18's order, which starts from a person rather than from a category:
+
+    CaptureModes   four ways in, equal weight -- write, type, speak, snap
+    LakeStory      capture now, use later: the note at the lake, and the plan three
+                   weeks later. The product's actual shape, told once, as it happens
+    ConnectAI      one link, choose the spaces, done. MCP named once, at the bottom
+    Objection      "You have tried the other ones" -- the objection a reader has
+                   about THEMSELVES, not about a competitor
+    Promises       who else can read a note, which is the real question after ConnectAI
+    Examples       six situations, none of them a project
+    Closing        "Catch the thought. Keep moving."
+
+`Beats.tsx` and `AgentDemo.tsx` were deleted rather than edited; nothing in either survived
+the change of subject.
+
+#### Consequences
+
+- The hero headline is now the product hook — *"Don't organize it. Just jot it."* — and
+  `brand.line` ("Where the thought lands.") moved to the footer, which is what design.md §4
+  means by a brand phrase rather than a headline.
+- Two brand devices exist in CSS now and did not before: `.jd-ul`, a violet pen stroke
+  under a few words in every band heading, and a dot grid on the quiet bands. Both are
+  drawn as inline SVG rather than with `radial-gradient`, because design.md §12 bans
+  gradients and drawing a flat dot with a gradient function invites the argument.
+- **The footer lost its three promise cards.** With `Promises` on the page saying the same
+  three things at length, the footer was repeating itself almost word for word three
+  sections later. It keeps the Azure disclosure, which appears nowhere else.
+- **Remapping the palette moved a meaning, and three things broke quietly.** `--color-accent`
+  was vermillion, a seal; it is now violet, which is also `--color-agent`. That made a
+  destructive-action hover, a "trouble" connection dot and a featured pricing plan all
+  render in the colour that means *an agent did this* — and the live indicator's `trouble`
+  and `standing` states became the same colour as each other. Danger and trouble moved to
+  `error`, the plan and the blockquote to `primary`.
+
+**A palette change is a semantics change.** The tokens kept their names, so nothing failed
+to compile and nothing failed a test.
+
+---
+
+### ADR-076 — The page fills its own width, and nothing you must read is dimmed
+
+**2026-08-23.** A visual pass over the marketing site after the rebrand. Five changes,
+four of them corrections to habits rather than to decisions.
+
+#### Fill the zone
+
+`--measure: 34rem` inside a 62rem band meant every paragraph on the site occupied 55%
+of its own width, left-aligned, with a dead column beside it. It was in `.jd-band p`,
+so it applied everywhere at once and looked deliberate.
+
+It is not a measure problem, it is a layout problem: a measure belongs to a paragraph,
+not to a section. Bands are grids now. Pure prose reads in two columns (`.jd-prose-2`),
+the lake story is two columns rather than a 42rem stack, the three connect steps are
+three across, and the footer disclosure spans the foot instead of sitting in a 40rem
+box with an empty half beside it. Only `.jd-lede` stays narrow, at 52ch, under a heading.
+
+#### Nothing you must read is dimmed
+
+Twenty-six rules carried `opacity` on text. Among them: the main navigation at `0.72`,
+every lede at `0.78`, every card body at `0.8`, and the Azure disclosure in the footer
+-- the one privacy statement that appears nowhere else on the site -- at `0.55`.
+
+Body copy, navigation, links, ledes and disclosures are now full strength. Opacity is
+kept for ambient furniture only, and never below `0.6` on anything with words in it.
+Hover on a nav link is a colour change now rather than a return to full opacity, which
+is a better affordance and stops advertising that the resting state was faded.
+
+#### The hero is two columns, and the frame is paper
+
+The hero was one full-bleed canvas with the headline lying on top of it. Honest, and
+also a wall of cream with no shape above the fold. It is a two-column hero now: the
+pitch on the left, the canvas on the right inside Silica's `mockup-window`, tilted
+1.8deg clockwise and straightened the moment somebody engages.
+
+What survives from ADR-010 is the part that mattered -- the thing on the right is not a
+screenshot. It is the canvas, writable, saving to Postgres under the same RLS.
+
+**The tilt is not decoration-only.** `lib/ink-pointer.ts` maps pointers with
+`clientX - rect.left`, and a rotated ancestor gives it an axis-aligned bounding box of
+a rotated element. Straightening on engagement means every stroke is drawn at 0deg;
+choosing a pen is itself an engagement and happens on the rail, so the frame is square
+before a pointer reaches the paper.
+
+The frame is paper, not the charcoal bezel it started as. A black slab in the middle of
+a cream page is a hole in the design.
+
+#### The apex was serving 404s for every static file
+
+`middleware.ts` rewrites the apex onto the `/site` tree, and `PASSTHROUGH` covered only
+`/_next`, `/api` and `/favicon.ico`. So `/brand/wordmark.svg` was rewritten to
+`/site/brand/wordmark.svg` and 404ed -- the wordmark in the site bar was a broken image
+icon in every screenshot until somebody opened the page.
+
+**Nothing caught it because the site had no images at all.** It also means the images
+rule now in `10-design-system.md` was unshippable until this was fixed. `/brand`,
+`/img`, the icons and the manifest pass through now; `robots.txt` and `sitemap.xml`
+deliberately do not, because the apex has its own under `/site`.
+
+#### Consequences
+
+- `assets/brand/` holds vector now, and `pnpm icons` rasterises from it. The white
+  variants are a string swap on one exact ink value rather than a pixel pass.
+- The wordmark ships as SVG and is set at `1.5rem`; the sign-in masthead gets
+  `.jd-wordmark-lg`.
+- `smoke-site.ts` asserted "the headline is written ON the canvas, not above it",
+  which described the layout this ADR replaced. It asserts the two things that are
+  still load-bearing: the headline is in the hero, and the canvas is in a frame rather
+  than a picture of one.
+
+#### Two more, from the same review
+
+**Colour is flat or it is nothing.** Three surfaces were drawn with
+`color-mix(..., transparent)` -- the nav bar at 88%, the quiet bands at 82%, the hero
+foot at 90% -- with a `backdrop-filter` behind them. That produces an in-between
+instead of a committed colour, which is the same failure `design.md` §12 bans gradients
+for. All three are solid theme colours now, and the blur went with them: it was doing
+nothing behind a fill.
+
+**No eyebrows.** Every band had picked up a small uppercase mint kicker above its
+heading. It is a template tell, it is the same editorial reflex as the narrow measure
+above, and it was reaching for colour that the underlines and the buttons already
+carry. Removed from all seven bands and the class deleted, so it cannot come back by
+habit.
+
+#### One more the browser caught
+
+`HeroCanvas` is a client component and I called `appOrigin()` inside it for the new CTA.
+`APP_URL` is not inlined into the client bundle, so the server rendered the real origin
+and the browser rendered the fallback -- a hydration mismatch, reported in the dev
+overlay and invisible in the markup. The origin arrives as a prop from the server now.
+
+**Six of these eight were things I had already looked at and called done.** The wordmark
+in particular I reported as rendering, having checked that the HTML contained its `src`
+and not that the file loaded. Reading the markup is not looking at the page.
+
+---
+
+### ADR-077 — Colour is a surface, and paper casts a shadow
+
+**2026-08-23.** Two more corrections from the same review as ADR-076, both of them
+things the rebrand inherited rather than chose.
+
+#### The bands had no colour in them
+
+Mint and violet appeared only as an underline, an icon and a button — six pixels at a
+time on a cream page. The palette was declared and then barely spent, which is how a
+brand ends up looking like a wireframe with a logo on it.
+
+Two bands carry the brand outright now:
+
+- **"Connect your AI" is charcoal, inverted** — white type, mint step markers, a mint
+  link. It is the band about handing your notes to an agent, so it is the one that
+  earns the dark ground.
+- **The closing ask is mint**, with a violet underline and a charcoal button. A mint
+  button on a mint ground is an invisible button, so the CTA inverts.
+
+The rest stay paper. Two coloured bands in nine is the point — a third would make them
+ordinary.
+
+#### `--depth: 0` was kanNINJA's rule, not ours
+
+The theme carried `--depth: 0` with the comment *"ink on paper casts no shadow"*. That
+is a washi idea and it went out with the seal. `design.md` bans gradients, glows and 3D
+rendering; it never banned elevation, and a page with none anywhere reads as unfinished
+rather than as flat-by-choice.
+
+`--depth: 1`, plus two tokens — `--shadow-lift` and `--shadow-raise` — warm-tinted
+rather than neutral grey, so a lifted card still reads as paper rather than as a
+material card. The nav pill, the cards, the story cards and the hero frame sit on that
+scale; the agent card and the featured plan sit one step higher, which is the whole
+reason to have two.
+
+#### Consequences
+
+- Three surfaces stopped being `color-mix(..., transparent)` washes in ADR-076; this is
+  the other half of the same idea. **Flat means committed, not faint.**
+- `.jd-band-ink` and `.jd-band-mint` each redeclare `.jd-ul` with a stroke that shows on
+  their own ground — the violet underline is invisible on charcoal and reads as a bruise
+  on mint.
+
+### ADR-078 — A text box has a height, because now something is drawn at its edge
+
+**2026-08-23.** `TextBox` gains an optional `h`, a box can be dragged out rather than
+only tapped, and typed text moves above the ink in an export.
+
+The ask was a post-it: draw the box, size it, colour it. The colour is the easy half.
+The hard half is that ADR-065 defined a box as `{x, y, w, size, color, text}` with the
+comment *"height is whatever the text needs"* — which was true, cheap, and fine right
+up until something was painted at the box's boundary. Three disagreements had been
+sitting there the whole time, all of them invisible because typed text is transparent:
+
+1. **Two line-heights.** `ink-objects.ts` measured a box at 1.35, matching the CSS.
+   `ink-render/geometry.ts` measured the same box at **1.25**. A lasso and an export
+   did not agree where a box ended.
+2. **Two independent wrap estimates**, one in the browser and one in the renderer, each
+   guessing character counts from `w / (size * 0.55)` — while the browser then ignored
+   its own guess and used real text metrics.
+3. **Inverted z-order.** The editor stacks the object plane above both canvases. The
+   SVG emitted `...typed` before `...body`, so text rendered *under* the ink.
+
+None of the three could be seen. All three would have been obvious the moment a card
+had a fill: a coloured rectangle of the wrong height, buried under somebody's
+handwriting.
+
+#### The decisions
+
+**`h` is a floor, never a ceiling.** A card keeps the size it was dragged to when it
+holds one word, and grows rather than clipping when it holds a paragraph. This is a
+capture surface before it is a layout tool, and hiding a typed word behind an overflow
+edge is not an option it gets to have.
+
+**`h` records an intention, not a measurement.** The browser never writes its measured
+height back. Storing the measurement would make `h` monotonic — a deleted paragraph
+could never shrink the box again, because the floor would have swallowed it.
+
+**One implementation of `boxBounds`, imported rather than copied.** `ink-index.ts`
+already said the rule this broke: *"The boxes come from `@jotdojo/ink-render` rather
+than a second copy here."* The 1.25/1.35 split was that sentence being violated three
+files away, so the fix is a deletion.
+
+**Dragging is the second way to make a box, not the replacement.**
+[02-product-spec.md](02-product-spec.md) calls sub-second capture non-negotiable and the
+risk register calls slow capture fatal. A text tool that required a rectangle before
+you could type would have added an interaction to the one path the product exists to
+protect. Tap and get a sensible box; drag and get the box you drew. Below a 14-screen-
+pixel threshold in *both* dimensions the drag never happened and the gesture decays into
+a tap, so an unsteady finger costs nothing — the same bargain ADR-066 makes about
+ignoring a snap.
+
+#### Consequences
+
+- Additive in jsonb, so **no migration**. A box written before today has no `h` and is
+  estimated exactly as it always was.
+- `ink-input.ts` reached its size limit and split by responsibility: `ink-input-snap.ts`
+  is what a stroke turns out to be, `ink-text-drag.ts` is how a box is dragged out, and
+  what remains routes a pointer to the tool holding it.
+- An interrupted drag — a pinch starting mid-gesture — places nothing and leaves no
+  rectangle on the overlay. An abandoned gesture is not a smaller version of the gesture.
+- The drag preview is mint, against the selection marquee's blue. Making and choosing
+  look alike on a trackpad, so the colours have to disagree.

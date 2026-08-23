@@ -16,6 +16,12 @@ export const ERASE_RADIUS = 10;
 const SELECT_STROKE = "#4B5FA8";
 const SELECT_FILL = "rgba(75, 95, 168, 0.10)";
 
+/** Mint, the house primary -- design.md §11 gives it "capture cues", and a box
+ *  being drawn is exactly that. Free to use it plainly since ADR-073 retired
+ *  the one-per-screen seal rule. ADR-078. */
+const DRAW_STROKE = "#00C2A8";
+const DRAW_FILL = "rgba(0, 194, 168, 0.08)";
+
 /** The highlighter is deliberately unmodulated -- a marker has one width. */
 export function widthAt(stroke: Stroke, pressure: number): number {
   if (stroke.tool === "highlighter") return stroke.width;
@@ -116,6 +122,29 @@ export function paintSelection(ctx: CanvasRenderingContext2D, b: Bounds, k = 1) 
   ctx.setLineDash([4 / k, 3 / k]);
   ctx.beginPath();
   ctx.rect(b.x - pad, b.y - pad, b.w + pad * 2, b.h + pad * 2);
+  ctx.fill();
+  ctx.stroke();
+  ctx.restore();
+}
+
+/**
+ * The box being dragged out, before it is a box. ADR-078.
+ *
+ * Solid rather than dashed, and mint rather than the selection's blue: this is
+ * something being MADE, not something being chosen, and the two gestures look
+ * enough alike on a trackpad that the colours have to disagree.
+ *
+ * Flat, with no gradient and no glow -- design.md §12 bans those outright. The
+ * elevation ADR-077 restored belongs to a card that has landed, not to a
+ * rectangle that does not exist yet.
+ */
+export function paintTextRect(ctx: CanvasRenderingContext2D, b: Bounds, k = 1) {
+  ctx.save();
+  ctx.strokeStyle = DRAW_STROKE;
+  ctx.fillStyle = DRAW_FILL;
+  ctx.lineWidth = 1.5 / k;
+  ctx.beginPath();
+  ctx.rect(b.x, b.y, b.w, b.h);
   ctx.fill();
   ctx.stroke();
   ctx.restore();

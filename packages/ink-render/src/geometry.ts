@@ -115,17 +115,46 @@ export function bounds(doc: InkDocument): Bounds | null {
 }
 
 /**
+ * The line box, matching `.jd-text-box`'s CSS `line-height`.
+ *
+ * One constant, exported, because there were two and they disagreed: this file
+ * used 1.25 while the browser laid text out at 1.35, so the same box was two
+ * heights depending on who was asking. Nothing was drawn at its edge, so
+ * nobody could see it. ADR-078.
+ */
+export const TEXT_LINE_HEIGHT = 1.35;
+
+/** Roughly how many characters fit on a line, with no font engine to ask. */
+const perLine = (box: TextBox) => Math.max(1, Math.floor(box.w / (box.size * 0.55)));
+
+/** How tall the text alone wants to be, ignoring any height somebody drew. */
+export function textContentHeight(box: TextBox): number {
+  const cols = perLine(box);
+  const lines = box.text.split("\n")
+    .reduce((n, p) => n + Math.max(1, Math.ceil(p.length / cols)), 0);
+  return Math.max(1, lines) * box.size * TEXT_LINE_HEIGHT;
+}
+
+/**
  * One text box's rectangle.
  *
- * The height is estimated from the wrapped line count, because nothing here has
- * a font engine. A box framed slightly generously costs a little whitespace; one
- * framed short clips the last line off an export.
+ * `max(drawn, needed)`, which is exactly what the browser does to the textarea
+ * -- `h` is a floor somebody dragged out, and text that outgrows it wins.
+ * Writing the same rule in both places is the point: a card drawn here has to
+ * land where the person saw it.
+ *
+ * The two agree exactly whenever the text fits the box that was drawn for it,
+ * which is the ordinary case for a card. Past that, this falls back to
+ * estimating the overflow from a character-width guess, because nothing here
+ * has a font engine -- generously, since whitespace costs nothing and framing
+ * short clips the last line off an export. Boxes written before ADR-078 have
+ * no drawn height at all and are estimated whole.
  */
 export function textBounds(box: TextBox): Bounds {
-  const perLine = Math.max(1, Math.floor(box.w / (box.size * 0.55)));
-  const lines = box.text.split("\n")
-    .reduce((n, p) => n + Math.max(1, Math.ceil(p.length / perLine)), 0);
-  return { x: box.x, y: box.y, w: box.w, h: Math.max(1, lines) * box.size * 1.25 };
+  return {
+    x: box.x, y: box.y, w: box.w,
+    h: Math.max(box.h ?? 0, textContentHeight(box)),
+  };
 }
 
 /**

@@ -136,7 +136,7 @@ export class InkPlane {
       const current = this.box(box.id);
       if (!current) return;
       current.text = node.value;
-      this.grow(node);
+      this.grow(node, current);
       this.host.onEdit(current);
     });
     node.addEventListener("focus", () => { this.editing = box.id; this.apply(); });
@@ -168,13 +168,25 @@ export class InkPlane {
     node.style.width = `${box.w}px`;
     node.style.fontSize = `${size}px`;
     node.style.color = box.color;
-    this.grow(node);
+    this.grow(node, box);
   }
 
-  /** A textarea does not size to its content, so it is told to. Reset first,
-   *  or it only ever grows and a deleted paragraph leaves the gap behind. */
-  private grow(node: HTMLTextAreaElement) {
+  /**
+   * A textarea does not size to its content, so it is told to. ADR-078.
+   *
+   * `h` is the height somebody DREW, and it is a floor rather than a ceiling:
+   * a card keeps the size it was dragged out to when its text is one short
+   * line, and grows when the text outgrows it. Clipping is not an option on a
+   * surface whose whole job is not losing what you typed.
+   *
+   * `h` is never written back from here. It records an intention, not a
+   * measurement -- store the measured height and a deleted paragraph could
+   * never shrink the box again, because the floor would have swallowed it.
+   */
+  private grow(node: HTMLTextAreaElement, box: TextBox) {
+    // Reset first, or it only ever grows and a deleted paragraph leaves the
+    // gap behind.
     node.style.height = "auto";
-    node.style.height = `${node.scrollHeight}px`;
+    node.style.height = `${Math.max(box.h ?? 0, node.scrollHeight)}px`;
   }
 }

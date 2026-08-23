@@ -2,6 +2,7 @@ import type { InkDelta, Stroke, TextBox } from "@jotdojo/domain";
 import type { InkTool } from "./canvas-tool";
 import { StrokeCapture } from "./ink-capture";
 import { eraseNear } from "./ink-edit";
+import type { Bounds } from "./ink-geometry";
 import { mergePages, newcomers } from "./ink-merge";
 import { ERASE_RADIUS } from "./ink-paint";
 import { InkSurface } from "./ink-surface";
@@ -41,6 +42,7 @@ export class InkEngine implements InputHost {
 
   private strokes: Stroke[] = [];
   private currentTool: Tool = "pen";
+  private pendingText: Bounds | null = null;
   private style: InkStyle = DEFAULT_PEN;
   private readonly input: InkInput;
   private readonly painter: InkPainter;
@@ -171,6 +173,16 @@ export class InkEngine implements InputHost {
     return took;
   }
 
+  /** The box being dragged out. Overlay only -- nothing is stored until the
+   *  pointer lifts, so an abandoned drag leaves no trace. ADR-078. */
+  previewText(rect: Bounds | null) { this.pendingText = rect; }
+
+  /** A box at exactly the rectangle somebody drew. ADR-078. */
+  drawText(rect: Bounds) {
+    if (!this.texts?.drawAt(rect, this.style)) return;
+    this.opts.onTextPlaced?.();
+  }
+
   /** Anything with a caret in it should lose it before the pen touches down. */
   blurText() { this.texts?.blur(); }
 
@@ -213,7 +225,7 @@ export class InkEngine implements InputHost {
   private get scene(): Scene {
     return {
       strokes: this.strokes, sel: this.editor.sel, capture: this.strokeCapture,
-      index: this.index, k: this.view.k,
+      index: this.index, k: this.view.k, pendingText: this.pendingText,
     };
   }
 
