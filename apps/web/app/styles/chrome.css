@@ -18,14 +18,14 @@
 }
 /* Sized here rather than by lucide's `size` prop, so the coarse-pointer bump
    below is one rule instead of a second prop threaded through every caller. */
-.jd-tool svg { width: 1rem; height: 1rem; }
+.jd-tool svg { font-size: 1rem; }
 .jd-tool:hover:not(:disabled) { background: color-mix(in oklch, var(--color-base-content) 8%, transparent); }
 .jd-tool:disabled { opacity: 0.45; cursor: default; }
 .jd-tool-active { background: color-mix(in oklch, var(--color-primary) 18%, transparent); }
 
 @media (pointer: coarse) {
   .jd-tool { width: 2.75rem; height: 2.75rem; }
-  .jd-tool svg { width: 1.2rem; height: 1.2rem; }
+  .jd-tool svg { font-size: 1.2rem; }
 }
 
 /* Seams inside the pill, drawn in the ink rather than a border colour so they
@@ -208,4 +208,15 @@
       color-mix(in oklch, var(--color-base-content) 35%, transparent) calc(50% + 1px),
       transparent calc(50% + 1px)
     );
+}
+
+/* Overlays sit above the canvas. ADR-084.
+   Base UI portals its popups to the end of <body> with `z-index: auto`, which
+   loses to the object plane's `z-index: 2` inside the canvas shell -- the
+   canvas menu opened UNDERNEATH the cards it was acting on. Positioned so the
+   z-index applies at all; the container is empty and its child is `fixed`, so
+   nothing about layout changes. Above the chrome, which tops out at 20. */
+[data-base-ui-portal] {
+  position: relative;
+  z-index: 60;
 }

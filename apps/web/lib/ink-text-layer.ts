@@ -70,8 +70,17 @@ export class InkTextLayer {
 
   frame(view: ViewSnapshot) { this.plane.frame(view.x, view.y, view.k); }
 
-  /** Only the text tool lets a box take the pointer. Everything else has to
-   *  pass through to the canvas underneath. */
+  /**
+   * Only the text box tool lets a box take the pointer. Everything else has to
+   * pass through to the canvas underneath.
+   *
+   * The `| "text"` in this signature is unreachable and has always been:
+   * `inkToolFor` maps the spine's tool to `"pen"` before the engine sees it,
+   * because the engine routes pointers by tool and has no branch for the spine.
+   * So on the DEFAULT tool a note takes no clicks at all -- you cannot get back
+   * into one to keep typing without arming the box tool again. Fixing that
+   * needs a signal separate from the tool, not a fourth value in it. ADR-084.
+   */
   setTool(tool: InkTool | "text") {
     this.plane.setInteractive(tool === "textbox");
   }
