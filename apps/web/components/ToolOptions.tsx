@@ -3,9 +3,8 @@
 import { Bold, Italic, Underline, X } from "lucide-react";
 import type { CanvasTool } from "@/lib/canvas-tool";
 import type { Block, Mark } from "@/lib/markdown-marks";
-import {
-  MARKER_COLORS, PEN_COLORS, PEN_WIDTHS, type InkStyles,
-} from "@/lib/ink-style";
+import { MARKER_COLORS, PEN_COLORS, type InkStyles } from "@/lib/ink-style";
+import { PenSize } from "./PenSize";
 
 /**
  * What the CURRENT tool can be set to. ADR-045.
@@ -100,26 +99,12 @@ export function ToolOptions({
             onPick={(color) => onStyle("pen", { color })}
           />
           <span aria-hidden className="jd-rail-sep-v" />
-          <nav aria-label="Pen size" className="flex items-center gap-0.5">
-            {PEN_WIDTHS.map(({ name, width }) => (
-              <button
-                key={name}
-                type="button"
-                className={`jd-tool ${styles.pen.width === width ? "jd-tool-active" : ""}`}
-                title={name}
-                aria-label={name}
-                aria-pressed={styles.pen.width === width}
-                onClick={() => onStyle("pen", { width })}
-              >
-                {/* The control is the thing it does: a dot the size of the line. */}
-                <span
-                  aria-hidden
-                  className="jd-nib"
-                  style={{ width: `${width * 2.4}px`, height: `${width * 2.4}px` }}
-                />
-              </button>
-            ))}
-          </nav>
+          <PenSize
+            label="Pen size"
+            width={styles.pen.width}
+            color={styles.pen.color}
+            onWidth={(width) => onStyle("pen", { width })}
+          />
         </>
       )}
 

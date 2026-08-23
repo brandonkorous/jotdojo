@@ -1760,3 +1760,51 @@ demonstrated need.
   the size limit and both were edited, which is when the rule applies.
 - `pnpm live:smoke` proves the two-device cases against a real database; `pnpm merge:smoke`
   proves the reconciliation rules with no database at all.
+
+### ADR-059 — Pen size is a range, not three names
+
+**2026-08-22.** The pen offered Fine, Medium and Broad — 1.4, 2.2 and 3.6 canvas pixels.
+Three names is the right shape for a fixed page, where "medium" means medium *against
+something*: a line has a size relative to the sheet it is on and the margins around it.
+
+ADR-053 removed the sheet. On a canvas that goes on forever the same 2.2px line is a
+heading when you are close and a footnote two screens out, and a person laying out a board
+— a title, a body of notes under it, an arrow between two clusters — wants a mark ten times
+the width of another mark, not a mark 1.6 times the width of another mark. The old ceiling
+made the widest pen a slightly firm pen.
+
+Pen width is now continuous from **0.5 to 32** canvas pixels, picked with a slider. The
+domain has always accepted anything up to 200 (`ink-doc.ts`), so nothing below the UI
+changed to allow it.
+
+#### The travel is geometric, not linear
+
+A linear slider over 0.5–32 spends two thirds of itself above 10px, which is a range with
+about four useful values in it, and gives the handwriting sizes — where a tenth of a pixel
+is visible — almost no room to aim. `width = 0.5 × 64^t` makes every step of the thumb the
+same *proportional* change, so 1.4 sits a quarter of the way along and 2.2 a third,
+roughly where the old presets were, and the fat end is reachable without swallowing the
+control.
+
+Widths settle to hundredths below 4px and to tenths above, and that is not fussiness — the
+slider is driven by the width it produced, so two steps that settle to one width make the
+thumb stick at it and slide back under the finger. Rounding to whole pixels at the fat end
+did exactly that, twice, and `pnpm --filter @jotdojo/web smoke:pen-size` is what caught it.
+
+#### A drag is one edit
+
+Recolouring is a click, so `restyleSelection` published a delta every time it ran and that
+was correct. A slider fires on every pixel of thumb travel, and `InkSync.delta` flushes
+immediately — fifty requests for one decision. `restyleSelection(patch, publish = false)`
+paints the change and tells nobody; the release publishes once. The strokes still fatten
+under the thumb, which is the whole reason to resize a selection you can see.
+
+#### Consequences
+
+- `PEN_WIDTHS` is gone. `PenSize` is one component, used by the tool options pill and by
+  the selection bar, so the pen you write with and the strokes you resize afterwards are
+  the same control.
+- `SelectionSummary` carries `penWidth`, so the slider opens where the selection already is
+  instead of jumping it the moment it is touched.
+- The nib preview is drawn at the true width up to 22px and then stops growing; past that
+  the number beside it is the only honest signal, which is why it is there.

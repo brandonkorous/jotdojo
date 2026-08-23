@@ -21,7 +21,9 @@ import { ZoomChip } from "./ZoomChip";
  * right: at pen sample rates a re-render per move is a re-render every few
  * milliseconds.
  */
-const NO_SELECTION: SelectionSummary = { count: 0, pen: false, marker: false };
+const NO_SELECTION: SelectionSummary = {
+  count: 0, pen: false, marker: false, penWidth: null,
+};
 
 export function InkCanvas({
   noteId, tool, style, onReady, onDraw, live = false,
@@ -220,7 +222,8 @@ export function InkCanvas({
       <SelectionBar
         selection={selected}
         onColor={(color) => engineRef.current?.restyleSelection({ color })}
-        onWidth={(width) => engineRef.current?.restyleSelection({ width })}
+        onWidth={(width) => engineRef.current?.restyleSelection({ width }, false)}
+        onCommitWidth={(width) => engineRef.current?.restyleSelection({ width })}
         onDelete={() => engineRef.current?.deleteSelection()}
       />
       <ZoomChip

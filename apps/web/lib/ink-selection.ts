@@ -12,9 +12,19 @@ import { type Bounds, inBounds, strokeBounds, strokeInPolygon } from "./ink-geom
  * `picked` holds REFERENCES into the engine's stroke array, which is what lets
  * a drag mutate points in place and repaint without rebuilding the page.
  */
-export type SelectionSummary = { count: number; pen: boolean; marker: boolean };
+export type SelectionSummary = {
+  count: number;
+  pen: boolean;
+  marker: boolean;
+  /** Where a resize control should start from -- the width of the first pen
+   *  stroke caught, so the slider opens on the selection rather than on a
+   *  default that would jump it the moment it is touched. */
+  penWidth: number | null;
+};
 
-export const NO_SELECTION: SelectionSummary = { count: 0, pen: false, marker: false };
+export const NO_SELECTION: SelectionSummary = {
+  count: 0, pen: false, marker: false, penWidth: null,
+};
 
 export class InkSelection {
   private lasso: Point[] | null = null;
@@ -33,10 +43,12 @@ export class InkSelection {
    * whenever the lasso holds one.
    */
   get summary(): SelectionSummary {
+    const pen = this.picked.find((s) => s.tool === "pen");
     return {
       count: this.picked.length,
-      pen: this.picked.some((s) => s.tool === "pen"),
+      pen: pen !== undefined,
       marker: this.picked.some((s) => s.tool === "highlighter"),
+      penWidth: pen?.width ?? null,
     };
   }
   get selected(): readonly Stroke[] { return this.picked; }

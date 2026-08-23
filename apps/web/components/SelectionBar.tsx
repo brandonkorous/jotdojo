@@ -1,7 +1,8 @@
 "use client";
 
 import { Trash2 } from "lucide-react";
-import { MARKER_COLORS, PEN_COLORS, PEN_WIDTHS } from "@/lib/ink-style";
+import { MARKER_COLORS, PEN_COLORS } from "@/lib/ink-style";
+import { PenSize } from "./PenSize";
 import type { SelectionSummary } from "@/lib/ink-engine";
 import { Swatches } from "./ToolOptions";
 
@@ -17,11 +18,14 @@ import { Swatches } from "./ToolOptions";
  * is a grey smear, so the marker palette appears whenever the lasso holds one.
  */
 export function SelectionBar({
-  selection, onColor, onWidth, onDelete,
+  selection, onColor, onWidth, onCommitWidth, onDelete,
 }: {
   selection: SelectionSummary;
   onColor: (color: string) => void;
+  /** Called all the way through a drag, so the strokes fatten under the thumb
+   *  instead of after it. */
   onWidth: (width: number) => void;
+  onCommitWidth: (width: number) => void;
   onDelete: () => void;
 }) {
   if (selection.count === 0) return null;
@@ -47,27 +51,16 @@ export function SelectionBar({
 
       {/* Width is a pen idea. A marker has one, on purpose (docs/08), so the
           control is not offered for a selection that holds only markers. */}
-      {selection.pen && (
+      {selection.pen && selection.penWidth !== null && (
         <>
           <span aria-hidden className="jd-rail-sep-v" />
-          <nav aria-label="Resize" className="flex items-center gap-0.5">
-            {PEN_WIDTHS.map(({ name, width }) => (
-              <button
-                key={name}
-                type="button"
-                className="jd-tool"
-                title={name}
-                aria-label={name}
-                onClick={() => onWidth(width)}
-              >
-                <span
-                  aria-hidden
-                  className="jd-nib"
-                  style={{ width: `${width * 2.4}px`, height: `${width * 2.4}px` }}
-                />
-              </button>
-            ))}
-          </nav>
+          <PenSize
+            label="Resize"
+            width={selection.penWidth}
+            color="var(--color-base-content)"
+            onWidth={onWidth}
+            onCommit={onCommitWidth}
+          />
         </>
       )}
 

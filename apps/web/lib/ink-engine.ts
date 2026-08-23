@@ -145,13 +145,18 @@ export class InkEngine implements InputHost {
    *
    * The selection survives, so somebody can try three colours without
    * re-lassoing. The strokes are mutated in place for exactly that reason.
+   *
+   * `publish: false` paints the change and tells nobody. A slider drag is ONE
+   * edit, and every delta leaves as its own request; the release publishes.
    */
-  restyleSelection(patch: { color?: string; width?: number }) {
+  restyleSelection(patch: { color?: string; width?: number }, publish = true) {
     if (this.selection.count === 0) return;
-    if (!restyle(this.selection.selected, patch)) return;
+    if (!restyle(this.selection.selected, patch) && !publish) return;
     this.index.invalidate(this.selection.selected);
     this.repaint();
     this.paintOverlay();
+    this.opts.onSelectionChange?.(this.selection.summary);
+    if (!publish) return;
     // The strokes themselves, because a recolour changes what they ARE. The
     // server matches them by id and keeps their place in paint order.
     this.opts.onDelta({ remove: [], upsert: [...this.selection.selected] });
