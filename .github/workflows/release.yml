@@ -23,7 +23,7 @@ on:
 permissions:
   # OIDC. There is no stored Azure credential anywhere in this repo — the runner
   # exchanges a short-lived GitHub token for an Azure one, and the trust is
-  # pinned to `repo:brandonkorous/jotacular:ref:refs/heads/main` on the Azure side.
+  # pinned to `repo:brandonkorous/jotdojo:ref:refs/heads/main` on the Azure side.
   id-token: write
   contents: read
   # Push images to GHCR.

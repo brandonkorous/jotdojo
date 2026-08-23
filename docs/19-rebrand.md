@@ -133,8 +133,16 @@ migration with downtime:
 | `jotacular_app`, `jotacular_owner`, `jotacular_worker` | 76 references across migrations | Renaming a Postgres role rewrites grants and RLS policies on a live database |
 | database `jotacular` | sparx's Flexible Server | Rename means dump, restore, downtime |
 | k8s namespace `jotacular` | `infra/k8s/`, sparx's Caddy | Namespace rename is a full redeploy plus a two-repo routing change |
-| `kv-jotacular-prod-cus`, `stjotacularprodcus` | sparx `terraform/envs/azure/jotacular.tf` | Azure storage account names are global and immutable; this is a data migration |
+| `kv-jotdojo-prod-cus`, `stjotdojoprodcus` | sparx `terraform/envs/azure/jotacular.tf` | Azure storage account names are global and immutable; this is a data migration |
 | `jd-` CSS prefix, 100 classes | 36 files | Invisible to users, high churn, high diff noise |
+
+**This table was overtaken. ADR-086 decided the opposite for most of it** — the
+package scope, the roles, the namespace and the database all moved after all, and
+`0034` renames the roles. Only the two Azure names above and the `jd-` prefix
+actually stayed. The sweep then rewrote the identifiers *inside this table*, so
+for a while it named a vault that does not exist while claiming it had not
+changed. Read ADR-086's consequences for what really did and did not move; this
+table is the plan, not the record.
 
 Each of these should get one line in the rebrand ADR saying it was considered and left,
 so the next reader does not think it was missed. Note also that production has already

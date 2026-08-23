@@ -330,7 +330,7 @@ four Dockerfiles and `infra/k8s` manifests are written and waiting to be applied
 failures are different in kind.
 
 - **Release** stopped at `azure/login`: no federated identity credential matches
-  `repo:brandonkorous/jotacular:environment:prod`. That is the sparx-side
+  `repo:brandonkorous/jotdojo:environment:prod`. That is the sparx-side
   Terraform not applied yet, first item on the deploy checklist in docs/17. The
   deploy refused rather than half-shipping, which is the design working.
 - **CI** failed on `metering:smoke`, and that one was ours. **Fixed 2026-08-22.**

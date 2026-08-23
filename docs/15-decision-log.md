@@ -3769,3 +3769,49 @@ a future operator to a vault that does not exist. Corrected here.
 
 **A rename is safe exactly where both ends of the name are in the commit. The
 sweep could not see the end that lives in Azure.**
+
+### ADR-091 — A rename sweep cannot see the end of a name it does not own
+
+**Context.** ADR-086 renamed 744 occurrences across 219 files, and the parts of
+that living in this repository were correct. Every failure since has been a name
+whose *other end* is outside it.
+
+Four of them, found one at a time and each only when something broke or was
+about to:
+
+- **`JOTACULAR_APP_PASSWORD`** in the release's required list. The vault key was
+  never renamed, so the deploy asked for a name nothing answered to and stopped.
+  ADR-090.
+- **`kv-jotacular-prod-cus`** in `17-shared-infrastructure.md`, five times. That
+  vault does not exist; ADR-086 deliberately kept `kv-jotdojo-prod-cus`.
+- **`stjotacularprodcus`**, the blob account. Azure storage account names are
+  globally unique and immutable — the doc named an account that *cannot* exist,
+  in the same table that explained why it could not be renamed.
+- **`brandonkorous/jotacular`**, in the OIDC trust comment, the roadmap, and
+  three image paths. The GitHub repository is still `brandonkorous/jotdojo`.
+
+The routing table was the dangerous one. It named a `jotacular-web` Service —
+and a `jotdojo-web` before the sweep. **Neither has ever existed.** The Services
+are `web`, `api` and `mcp`; the namespace is the half that carries the product
+name. So the sweep rewrote a wrong string into a differently wrong string, and
+nothing noticed, because nothing resolves a name in a document.
+
+**Decision.** Where the name is ours, it moved. Where the other end lives in
+Azure, GitHub or sparx's repository, it stays and the document says so.
+
+**Consequences.** The failure mode is specific and worth naming: **a rename is
+verified by whatever resolves it.** An import is checked by the compiler, a
+package name by the installer, a k8s Service by DNS at request time. A name in
+prose is resolved by a person, months later, under pressure — and one in a
+`required=` array is resolved by a vault at deploy time, which is the only
+reason ADR-090's was caught at all rather than in six months.
+
+The Caddy blocks are the same shape and were caught before doing harm. They said
+`jotacular.com` and proxied to `web.jotdojo.svc.cluster.local` — right hostname,
+wrong namespace, invisible from outside because the old namespace answers
+perfectly well. Deploying into that would have renamed `jotdojo_app` out from
+under the pods actually serving traffic while the healthy new pods sat where
+nothing routed.
+
+**A sweep proves that a string changed everywhere it appears. It proves nothing
+about whether the thing the string named agreed to change with it.**

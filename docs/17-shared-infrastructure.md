@@ -17,8 +17,8 @@ production and fails for a reason nothing here would have suggested.
 | Caddy ingress + its routing table | sparx | nothing — see [Cross-repo](#the-cross-repo-part) |
 | Postgres server `psql-sparx-prod-cus` | sparx | the `jotacular` **database** |
 | Key Vault | — | `kv-jotdojo-prod-cus`, ours alone |
-| Blob storage | — | `stjotacularprodcus`, ours alone |
-| Azure CI identity | — | ours alone, `brandonkorous/jotacular` only |
+| Blob storage | — | `stjotdojoprodcus`, ours alone |
+| Azure CI identity | — | ours alone, `brandonkorous/jotdojo` only |
 
 Everything on the right is defined in the **sparx** repo at
 `terraform/envs/azure/jotacular.tf` — one file, so deleting it removes Jotacular's
@@ -154,12 +154,12 @@ variables:
 Run `terraform output jotacular_github_setup` in the sparx repo — it prints the
 four `gh variable set` commands verbatim.
 
-**2. Build and push four images** to `ghcr.io/brandonkorous/jotacular/<service>`,
+**2. Build and push four images** to `ghcr.io/brandonkorous/jotdojo/<service>`,
 tagged with the commit SHA — never `latest`. Dockerfiles are in `infra/docker/`
 and all four **build from the repo root**:
 
 ```
-docker build -f infra/docker/api.Dockerfile -t ghcr.io/brandonkorous/jotacular/api:$SHA .
+docker build -f infra/docker/api.Dockerfile -t ghcr.io/brandonkorous/jotdojo/api:$SHA .
 ```
 
 **3. Get cluster credentials.**
@@ -183,7 +183,7 @@ as no migration at all, discovered later by a user.
 `:latest` placeholder:
 
 ```
-kubectl set image -n jotacular deploy/api api=ghcr.io/brandonkorous/jotacular/api:$SHA
+kubectl set image -n jotacular deploy/api api=ghcr.io/brandonkorous/jotdojo/api:$SHA
 ```
 
 Then `kubectl rollout status` on each, with a timeout, so a wedged rollout fails
@@ -209,19 +209,27 @@ Two things live in sparx and cannot be changed from here.
 **Routing** — `k8s/ingress/Caddyfile`. **Five** hostnames carry the product, and
 three of them proxy to the same Service:
 
-| Hostname | Service | What it serves |
-|---|---|---|
-| `jotacular.com` | `jotacular-web` | the marketing site |
-| `www.jotacular.com` | `jotacular-web` | the same, matched by the app (ADR-040) |
-| `app.jotacular.com` | `jotacular-web` | **the app.** Never the apex — ADR-010, ADR-018 |
-| `api.jotacular.com` | `jotacular-api` | REST v1, the Shortcuts endpoint |
-| `mcp.jotacular.com` | `jotacular-mcp` | MCP + the OAuth authorization server |
+The Services are named `web`, `api` and `mcp` — plainly, inside our namespace,
+not prefixed with the product. Caddy addresses them by cluster DNS, so the
+namespace is part of the address and is the half that moved in the rename:
 
-Blocks already exist for `jotacular.com`, `www.`, `api.` and `mcp.`. **`app.` is the
-one to check before deploying** — it was not in the original four, and it is the
-hostname the whole product is installed from. The apex and `www` need no change
-beyond confirming they still point at `jotacular-web`, because the marketing site
-is that same deployment answering to a different Host.
+| Hostname | `reverse_proxy` target | What it serves |
+|---|---|---|
+| `jotacular.com` | `web.jotacular.svc.cluster.local:80` | the marketing site |
+| `www.jotacular.com` | `web.jotacular.svc.cluster.local:80` | the same, matched by the app (ADR-040) |
+| `app.jotacular.com` | `web.jotacular.svc.cluster.local:80` | **the app.** Never the apex — ADR-010, ADR-018 |
+| `api.jotacular.com` | `api.jotacular.svc.cluster.local:80` | REST v1, the Shortcuts endpoint |
+| `mcp.jotacular.com` | `mcp.jotacular.svc.cluster.local:80` | MCP + the OAuth authorization server |
+
+**Check the namespace, not just the hostname.** A block can name
+`jotacular.com` and still proxy to `web.jotdojo.svc.cluster.local` — that is
+exactly what the first cutover attempt did, and it is invisible from outside
+because the old namespace answers perfectly well. It serves the wrong build,
+and it means our deploy lands somewhere no traffic reaches. ADR-091.
+
+This table used to name a `jotacular-web` Service, and a `jotdojo-web` before
+the rename. Neither has ever existed. The sweep renamed a wrong string into a
+differently wrong string, which is what a name nothing resolves gets you.
 
 **TLS authorisation** — `wizeworks/services/api-rest/src/routes/internal/domain-check.ts`.
 Those Caddy blocks use on-demand TLS, which asks that endpoint for permission
@@ -255,7 +263,8 @@ running a second ingress, which would mean a second load balancer.
       in one of those two arrays the release never reads it, and the feature is
       off in production while the vault looks correctly configured.
 - [ ] Point `jotacular.com`, `www`, `app`, `api` and `mcp` DNS at the cluster's ingress IP.
-- [ ] Confirm the Caddyfile has an `app.jotacular.com` block proxying to `jotacular-web`,
+- [ ] Confirm the Caddyfile has an `app.jotacular.com` block proxying to
+      `web.jotacular.svc.cluster.local:80` — the NAMESPACE is the half that moves,
       and that `app.` is in the `domain-check.ts` allow-list. Without it the app
       is unreachable while the marketing site loads perfectly, which reads as a
       DNS problem and is not one.
