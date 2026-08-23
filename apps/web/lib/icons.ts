@@ -4,7 +4,7 @@ export type { IconDefinition };
 import {
   faAngleDown, faArrowDownToBracket, faArrowPointer, faBold, faCamera,
   faCirclePlus, faComment, faItalic, faKeyboard, faMagnifyingGlass, faMinus,
-  faMicrophone, faPaintbrush, faPaintbrushSlash, faPenLine, faPlus, faSparkles,
+  faMicrophone, faPaintbrush, faPenLine, faPlus, faSparkles,
   faText, faTrash, faUnderline, faXmark,
 } from "@awesome.me/kit-2fb7fafdba/icons/whiteboard/semibold";
 
@@ -25,8 +25,10 @@ export const ICONS = {
   pen: faPenLine,
   /** No `highlighter` in Whiteboard. A brush is the closest broad stroke. */
   highlighter: faPaintbrush,
-  /** No `eraser` either, and nothing near it. This is a placeholder. */
-  eraser: faPaintbrushSlash,
+  /** No `eraser` in Whiteboard. A slashed brush read as "highlighter off"
+   *  beside the highlighter; rubbing out and throwing away are the same idea,
+   *  and they never appear side by side. */
+  eraser: faTrash,
   /** No `lasso`. The select-cursor is the honest stand-in. */
   select: faArrowPointer,
   voice: faMicrophone,
