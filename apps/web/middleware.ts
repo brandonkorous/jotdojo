@@ -23,11 +23,14 @@ import { isMarketingHost, requestHost } from "@/lib/hosts";
  * wordmark in the site bar was a broken image. Nothing caught it because the
  * site had no images at all until the rebrand. ADR-076.
  *
+ * `icon[-.]` covers both the tab icon Next serves at `/icon.png` and the
+ * manifest's `/icon-192.png`. Matching only `icon-` left the apex's tab blank.
+ *
  * `robots.txt` and `sitemap.xml` are deliberately NOT here: the apex has its
  * own under `/site`, and they must keep being rewritten.
  */
 const PASSTHROUGH =
-  /^\/(_next|api|brand|img|favicon\.ico|icon-|apple-icon|opengraph-image|manifest\.webmanifest)/;
+  /^\/(_next|api|brand|img|favicon\.ico|icon[-.]|apple-icon|opengraph-image|manifest\.webmanifest)/;
 
 const SITE_PREFIX = "/site";
 

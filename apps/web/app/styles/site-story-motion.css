@@ -1,0 +1,119 @@
+/* The lake story, played out. design.md §21, ADR-088.
+ *
+ * The one scene on the site with a script rather than a reveal. Every stage
+ * hangs off ONE named timeline belonging to `.jd-story`, so the whole thing
+ * keeps its order however tall the band turns out on a given screen. A
+ * per-element `view()` would restart the clock for each piece, and the note
+ * would still be drawing itself after the reply to it had arrived.
+ *
+ * The order is the story: the note lands, the tape goes on, the drawing is
+ * drawn, the words are written, the pen rings the part left open, weeks pass,
+ * and only then does anybody ask Claude anything. It is finished by about two
+ * thirds of the way through the band's pass, because a beat that lands after
+ * its own section has left the screen has not landed. */
+
+@media (prefers-reduced-motion: no-preference) {
+  @supports (animation-timeline: view()) {
+    .jd-story {
+      view-timeline-name: --jd-story;
+      view-timeline-axis: block;
+    }
+
+    /* 1. A note dropped on a desk, keeping some of the angle it landed at. */
+    .jd-story-note {
+      animation: jd-settle both;
+      animation-timeline: --jd-story;
+      animation-range: cover 5% cover 16%;
+    }
+
+    /* 2. Tape pressed down over it, from the middle out. */
+    .jd-tape {
+      animation: jd-press both;
+      animation-timeline: --jd-story;
+      animation-range: cover 13% cover 19%;
+    }
+
+    /* 3. The drawing, drawn -- board, its lines, board, its lines, then the
+       arrows between them. `--i` and `--len` come from the shape itself
+       (components/site/Ink.tsx), because only the shape knows either. */
+    .jd-note-doodle > * {
+      stroke-dasharray: var(--len);
+      animation: jd-ink linear both;
+      animation-timeline: --jd-story;
+      animation-range:
+        cover calc(17% + var(--i) * 1.6%) cover calc(22.5% + var(--i) * 1.6%);
+    }
+
+    /* 4. The words, written a line at a time rather than faded up together. */
+    .jd-note-hand > p {
+      --i: 0;
+      animation: jd-write both;
+      animation-timeline: --jd-story;
+      animation-range: cover calc(22% + var(--i) * 2%) cover calc(28% + var(--i) * 2%);
+    }
+    .jd-note-hand > p:nth-child(2) { --i: 1; }
+    .jd-note-hand > p:nth-child(3) { --i: 2; }
+    .jd-note-hand > p:nth-child(4) { --i: 3; }
+
+    /* 5. The pen goes back and rings the one thing left undecided. It is the
+       hinge of the section, so it gets a beat with nothing else in it. */
+    .jd-ring > path {
+      stroke-dasharray: var(--len);
+      animation: jd-ink cubic-bezier(0.4, 0, 0.6, 1) both;
+      animation-timeline: --jd-story;
+      animation-range: cover 34% cover 41%;
+    }
+    .jd-story-note figcaption {
+      animation: jd-fade both;
+      animation-timeline: --jd-story;
+      animation-range: cover 40% cover 45%;
+    }
+
+    /* 6. Weeks pass, and a rule down the margin is all that marks them. */
+    .jd-story-gap {
+      animation: jd-fade both;
+      animation-timeline: --jd-story;
+      animation-range: cover 41% cover 47%;
+    }
+    @media (min-width: 60rem) {
+      .jd-story-gap { position: relative; border-left-color: transparent; }
+      .jd-story-gap::before {
+        content: "";
+        position: absolute;
+        inset: 0 auto 0 -2px;
+        width: 2px;
+        background: var(--color-base-300);
+        scale: 1 0;
+        transform-origin: 50% 0;
+        animation: jd-rule linear both;
+        animation-timeline: --jd-story;
+        animation-range: cover 42% cover 51%;
+      }
+    }
+
+    /* 7. Three weeks later somebody asks, and the agent answers -- the bubble
+       first, then its name, then what it worked out. */
+    .jd-story-chat .chat-end {
+      animation: jd-rise both;
+      animation-timeline: --jd-story;
+      animation-range: cover 45% cover 53%;
+    }
+    .jd-story-chat .chat-start {
+      animation: jd-rise both;
+      animation-timeline: --jd-story;
+      animation-range: cover 51% cover 59%;
+    }
+    .jd-chat-avatar {
+      animation: jd-pop both;
+      animation-timeline: --jd-story;
+      animation-range: cover 53% cover 60%;
+    }
+    .jd-story-chat .chat-bubble-agent > p {
+      --i: 0;
+      animation: jd-fade both;
+      animation-timeline: --jd-story;
+      animation-range: cover calc(55% + var(--i) * 2.5%) cover calc(62% + var(--i) * 2.5%);
+    }
+    .jd-story-chat .chat-bubble-agent > p:nth-child(2) { --i: 1; }
+  }
+}

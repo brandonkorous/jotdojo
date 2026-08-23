@@ -325,6 +325,17 @@ and the marketing hero so the two cannot drift. ADR-044.
 - Recognition landing: transcript cross-fades in beneath the ink. Reserve the space while pending so there is never a layout jump.
 - Under `prefers-reduced-motion` Silica forces `--duration` near zero. Everything must still make sense with no animation at all.
 
+### The marketing site is the other case
+
+The rules above are the app's: it is a tool somebody is working in, so motion there is fast and few. The apex is a brochure somebody is reading, and design.md §21 gives it a longer vocabulary — ink drawing in, a note settling, an underline appearing, a mint dot on save.
+
+All of it is CSS driven from a scroll position, never an observer and never a client component. ADR-088 has the reasoning and the traps; the sheets are `motion.css` (the keyframes) and the `site-motion*` files (who uses them).
+
+Two rules that bite:
+
+- **Never animate `transform` on anything that also moves under a pointer.** A filling animation outranks a declared value, so the hover state stops working permanently. Use `translate` / `rotate` / `scale`, which compose.
+- **Every scroll-driven rule goes behind `@supports (animation-timeline: view())` as well as `prefers-reduced-motion`,** and there is no hidden initial state outside those gates. A crawler must be served the finished page.
+
 ## Accessibility
 
 - WCAG AA for all text. Silica's `contrastWarnings` is a publish gate, not a suggestion.

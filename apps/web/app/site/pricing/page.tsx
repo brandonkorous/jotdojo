@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { appOrigin } from "@/lib/hosts";
+import { Underline } from "@/components/site/Underline";
 
 export const metadata: Metadata = {
   title: "Pricing",
@@ -70,7 +71,7 @@ export default function Pricing() {
       <section className="jd-band">
         <h1 className="font-head">
           Simple pricing.{" "}
-          <span className="jd-ul jd-ul-keep">No notebook math</span>.
+          <Underline keep>No notebook math</Underline>.
         </h1>
         <p className="jd-lede">
           One price for the space, however many people are in it. Free is a real plan

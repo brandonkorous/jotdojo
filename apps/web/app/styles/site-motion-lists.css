@@ -1,0 +1,119 @@
+/* The furniture arriving. design.md §21, ADR-088.
+ *
+ * Split from site-motion.css by responsibility: that file is the shell and the
+ * type, this is what happens to the repeating things inside a band -- the four
+ * ways in, the three steps, the promise cards, the examples, the plans, the
+ * post list, the footer.
+ *
+ * Every one of them staggers with `--i`, which is set here rather than in the
+ * markup: the order of a list is the stylesheet's business, and a component
+ * should not have to count its own children to be animated. */
+
+@media (prefers-reduced-motion: no-preference) {
+  @supports (animation-timeline: view()) {
+    :where(.jd-modes, .jd-steps, .jd-cards, .jd-examples, .jd-plans,
+           .jd-post-list, .jd-never ul, .jd-foot-top) > * { --i: 0; }
+    :where(.jd-modes, .jd-steps, .jd-cards, .jd-examples, .jd-plans,
+           .jd-post-list, .jd-never ul, .jd-foot-top) > :nth-child(2) { --i: 1; }
+    :where(.jd-modes, .jd-steps, .jd-cards, .jd-examples, .jd-plans,
+           .jd-post-list, .jd-never ul, .jd-foot-top) > :nth-child(3) { --i: 2; }
+    :where(.jd-modes, .jd-steps, .jd-cards, .jd-examples, .jd-plans,
+           .jd-post-list, .jd-never ul, .jd-foot-top) > :nth-child(4) { --i: 3; }
+    :where(.jd-examples, .jd-post-list, .jd-never ul) > :nth-child(5) { --i: 4; }
+    :where(.jd-examples, .jd-post-list, .jd-never ul) > :nth-child(6) { --i: 5; }
+
+    /* --- four ways in: the tile arrives, then the marker is pressed on ---- */
+
+    .jd-modes > li {
+      animation: jd-rise both;
+      animation-timeline: view();
+      animation-range: cover calc(7% + var(--i) * 4%) cover calc(27% + var(--i) * 4%);
+    }
+    .jd-mode-ico {
+      animation: jd-pop both;
+      animation-timeline: view();
+      animation-range: cover calc(17% + var(--i) * 4%) cover calc(31% + var(--i) * 4%);
+    }
+
+    /* --- connect your AI: the number lands, then the instruction is written */
+
+    .jd-steps > li {
+      animation: jd-fade both;
+      animation-timeline: view();
+      animation-range: cover calc(8% + var(--i) * 5%) cover calc(20% + var(--i) * 5%);
+    }
+    .jd-step-n {
+      animation: jd-pop both;
+      animation-timeline: view();
+      animation-range: cover calc(10% + var(--i) * 5%) cover calc(24% + var(--i) * 5%);
+    }
+    .jd-steps p {
+      animation: jd-write both;
+      animation-timeline: view();
+      animation-range: cover calc(16% + var(--i) * 5%) cover calc(34% + var(--i) * 5%);
+    }
+
+    /* --- the promises: the card lifts, then what it says arrives ---------- */
+
+    .jd-cards > article {
+      animation: jd-rise both;
+      animation-timeline: view();
+      animation-range: cover calc(7% + var(--i) * 4%) cover calc(27% + var(--i) * 4%);
+    }
+    .jd-cards > article > * {
+      animation: jd-fade both;
+      animation-timeline: view();
+      animation-range: cover calc(18% + var(--i) * 4%) cover calc(30% + var(--i) * 4%);
+    }
+
+    /* --- where thoughts land: the margin is ruled, then the line fills it -- */
+
+    .jd-examples > li {
+      position: relative;
+      border-left-color: transparent;
+    }
+    .jd-examples > li::before {
+      content: "";
+      position: absolute;
+      inset: 0 auto 0 -2px;
+      width: 2px;
+      background: var(--color-primary);
+      scale: 1 0;
+      transform-origin: 50% 0;
+      animation: jd-rule both;
+      animation-timeline: view();
+      animation-range: cover calc(8% + var(--i) * 3%) cover calc(22% + var(--i) * 3%);
+    }
+    .jd-examples > li > * {
+      animation: jd-fade both;
+      animation-timeline: view();
+      animation-range: cover calc(16% + var(--i) * 3%) cover calc(30% + var(--i) * 3%);
+    }
+
+    /* --- what it will never grow into ------------------------------------ */
+
+    .jd-never ul > li {
+      animation: jd-write both;
+      animation-timeline: view();
+      animation-range: cover calc(10% + var(--i) * 3%) cover calc(26% + var(--i) * 3%);
+    }
+
+    /* --- the price list, the writing, and the last block ------------------ */
+
+    .jd-plans > article,
+    .jd-post-list > li,
+    .jd-foot-top > * {
+      animation: jd-rise both;
+      animation-timeline: view();
+      animation-range: cover calc(7% + var(--i) * 4%) cover calc(27% + var(--i) * 4%);
+    }
+
+    /* The one handwritten line on the page that is not inside a note gets
+       written rather than faded, because that is what a hand does. */
+    .jd-foot-tagline {
+      animation: jd-write both;
+      animation-timeline: view();
+      animation-range: cover 14% cover 34%;
+    }
+  }
+}

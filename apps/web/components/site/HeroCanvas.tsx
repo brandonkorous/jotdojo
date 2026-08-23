@@ -125,7 +125,7 @@ export function HeroCanvas({ children, appHref }: Props) {
               onBlock={heading}
             />
 
-            <div className="jd-hero-foot">
+            <div className="jd-hero-foot" data-state={state}>
               <p role="status" aria-live="polite" className="jd-hero-status">
                 {status(state, limit, saves)}
               </p>

@@ -1,0 +1,67 @@
+/* The hero opening. design.md §21, ADR-088.
+ *
+ * The only sequence on the site that is not scroll-driven, because it is above
+ * the fold: there is no scroll to drive it with. It runs once, on load, in the
+ * order somebody would build the page by hand -- the sentence, the pen under
+ * it, the promise, the button, and then the paper it is all about landing on
+ * the desk beside them.
+ *
+ * `backwards` and not `both`. A filling animation outranks a declared value,
+ * and the frame's resting tilt is declared: fill it forwards and the frame
+ * would refuse to straighten when somebody picks up a pen (site-hero.css). */
+
+@media (prefers-reduced-motion: no-preference) {
+  .jd-hero-titles h1 {
+    animation: jd-rise 560ms cubic-bezier(0.16, 0.84, 0.44, 1) backwards;
+  }
+  .jd-hero-titles .jd-lede {
+    animation: jd-rise 560ms cubic-bezier(0.16, 0.84, 0.44, 1) 140ms backwards;
+  }
+  .jd-hero-cta {
+    animation: jd-rise 560ms cubic-bezier(0.16, 0.84, 0.44, 1) 260ms backwards;
+  }
+
+  /* The stroke goes under the words once the words have stopped moving. */
+  .jd-hero-turn .jd-ul-stroke {
+    --len: 1;
+    stroke-dasharray: 1;
+    animation: jd-ink 460ms cubic-bezier(0.4, 0, 0.2, 1) 420ms backwards;
+  }
+
+  /* The sheet dropped on the desk. Slower than everything else on purpose --
+     it is the thing the eye should end on. */
+  .jd-hero-frame {
+    animation: jd-land 760ms cubic-bezier(0.22, 0.68, 0.31, 1) 120ms backwards;
+  }
+
+  /* Then the product's own chrome, in the order it would be reached for. */
+  .jd-hero-rail {
+    animation: jd-pop 420ms cubic-bezier(0.4, 0, 0.2, 1) 720ms backwards;
+  }
+  .jd-hero-foot {
+    animation: jd-fade 420ms ease-out 860ms backwards;
+  }
+}
+
+/* --- the mint dot, once, when a jot saves ------------------------------- */
+
+/* design.md §21 asks for this by name. It is the product's own feedback loop
+   rather than a page effect: `data-state` is the draft's real state, so the
+   dot appears the moment Postgres has the sentence. */
+.jd-hero-status::before {
+  content: "";
+  display: none;
+  width: 0.45rem;
+  height: 0.45rem;
+  margin-right: 0.45rem;
+  border-radius: 50%;
+  background: var(--color-primary);
+  vertical-align: 0.05em;
+}
+.jd-hero-foot[data-state="saved"] .jd-hero-status::before { display: inline-block; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .jd-hero-foot[data-state="saved"] .jd-hero-status::before {
+    animation: jd-dot 460ms cubic-bezier(0.4, 0, 0.2, 1);
+  }
+}

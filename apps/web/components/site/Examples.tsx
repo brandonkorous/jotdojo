@@ -1,3 +1,5 @@
+import { Underline } from "@/components/site/Underline";
+
 /**
  * Real examples. design.md §18.7.
  *
@@ -19,7 +21,7 @@ export function Examples() {
   return (
     <section className="jd-band jd-band-quiet">
       <h2 className="font-head">
-        Where thoughts <span className="jd-ul">actually land</span>
+        Where thoughts <Underline>actually land</Underline>
       </h2>
       <p className="jd-lede">
         Not one of these is a project. That is rather the point.

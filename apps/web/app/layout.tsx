@@ -15,10 +15,10 @@ export const viewport: Viewport = {
     // The canvas is the app; pinch-zooming the chrome is never what was meant.
     maximumScale: 1,
     viewportFit: "cover",
-    themeColor: [
-        { media: "(prefers-color-scheme: light)", color: pigment.paper },
-        { media: "(prefers-color-scheme: dark)", color: pigment.charcoal },
-    ],
+    // Mint holds in both modes, the way `--color-primary` does in globals.css.
+    // One value, not a light/dark pair: the chrome is the brand here, not an
+    // extension of the page.
+    themeColor: pigment.mint,
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

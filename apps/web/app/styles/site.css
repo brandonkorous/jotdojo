@@ -108,8 +108,8 @@
     background: var(--color-base-content);
     color: var(--color-base-100);
 }
-.jd-band-ink .jd-ul {
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 12' preserveAspectRatio='none'%3E%3Cpath d='M3,4.5 Q34,11 63,7.5 T97,5' fill='none' stroke='%2300C2A8' stroke-width='3.2' stroke-linecap='round'/%3E%3C/svg%3E");
+.jd-band-ink .jd-ul-stroke {
+    color: var(--color-primary);
 }
 .jd-band-ink a:not(.btn) {
     color: var(--color-primary);
@@ -119,9 +119,32 @@
     --ink-2: #c2c8cf;
 }
 
-/* A full-bleed mint ground used to close the page. At that area mint stops
-   being an accent and becomes a second brand arriving in the last screen, so
-   the close now runs on charcoal and mint is the button. ADR-082. */
+/* Mint, full bleed. ADR-089.
+
+   ADR-082 deleted this because it was closing the page: mint at that area, in
+   the last screen, reads as a second brand arriving. Directly under the hero it
+   reads as the product's own colour, and it is the cut that separates the
+   pitch from the page. This band must never carry a CTA -- mint is the button
+   colour everywhere else, and a mint button on a mint ground has nowhere to go. */
+.jd-band-mint {
+    background: var(--color-primary);
+    color: var(--color-primary-content);
+    --ink-2: #0d3f37;
+
+    /* Every paper thing on this band, in one place, so the stroke and the tiles
+       cannot drift apart. base-300's value written out: this band holds its
+       colours across both themes and base-300 does not. ADR-089. */
+    --mint-paper: #ece6da;
+}
+/* Paper on mint, so the stroke reads as its own mark rather than as an
+   underline the text grew. */
+.jd-band-mint .jd-ul-stroke {
+    color: var(--mint-paper);
+}
+.jd-band-mint a:not(.btn) {
+    color: var(--color-primary-content);
+    text-decoration: underline;
+}
 
 /* --- type: the headings do the work ------------------------------------- */
 

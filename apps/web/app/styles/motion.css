@@ -1,0 +1,91 @@
+/* The motion vocabulary. design.md §21, ADR-088.
+ *
+ * Keyframes only -- who uses them lives in the site-motion files. Every one of
+ * these is a thing that happens on paper: a stroke drawn, a card settling, a
+ * word written, tape pressed down. Nothing glows and nothing sparkles. */
+
+/* Ink drawing in, along its own path. `--len` is the path's length in user
+   units, set where the shape is drawn -- only the shape knows it. */
+@keyframes jd-ink {
+  from { stroke-dashoffset: var(--len, 1000); }
+  to   { stroke-dashoffset: 0; }
+}
+
+/* A thought landing: up from below, and it stops. No overshoot -- design.md
+   §21 rules out spring, and a page of prose is not a toy. */
+@keyframes jd-rise {
+  from { opacity: 0; transform: translateY(1.25rem); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* The same arrival for something that must keep a transform of its own. */
+@keyframes jd-fade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* A note dropped on a desk. It comes in crooked, overshoots the resting angle
+   and keeps a little of the tilt, because that angle is the design. */
+@keyframes jd-settle {
+  from { opacity: 0; transform: translateY(-1.5rem) rotate(3.6deg) scale(1.03); }
+  60%  { opacity: 1; transform: translateY(0.15rem) rotate(-2.1deg) scale(1); }
+  to   { opacity: 1; transform: rotate(-1.1deg); }
+}
+
+/* The hero's frame, arriving the same way and resting on ADR-076's tilt. */
+@keyframes jd-land {
+  from { opacity: 0; transform: translateY(-1.25rem) rotate(5deg) scale(0.97); }
+  65%  { opacity: 1; transform: translateY(0.2rem) rotate(0.8deg) scale(1); }
+  to   { opacity: 1; transform: rotate(1.8deg); }
+}
+
+/* Tape pressed down with a thumb, from the middle out. */
+@keyframes jd-press {
+  from { opacity: 0.4; transform: translateX(-50%) rotate(-1.6deg) scaleX(0.08); }
+  to   { opacity: 1; transform: translateX(-50%) rotate(-1.6deg) scaleX(1); }
+}
+
+/* A rule drawn down a margin, and the same gesture across one. */
+@keyframes jd-rule   { from { scale: 1 0; } to { scale: 1 1; } }
+@keyframes jd-rule-x { from { scale: 0 1; } to { scale: 1 1; } }
+
+/* A line written rather than faded up: the paper is uncovered left to right,
+   at the speed a hand moves. The bleed is generous because a clip does not
+   care what it cuts -- a descender, a pen ring round a word, an em dash
+   hanging in the margin -- and it stays cut once the animation has filled. */
+@keyframes jd-write {
+  from { clip-path: inset(-0.7em 100% -0.7em -0.7em); }
+  to   { clip-path: inset(-0.7em -0.9em -0.7em -0.7em); }
+}
+
+/* Something small arriving with a little weight behind it.
+   `scale` and not `transform: scale()`, so this composes with whatever
+   translation already holds the thing where it belongs -- the hero's tool rail
+   is centred by one. */
+@keyframes jd-pop {
+  from { opacity: 0; scale: 0.62; }
+  70%  { opacity: 1; scale: 1.05; }
+  to   { opacity: 1; scale: 1; }
+}
+
+/* The mint dot, once, when a jot saves. design.md §21. */
+@keyframes jd-dot {
+  from { opacity: 0; scale: 0.3; }
+  55%  { opacity: 1; scale: 1.6; }
+  to   { opacity: 1; scale: 1; }
+}
+
+/* The dot grid, drifting a little slower than the page it sits under. Paper
+   has depth; this is the cheapest honest way to say so. */
+@keyframes jd-drift {
+  from { transform: translateY(-1.6rem); }
+  to   { transform: translateY(1.6rem); }
+}
+
+/* The sticky bar lifting off the paper once the page has moved under it.
+   Shadow only, and both ends are two-layer so they interpolate: anything that
+   changed the bar's HEIGHT would shift the whole document up mid-scroll. */
+@keyframes jd-bar {
+  from { box-shadow: var(--shadow-lift); }
+  to   { box-shadow: var(--shadow-raise); }
+}

@@ -10,11 +10,22 @@
    design.md §13 -- a real quick pen stroke: it sags in the middle and does not
    land level, because a ruled line reads as a border and says nothing. */
 .jd-ul {
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 12' preserveAspectRatio='none'%3E%3Cpath d='M3,4.5 Q34,11 63,7.5 T97,5' fill='none' stroke='%236A39FF' stroke-width='3.2' stroke-linecap='round'/%3E%3C/svg%3E");
-    background-repeat: no-repeat;
-    background-position: 0 100%;
-    background-size: 100% 0.26em;
+    position: relative;
+    display: inline-block;
     padding-bottom: 0.22em;
+}
+
+/* The stroke is a real path so it can be drawn along itself (ADR-088), laid
+   under the words rather than behind them -- `overflow: visible` because a
+   3.2-unit stroke in a 12-unit box overhangs its own viewBox at the ends. */
+.jd-ul-stroke {
+    position: absolute;
+    inset: auto 0 0;
+    width: 100%;
+    height: 0.26em;
+    color: var(--color-accent);
+    overflow: visible;
+    pointer-events: none;
 }
 
 /* A pen stroke is one gesture. Broken across a line it leaves a stray mark at
@@ -89,6 +100,15 @@
     color: var(--color-primary);
     font-size: 1.55rem;
 }
+/* On mint the tile inverts. A cream tile with a mint marker on it disappears
+   into a mint ground twice over, so the tile becomes the paper and the marker
+   becomes the ink -- the same paper the underline is drawn in. ADR-089. */
+.jd-band-mint .jd-mode-ico {
+    background: var(--mint-paper);
+    border-color: transparent;
+    color: var(--color-primary-content);
+}
+
 /* The glyph sizes itself in `em` from its own artwork -- see ModeIcon. This
    only has to stop the tile from stretching it. */
 .jd-mode-ico svg {

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Underline } from "@/components/site/Underline";
 
 /**
  * Connect your AI. design.md §18.4 and §19.
@@ -19,7 +20,7 @@ export function ConnectAI() {
   return (
     <section id="ai" className="jd-band jd-band-ink">
       <h2 className="font-head">
-        Connect <span className="jd-ul">your</span> AI
+        Connect <Underline>your</Underline> AI
       </h2>
       <p className="jd-lede">
         Your jots become context wherever you already work — without you copying

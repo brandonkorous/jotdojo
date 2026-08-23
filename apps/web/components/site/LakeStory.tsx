@@ -1,5 +1,6 @@
 import { Icon } from "@/components/Icon";
 import { BoardsDoodle, InkRing } from "@/components/site/Ink";
+import { Underline } from "@/components/site/Underline";
 
 /**
  * Capture now, use later. design.md §5 and §18.3.
@@ -28,7 +29,7 @@ export function LakeStory() {
   return (
     <section className="jd-band jd-band-quiet">
       <h2 className="font-head">
-        Capture now. <span className="jd-ul">Use later</span>.
+        Capture now. <Underline>Use later</Underline>.
       </h2>
       <p className="jd-lede">
         You are sitting at the lake and an idea arrives. You have a phone and about

@@ -1,4 +1,5 @@
 import { Icon } from "@/components/Icon";
+import { Underline } from "@/components/site/Underline";
 import type { IconName } from "@/lib/icons";
 
 /**
@@ -42,9 +43,9 @@ const MODES: { id: string; icon: IconName; name: string; body: string }[] = [
 
 export function CaptureModes() {
   return (
-    <section id="how" className="jd-band">
+    <section id="how" className="jd-band jd-band-mint">
       <h2 className="font-head">
-        Four seconds, and <span className="jd-ul">any kind of thought</span>.
+        Four seconds, and <Underline>any kind of thought</Underline>.
       </h2>
       <p className="jd-lede">
         Whatever you were holding when it turned up, that is the way in.

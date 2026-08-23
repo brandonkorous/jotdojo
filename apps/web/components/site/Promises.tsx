@@ -1,3 +1,5 @@
+import { Underline } from "@/components/site/Underline";
+
 /**
  * Privacy and control. design.md §18.6.
  *
@@ -33,7 +35,7 @@ export function Promises() {
   return (
     <section className="jd-band">
       <h2 className="font-head">
-        Yours, and <span className="jd-ul">only</span> yours
+        Yours, and <Underline>only</Underline> yours
       </h2>
       <p className="jd-lede">
         Connecting an agent is a decision you make once, and unmake in a second.

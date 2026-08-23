@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { HeroCanvas } from "@/components/site/HeroCanvas";
+import { Underline } from "@/components/site/Underline";
 import { Cost, Closing } from "@/components/site/ProseBands";
 import { CaptureModes } from "@/components/site/CaptureModes";
 import { LakeStory } from "@/components/site/LakeStory";
@@ -22,7 +23,7 @@ export default async function Home() {
       <HeroCanvas appHref={appOrigin()}>
         <h1 className="font-head">
           Don&apos;t organize it.{" "}
-          <span className="jd-hero-turn">Just jot it.</span>
+          <Underline className="jd-hero-turn">Just jot it.</Underline>
         </h1>
         <p className="jd-lede">{brand.support}</p>
       </HeroCanvas>

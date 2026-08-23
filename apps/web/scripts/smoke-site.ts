@@ -73,6 +73,25 @@ check("...with nothing to sign up for before anything is written",
   !home.includes("Keep this") && home.includes("Nothing to sign up for"));
 check("the /site prefix never leaks into a link", !home.includes('href="/site'));
 
+// --- the page moves, and a crawler never notices -------------------------
+
+// ADR-088. Every animation on this page is CSS driven from a scroll position,
+// which is only worth anything if the words are in the HTML either way. What
+// follows is that claim, asserted rather than assumed.
+console.log("\nthe motion is CSS, so the page reads without it");
+check("the pen stroke ships as a real path, drawable along itself",
+  home.includes('class="jd-ul-stroke"') && home.includes('pathLength="1"'));
+check("...under words a crawler can still read as one phrase",
+  home.includes(">any kind of thought<") && home.includes(">Just jot it.<"));
+// A reveal written into the markup is a reveal a crawler sees as a hidden
+// page. The initial states live in the stylesheet, behind two gates.
+check("nothing on the page is hidden by an inline style",
+  !/style="[^"]*(opacity:\s*0|display:\s*none)/.test(home));
+check("...and no observer is shipped to reveal it",
+  !home.includes("IntersectionObserver"));
+check("the drawing carries the numbers its own draw-on needs",
+  /--len:\s*232/.test(home) && /--i:\s*5/.test(home));
+
 console.log("\nthe rest of the site");
 const pricingRes = await apex("/pricing");
 check("pricing is served at the bare path", pricingRes.status === 200, String(pricingRes.status));
@@ -122,6 +141,30 @@ check("no manifest is linked from the marketing page",
   "a PWA installed here would open the pitch forever -- ADR-010");
 check("...and the page can be pinch-zoomed, unlike the canvas",
   !/maximum-scale=1[^0-9]/.test(home));
+
+// --- the mark -------------------------------------------------------------
+
+console.log("\nthe mark reaches both hostnames");
+// Next serves the icons itself rather than a page serving them, so a gap in
+// the middleware's passthrough rewrites them onto `/site/...` and the tab of
+// every marketing page goes blank. ADR-076.
+const ICON_LINK = /<link[^>]*rel="(?:icon|shortcut icon|apple-touch-icon)"[^>]*>/g;
+const iconHrefs = (home.match(ICON_LINK) ?? [])
+  .map((tag) => /href="([^"]+)"/.exec(tag)?.[1] ?? "")
+  .filter(Boolean);
+check("the marketing page links a tab icon at all", iconHrefs.length > 0);
+for (const href of iconHrefs) {
+  check(`...and the apex serves ${href}`, (await apex(href)).status === 200);
+  check(`...as does the app host`, (await app(href)).status === 200);
+}
+
+const manifestRes = await app("/manifest.webmanifest");
+check("the app host serves the manifest", manifestRes.status === 200, String(manifestRes.status));
+const named = (await manifestRes.json()).icons as { src: string }[];
+const served = await Promise.all(named.map(async (i) => (await app(i.src)).status === 200));
+check("...and every icon it promises a home screen is really there",
+  served.length > 0 && served.every(Boolean),
+  named.filter((_, i) => !served[i]).map((i) => i.src).join(", "));
 
 // --- the app is not the apex ---------------------------------------------
 
