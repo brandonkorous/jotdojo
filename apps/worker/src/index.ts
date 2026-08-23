@@ -5,10 +5,11 @@
  * doing. The synchronous capture path never calls a model; if a model is in
  * the capture path, the capture contract is broken (docs/07).
  *
- * Three topics: `block.embed` (semantic search), `block.recognize`
- * (handwriting, photos, voice) and `note.triage` (the agent that reads new
- * notes and comments). Each is independent -- a missing provider for one does
- * not stop the others, and none of them stops capture. ADR-007.
+ * Four topics: `block.embed` (semantic search), `block.recognize`
+ * (handwriting, photos, voice), `block.structure` (what a page has DRAWN on
+ * it) and `note.triage` (the agent that reads new notes and comments). Each is
+ * independent -- a missing provider for one does not stop the others, and none
+ * of them stops capture. ADR-007, ADR-066.
  */
 import { embedder } from "@jotdojo/embeddings";
 import { recognizer } from "@jotdojo/vision";
@@ -83,6 +84,10 @@ console.log(
   `[worker] draining${provider ? ` block.embed (${provider.model})` : ""}`
   + `${reader ? ` block.recognize/vision (${reader.model})` : ""}`
   + `${listener ? ` block.recognize/speech (${listener.model})` : ""}`
+  // Structure rides the vision reader, so it drains exactly when ink does.
+  // Absent from this line for one release while the cycle ran anyway, which
+  // made the banner a worse answer than no banner.
+  + `${reader ? ` block.structure (${reader.model})` : ""}`
   + `${thinker ? ` note.triage (${thinker.model})` : ""}`,
 );
 
