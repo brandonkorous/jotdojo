@@ -14,7 +14,8 @@
     "smoke:metering": "dotenv -e ../../.env -- tsx scripts/smoke-metering.ts",
     "reread": "dotenv -e ../../.env -- tsx scripts/reread.ts",
     "smoke:reread": "dotenv -e ../../.env -- tsx scripts/smoke-reread.ts",
-    "smoke:triage": "dotenv -e ../../.env -- tsx scripts/smoke-triage.ts"
+    "smoke:triage": "dotenv -e ../../.env -- tsx scripts/smoke-triage.ts",
+    "smoke:park": "tsx scripts/smoke-park.ts"
   },
   "dependencies": {
     "@jotdojo/domain": "workspace:*",

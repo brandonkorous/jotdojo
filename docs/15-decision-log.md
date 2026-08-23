@@ -1488,7 +1488,20 @@ seconds — indistinguishable from a crash loop, and the first thing anyone woul
 **Decision.** Wait for `SIGINT`/`SIGTERM` instead of exiting. The pod stays `Running` with
 nothing to drain, which is exactly what is true, and still shuts down promptly when asked.
 
+**The first version of this fix shipped broken, and the way it broke is the useful part.**
+`process.exit(0)` became `await park()`, every suite stayed green, and the pod restarted
+exactly as fast as before. **A signal handler does not hold Node's event loop open.** With
+nothing else pending, Node decides the top-level `await` can never settle, prints
+`Detected unsettled top-level await` and exits **13**. Parking needs a live handle — a long
+`setInterval`, cleared when the signal arrives — or it is just a slower crash.
+
+**So this one is tested by spawning a real worker.** `smoke-park.ts` starts the process with
+no providers, asserts it is still alive five seconds later, asserts Node did not call the
+park a deadlock, and asserts SIGTERM still stops it. Nothing in-process could have caught
+this: the bug was entirely about what keeps a process alive, which is invisible from inside
+the module that is failing to stay that way.
+
 **Consequences.** The state now reads correctly from `kubectl get pods` — a worker with no
-providers looks idle rather than broken. It costs one parked process. The warning still
-prints, so the reason is one `logs` away, and when sparx's Azure OpenAI deployment lands
-the rollout replaces the pod anyway.
+providers looks idle rather than broken. It costs one parked process holding one timer. The
+warning still prints, so the reason is one `logs` away, and when sparx's Azure OpenAI
+deployment lands the rollout replaces the pod anyway.

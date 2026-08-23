@@ -26,6 +26,7 @@
     "mcp:smoke": "pnpm --filter @jotdojo/mcp smoke:mcp",
     "search:smoke": "pnpm --filter @jotdojo/domain smoke:search",
     "worker:smoke": "pnpm --filter @jotdojo/worker smoke:worker",
+    "park:smoke": "pnpm --filter @jotdojo/worker smoke:park",
     "mcp:check": "pnpm --filter @jotdojo/mcp check:discovery",
     "ink:smoke": "pnpm --filter @jotdojo/domain smoke:ink",
     "recognize:smoke": "pnpm --filter @jotdojo/worker smoke:recognize",

@@ -138,6 +138,7 @@ jobs:
           pnpm search:smoke
           pnpm ink:smoke
           pnpm worker:smoke
+          pnpm park:smoke
           pnpm recognize:smoke
           pnpm media:smoke
           pnpm members:smoke

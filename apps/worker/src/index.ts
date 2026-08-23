@@ -39,8 +39,16 @@ const thinker = reasoner();
  */
 function park(): Promise<void> {
   return new Promise((resolve) => {
+    // A signal handler does NOT hold the event loop open, and Node treats a
+    // top-level await with nothing left to wake it as a deadlock: it warns
+    // about an unsettled await and exits 13. The timer is the whole
+    // difference between parking and dying slightly later.
+    const alive = setInterval(() => {}, 1 << 30);
     for (const signal of ["SIGINT", "SIGTERM"] as const) {
-      process.on(signal, () => resolve());
+      process.on(signal, () => {
+        clearInterval(alive);
+        resolve();
+      });
     }
   });
 }
