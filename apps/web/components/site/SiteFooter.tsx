@@ -45,7 +45,7 @@ function groups(): Group[] {
     {
       title: "Writing",
       links: [
-        { href: "/blog/connect-jotdojo-to-claude", label: "Connect it to Claude" },
+        { href: "/blog/connect-jotacular-to-claude", label: "Connect it to Claude" },
         { href: "/blog/local-mcp-servers-and-your-phone", label: "Why local MCP fails" },
         { href: "/blog/what-mcp-actually-is", label: "What MCP actually is" },
         { href: "/blog", label: "All writing" },
