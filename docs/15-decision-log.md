@@ -1565,3 +1565,58 @@ existing corpus is not rewritten and nothing is re-read without being asked. `sm
 asserts the wording an agent actually receives — including that a reading which rounds to
 100% is still marked partial — and `smoke-partial` asserts what lands in the column,
 that a partial reading cannot title a note, and that a correction clears it.
+
+### ADR-057 — The one door needs the owner exemption it was built on
+
+**Context.** Nobody could create an account in production. Every Google sign-in ended on
+Auth.js's "There is a problem with the server configuration", and the `users` table had
+zero rows. The cause was two decisions in the initial schema that cannot both hold.
+
+0002 states the design plainly: *"There is deliberately NO insert policy on users, spaces
+or space_members. Account creation goes through app_provision_user() below, so there is
+exactly one auditable door into existence."* A `SECURITY DEFINER` function is a good answer
+to that problem — it can create an account and nothing else, and the app role gets EXECUTE
+on it rather than write access to three tables.
+
+But that door only opens if the function's owner is exempt from RLS, and 0000 set
+`FORCE ROW LEVEL SECURITY` on all three tables. FORCE is precisely the flag that **removes**
+the table owner's exemption. With FORCE on and no INSERT policy anywhere, the one door was
+welded shut.
+
+**Why every suite stayed green.** A developer's `DATABASE_ADMIN_URL` is `postgres`, a
+superuser, and superusers bypass RLS unconditionally — FORCE included. So locally the
+function worked, `db:smoke` passed, and `oauth:smoke` created users happily. Production's
+owner is `jotdojo_owner`: not a superuser, no `BYPASSRLS`. The identical schema behaved
+differently on the only machine that mattered. (`sparx_owner` on the same server *does*
+have `rolbypassrls`; that asymmetry is the whole bug.)
+
+**Decision.** `NO FORCE ROW LEVEL SECURITY` on `users`, `spaces` and `space_members`.
+
+**What this does not weaken.** FORCE only ever applied to the table **owner**. The
+application connects as `jotdojo_app`, which does not own these tables, so every policy
+still applies to it exactly as before — it holds table-level INSERT and is stopped by RLS
+alone. The tenancy boundary is untouched. What changes is that the definer functions built
+to do this one job can do it again. `notes`, `blocks` and the rest keep FORCE: they hold
+tenant content, no definer function writes to them, and the owner has no business reading
+across spaces there.
+
+**The rejected alternative was broader, not safer.** `ALTER ROLE jotdojo_owner BYPASSRLS`
+would also have worked and would have kept FORCE as documented — but it exempts the
+migration role from RLS on *every* table rather than restoring one exemption on three, and
+it needs a superuser, so it would live in another project's Terraform instead of shipping
+with the schema it fixes.
+
+**Testing this needed a schema assertion, not a behavioural one.** The behaviour cannot be
+reproduced where the admin role is a superuser, which is everywhere except production —
+that is what hid it. So `smoke-rls.ts` now asserts the shape directly: the three account
+tables have RLS enabled and NOT forced, and `notes`/`blocks` keep FORCE. Run against the
+broken schema it fails three checks; against the fixed one it passes.
+
+**Verified against production, not inferred.** `BEGIN; SELECT app_provision_user(...);
+ROLLBACK;` as the real owner role reproduced
+`new row violates row-level security policy for table "users"` before the fix and returned
+a row after it, without writing anything either time.
+
+**This is the third bug this week that green suites could not see** — after a worker that
+exited 0 into a restart loop and a canvas that clipped ink out of recognition. The pattern
+is the same each time: the check ran somewhere the failure was impossible.
