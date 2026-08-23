@@ -55,8 +55,14 @@ check("...saying plainly which tools need an account",
 const FALLBACK_GLYPHS = /[✎▬⌧⬚●▢]/;
 check("...as drawn icons, not as Unicode the font does not serve",
   home.includes("lucide-pen-line") && !FALLBACK_GLYPHS.test(home));
-check("...and formatting, so the typing surface is more than a box",
-  home.includes('aria-label="Bold"') && home.includes('aria-label="Subheading"'));
+// Formatting is one tap away rather than pre-opened, so it is the TEXT tool
+// that has to be on the page, not the Bold button. The options pill used to
+// render itself open and this asserted on its contents; on a phone that put a
+// permanent band exactly where the next line was going to go, so it now waits
+// to be asked (tap the tool you already hold). The rail still has to carry the
+// whole product -- a hero that hides a tool is advertising a shorter one.
+check("...and a way into formatting, so the typing surface is more than a box",
+  home.includes('aria-label="Text"') && home.includes("lucide-type"));
 check("the headline is written ON the canvas, not above it",
   /jd-hero-titles[^>]*>\s*<h1/.test(home));
 // The "keep this" affordance appears once there is something to keep. An
