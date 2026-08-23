@@ -180,6 +180,7 @@ export function InkCanvas({
         onColor={(color) => engineRef.current?.restyleSelection({ color })}
         onWidth={(width) => engineRef.current?.restyleSelection({ width }, false)}
         onCommitWidth={(width) => engineRef.current?.restyleSelection({ width })}
+        onCard={(fill) => engineRef.current?.recolourCards(fill)}
         onDelete={() => engineRef.current?.deleteSelection()}
         onExport={() => void downloadSelection(noteId, selected.ids)}
       />

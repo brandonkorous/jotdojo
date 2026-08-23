@@ -165,6 +165,14 @@
   caret-color: var(--color-primary, currentColor);
 }
 
+/* A note with a colour behind it. ADR-079.
+   Lifted, not flat: ADR-077 retired `--depth: 0` along with the seal, and a
+   card is exactly the "lifted paper" that scale exists for. The shadow is the
+   house token, warm-tinted, so it reads as paper rather than as a UI card. */
+.jd-card {
+  box-shadow: var(--shadow-lift);
+}
+
 .jd-text-box:focus {
   /* Enough to see which box has the caret on a page of them, and not a box
      around every paragraph the rest of the time. */

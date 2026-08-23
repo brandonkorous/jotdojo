@@ -122,6 +122,44 @@ console.log("\nthe boxes are findable");
     `${hits.length} hits`);
 }
 
+console.log("\na note becomes a card");
+{
+  const carded = await createNote(A, spaceId, "");
+  const layer = await createInkBlock(A, carded.id, { w: 800, h: 600 });
+  await applyInkDelta(A, layer.blockId, {
+    remove: [], upsert: [],
+    texts: [box({ id: "c1", h: 120, fill: "#CCF3ED", text: "ring the harbour office" })],
+  });
+
+  const { document } = await getInk(A, layer.blockId);
+  const stored = document.texts?.[0];
+  check("the colour survives the round trip", stored?.fill === "#CCF3ED",
+    JSON.stringify(stored));
+  check("...and so does the height it was drawn at", stored?.h === 120);
+
+  // A card is still a note: its words go into the companion block, so it is
+  // findable exactly as plain canvas text is. ADR-065.
+  check("a card's words are still findable",
+    (await searchNotes(A, spaceId, "harbour")).some((h) => h.id === carded.id));
+
+  // Taking the colour off is not the same as setting it to white.
+  await applyInkDelta(A, layer.blockId, {
+    remove: [], upsert: [],
+    texts: [box({ id: "c1", h: 120, text: "ring the harbour office" })],
+  });
+  const plain = (await getInk(A, layer.blockId)).document.texts?.[0];
+  check("...and it can be taken off again", plain?.fill === undefined,
+    JSON.stringify(plain));
+
+  let refused = false;
+  try {
+    await applyInkDelta(A, layer.blockId, {
+      remove: [], upsert: [], texts: [box({ id: "c2", fill: "aquamarine" })],
+    });
+  } catch { refused = true; }
+  check("a colour that is not #rrggbb is refused", refused);
+}
+
 console.log("\none delta, both kinds");
 {
   const mixed = await createNote(A, spaceId, "");

@@ -1,5 +1,5 @@
 import type { Point, TextBox } from "@jotdojo/domain";
-import { textBounds } from "@jotdojo/ink-render";
+import { cardBounds, textBounds } from "@jotdojo/ink-render";
 import { pointInPolygon, type Bounds } from "./ink-geometry";
 
 /**
@@ -21,10 +21,20 @@ import { pointInPolygon, type Bounds } from "./ink-geometry";
  */
 export const boxBounds = (box: TextBox): Bounds => textBounds(box);
 
+/**
+ * What a box OCCUPIES: its card when it has one, its text when it does not.
+ *
+ * This is the rectangle every interaction should use. Tapping the coloured
+ * margin of a card has to open it -- a card whose corner is not part of it is
+ * an infuriating object -- and a lasso drawn round a card has to enclose the
+ * colour a person can see, not an invisible inner rectangle. ADR-079.
+ */
+export const boxArea = (box: TextBox): Bounds => cardBounds(box);
+
 export function boxesBounds(boxes: readonly TextBox[]): Bounds | null {
   let out: Bounds | null = null;
   for (const box of boxes) {
-    const b = boxBounds(box);
+    const b = boxArea(box);
     if (!out) { out = { ...b }; continue; }
     const x = Math.min(out.x, b.x);
     const y = Math.min(out.y, b.y);
@@ -48,7 +58,7 @@ export function boxesBounds(boxes: readonly TextBox[]): Bounds | null {
  */
 export function boxInPolygon(poly: readonly Point[], box: TextBox): boolean {
   if (poly.length < 3) return false;
-  const b = boxBounds(box);
+  const b = boxArea(box);
   const corners: Array<[number, number]> = [
     [b.x, b.y], [b.x + b.w, b.y], [b.x + b.w, b.y + b.h], [b.x, b.y + b.h],
   ];
@@ -60,7 +70,7 @@ export function boxInPolygon(poly: readonly Point[], box: TextBox): boolean {
 export function boxAt(boxes: readonly TextBox[], x: number, y: number): TextBox | null {
   for (let i = boxes.length - 1; i >= 0; i--) {
     const box = boxes[i]!;
-    const b = boxBounds(box);
+    const b = boxArea(box);
     if (x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h) return box;
   }
   return null;

@@ -1,4 +1,4 @@
-import type { InkDelta, Stroke } from "@jotdojo/domain";
+import type { InkDelta, Stroke, TextBox } from "@jotdojo/domain";
 import { restyle, without } from "./ink-edit";
 import { InkSelection, NO_SELECTION, type SelectionSummary } from "./ink-selection";
 import type { StrokeIndex } from "./ink-index";
@@ -65,6 +65,35 @@ export class SelectionEditor {
     // The strokes themselves, because a recolour changes what they ARE. The
     // server matches them by id and keeps their place in paint order.
     this.ctx.onDelta({ remove: [], upsert: [...this.sel.selected] });
+  }
+
+  /**
+   * Turn what the lasso caught into cards, or back into plain notes. ADR-079.
+   *
+   * The sibling of `restyle` and deliberately a SEPARATE method rather than
+   * another key on its patch. ADR-065 decided `{color, width}` is a pen idea
+   * that must not reach text, and that still holds -- what changed is that
+   * there is now a text idea, and it must not reach the strokes either. Two
+   * methods say that; one method with a union would have to remember it.
+   *
+   * `null` removes the card. Nothing here touches the text colour: the ink is
+   * derived from the fill by luminance wherever it is drawn, so it is never
+   * stored and never has to be kept in step.
+   */
+  recolourCards(fill: string | null) {
+    const boxes = this.sel.selectedTexts;
+    if (boxes.length === 0) return;
+    // Mutated in place, like `translateBoxes` and for the same reason: the
+    // plane and the selection hold references to these very objects.
+    for (const box of boxes as TextBox[]) {
+      if (fill) box.fill = fill;
+      else delete box.fill;
+    }
+    // The plane re-reads the boxes it already holds; these are the same objects.
+    this.ctx.texts()?.refresh();
+    this.ctx.overlay();
+    this.ctx.onChange?.(this.sel.summary);
+    this.ctx.onDelta({ remove: [], upsert: [], texts: [...this.ctx.texts()?.all ?? []] });
   }
 
   /** Delete what the lasso caught, naming them rather than resending the page

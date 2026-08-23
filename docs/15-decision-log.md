@@ -3048,3 +3048,62 @@ ignoring a snap.
   rectangle on the overlay. An abandoned gesture is not a smaller version of the gesture.
 - The drag preview is mint, against the selection marquee's blue. Making and choosing
   look alike on a trackpad, so the colours have to disagree.
+
+### ADR-079 — A note can be a card, and the card is a field rather than a kind
+
+**2026-08-23.** `TextBox` gains an optional `fill`. A box with one is a card: colour
+behind the words, ink chosen for it, and a lift off the page.
+
+#### A field, not a second kind of object
+
+The obvious modelling is a `card` object beside `text`. It buys nothing and costs
+everything twice — the reading order, the delta protocol, the companion `blocks` row,
+the SVG path and the lasso would each have to learn a second name for the same thing. A
+card is a text box with a colour behind it, so it is a text box with a colour behind it.
+
+#### The ink is derived, never stored
+
+`inkOn(fill)` picks charcoal or paper by relative luminance (Rec. 709, so a saturated
+green is not mistaken for dark). Storing a text colour beside a fill would allow a card
+to be **saved with text nobody can read on it**, and then to drift when either is
+changed. Deriving it makes that state unreachable rather than merely discouraged.
+
+#### The padding grows outward
+
+`cardBounds` inflates `textBounds` rather than insetting the text, and the DOM element
+is offset back by exactly what it gains. Colouring a note therefore never moves a word —
+the card appears around what you wrote. It also means `contentBounds` frames the card,
+so an export does not slice the colour off every edge.
+
+Every interaction reads the card rectangle, not the text rectangle: tapping the coloured
+margin opens the note, and a lasso encloses the colour a person can actually see. A card
+whose corner is not part of it is an infuriating object.
+
+#### Five colours, and a deliberate absence
+
+Paper, mint, violet, charcoal, and none. They are the house hues from design.md §11
+rather than a sixth palette invented in a component. A full colour picker is a decision
+with no right answer offered at the moment somebody is trying to write something down;
+real sticky notes come in a handful of colours for the same reason.
+
+**There is no sticky-note yellow**, and that is a decision rather than an oversight — it
+would be a brand colour we do not have, which is a change to design.md and not to a
+canvas file.
+
+#### Consequences
+
+- **The card is lifted, and a month ago it would not have been.** ADR-077 retired
+  `--depth: 0` along with the seal, so `.jd-card` takes `--shadow-lift` — the warm-tinted
+  house token, so it reads as paper rather than as a UI card. The SVG export deliberately
+  stays flat: a drop shadow there is a filter, and filters rasterise unpredictably.
+- `recolourCards` is a separate method from `restyle` rather than another key on its
+  patch. ADR-065 decided `{color, width}` is a pen idea that must not reach text; a card
+  colour is a text idea that must not reach the strokes. Two methods state that; one
+  method with a union would have to remember it.
+- The card palette appears in the selection bar only when the lasso caught a note. A
+  control that does nothing is worse than one that is not there.
+- The bar stops saying "strokes" for everything. It names the kind when a selection holds
+  only one, because nobody circles two words and a squiggle and thinks "3 objects".
+- Additive in jsonb, so **no migration**, and a box with no fill is exactly what it was.
+- Recognition still never sees any of it — `toSvg` draws text only when asked, and the
+  suite asserts a card cannot reach the model either.

@@ -150,6 +150,8 @@ export class InkEngine implements InputHost {
   // now and had outgrown a class that also owns the frame loop.
   dropSelection() { this.editor.drop(); }
   deleteSelection() { this.editor.remove(); }
+  /** Colour the cards a selection holds, or take their colour away. ADR-079. */
+  recolourCards(fill: string | null) { this.editor.recolourCards(fill); }
   restyleSelection(patch: { color?: string; width?: number }, publish = true) {
     this.editor.restyle(patch, publish);
   }

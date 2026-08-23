@@ -174,8 +174,8 @@
 }
 
 .jd-tool-danger:hover:not(:disabled) {
-  background: color-mix(in oklch, var(--color-accent) 16%, transparent);
-  color: var(--color-accent);
+  background: color-mix(in oklch, var(--color-error) 16%, transparent);
+  color: var(--color-error);
 }
 
 /* ---------------------------------------------------------------------------
@@ -194,4 +194,18 @@
 
 @media (prefers-reduced-motion: reduce) {
   .jd-chrome, .jd-tool { transition: none; }
+}
+
+/* "No card" -- the page showing through, with a slash. White is one of the
+   card colours, so an empty white chip would be a different control that looks
+   identical. ADR-079. */
+.jd-chip-none {
+  background:
+    linear-gradient(
+      to top right,
+      transparent calc(50% - 1px),
+      color-mix(in oklch, var(--color-base-content) 35%, transparent) calc(50% - 1px),
+      color-mix(in oklch, var(--color-base-content) 35%, transparent) calc(50% + 1px),
+      transparent calc(50% + 1px)
+    );
 }

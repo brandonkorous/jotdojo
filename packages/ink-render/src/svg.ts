@@ -1,5 +1,6 @@
 import type { InkDocument, Stroke, TextBox } from "@jotdojo/domain";
 import { bounds, contentBounds, control, medianWidth, widthAt, type Bounds } from "./geometry";
+import { cardBounds, inkOn } from "./text-geometry";
 
 /**
  * Strokes to SVG, for recognition and for thumbnails.
@@ -125,6 +126,7 @@ const EMPTY = '<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1" view
 function textLines(box: TextBox, escape: (v: string) => string): string[] {
   const perLine = Math.max(1, Math.floor(box.w / (box.size * 0.55)));
   const out: string[] = [];
+  const ink = box.fill ? inkOn(box.fill) : box.color;
   for (const paragraph of box.text.split("\n")) {
     if (!paragraph.trim()) { out.push(""); continue; }
     let line = "";
@@ -136,10 +138,28 @@ function textLines(box: TextBox, escape: (v: string) => string): string[] {
   }
   // A leading dominant-baseline would fight the per-line dy below, so the first
   // line sits one size down from the box's top edge, where a person put it.
-  return out.map((line, i) =>
+  const lines = out.map((line, i) =>
     `<text x="${n(box.x)}" y="${n(box.y + box.size * (i + 1))}"`
     + ` font-family="ui-sans-serif, system-ui, sans-serif" font-size="${n(box.size)}"`
-    + ` fill="${escape(box.color)}" xml:space="preserve">${escape(line)}</text>`);
+    + ` fill="${escape(ink)}" xml:space="preserve">${escape(line)}</text>`);
+
+  return box.fill ? [cardRect(box, escape), ...lines] : lines;
+}
+
+/**
+ * The card behind the words. ADR-079.
+ *
+ * Flat -- no gradient, no glow, per design.md §12. The lift ADR-077 restored
+ * lives in CSS on the editor's own cards and deliberately does not come here:
+ * an SVG drop-shadow is a filter, filters rasterise unpredictably across
+ * renderers, and a note exported as a picture wants to read as paper rather
+ * than as a screenshot of an interface.
+ */
+function cardRect(box: TextBox, escape: (v: string) => string): string {
+  const b = cardBounds(box);
+  const r = box.size * 0.5;
+  return `<rect x="${n(b.x)}" y="${n(b.y)}" width="${n(b.w)}" height="${n(b.h)}"`
+    + ` rx="${n(r)}" ry="${n(r)}" fill="${escape(box.fill!)}"/>`;
 }
 
 export function toSvg(doc: InkDocument, options: RenderOptions): string {

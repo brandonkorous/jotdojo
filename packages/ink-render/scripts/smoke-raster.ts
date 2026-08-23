@@ -14,6 +14,7 @@ import type { InkDocument, Point, Stroke, TextBox } from "@jotdojo/domain";
 import { toPng } from "../src/raster";
 import { toSvg } from "../src/svg";
 import { strokesBounds, bounds, contentBounds } from "../src/geometry";
+import { textBounds } from "../src/text-geometry";
 
 let failures = 0;
 const check = (label: string, ok: boolean, detail?: string) => {
@@ -147,6 +148,46 @@ console.log("\na page that is nothing but typed text");
   // Without contentBounds this exports as a 1x1 image and opens on blank paper.
   check("...but does have content bounds", contentBounds(words) !== null);
   check("...and renders", toSvg(words, { mode: "viewing", text: true }).includes("no ink at all"));
+}
+
+console.log("\na note with a colour behind it");
+{
+  const card: InkDocument = {
+    ...doc,
+    texts: [{ ...textBox("mooring fee", 400, 20), fill: "#CCF3ED" }],
+  };
+  const svg = toSvg(card, { mode: "viewing", text: true });
+
+  check("the card is drawn", svg.includes('fill="#CCF3ED"'));
+  // Behind, not in front. A rect emitted after the text would cover it.
+  check("...behind its own words",
+    svg.indexOf('fill="#CCF3ED"') < svg.indexOf("mooring fee"));
+
+  // The whole reason the ink is derived rather than stored: a card cannot be
+  // saved with text nobody can read on it. ADR-079.
+  check("charcoal type on a light card", svg.includes('fill="#111418"'));
+  const dark: InkDocument = {
+    ...doc, texts: [{ ...textBox("after dark", 400, 20), fill: "#111418" }],
+  };
+  check("...and paper type on a dark one",
+    toSvg(dark, { mode: "viewing", text: true }).includes('fill="#F7F3EA"'));
+
+  // The frame has to clear the card's edge, or every exported note loses the
+  // colour off its sides.
+  const plain: InkDocument = { ...doc, texts: [textBox("mooring fee", 400, 20)] };
+  check("the frame allows for the card, not just the words",
+    contentBounds(card)!.w > contentBounds(plain)!.w,
+    `${contentBounds(card)!.w} vs ${contentBounds(plain)!.w}`);
+
+  // Colouring a note must not move a word: the padding grows outward.
+  check("...and colouring a note does not move its text",
+    textBounds(card.texts![0]!).x === textBounds(plain.texts![0]!).x);
+
+  // Recognition never draws text at all, so it certainly never draws a card --
+  // but a coloured rectangle reaching the model would be a new way to break
+  // ADR-065, so it is asserted rather than assumed.
+  check("recognition draws no card either",
+    !toSvg(card, { mode: "recognition" }).includes("#CCF3ED"));
 }
 
 console.log("\na page with nothing on it");

@@ -49,6 +49,20 @@ export type TextBox = {
   /** Size in document units at k=1, so a box keeps its size as the camera moves. */
   size: number;
   color: string;
+  /**
+   * The card colour behind the words, when there is one. ADR-079.
+   *
+   * Absent is a plain note on the canvas -- transparent, exactly as every box
+   * before ADR-079. Set makes it a card, and the ink is DERIVED from this by
+   * luminance rather than stored, so a card can never be saved with text
+   * nobody can read on it.
+   *
+   * A field on the same object rather than a second kind of object: a card is
+   * a text box with a colour behind it, and giving it its own kind would
+   * duplicate the reading order, the delta protocol and the export path to say
+   * so.
+   */
+  fill?: string;
 };
 
 export const MAX_TEXTS = 2_000;
@@ -81,10 +95,17 @@ export function validateTexts(input: unknown): TextBox[] {
     // Optional, because every box written before ADR-078 has no height at all.
     // Rejecting those would make an old page unreadable rather than unstyled.
     const h = optionalHeight(t.h, where);
+    // Same shape as `color`, and optional for the same reason `h` is: a plain
+    // note has no card behind it and never did.
+    if (t.fill !== undefined && t.fill !== null
+      && (typeof t.fill !== "string" || !COLOR.test(t.fill))) {
+      throw new DomainError(`${where}: fill must be #rrggbb`, "bad_texts", 400);
+    }
     return {
       id: textId(t.id, where),
       x: t.x!, y: t.y!, w: t.w!, size: t.size!,
       ...(h === undefined ? {} : { h }),
+      ...(t.fill ? { fill: t.fill } : {}),
       text: t.text, color: t.color,
     };
   });

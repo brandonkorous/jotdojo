@@ -1,4 +1,5 @@
 import type { TextBox } from "@jotdojo/domain";
+import { CARD_PAD, inkOn } from "@jotdojo/ink-render";
 import { isEmpty } from "./ink-objects";
 
 /**
@@ -163,12 +164,34 @@ export class InkPlane {
 
   private place(node: HTMLTextAreaElement, box: TextBox) {
     const size = Math.max(MIN_SIZE, box.size);
-    node.style.left = `${box.x}px`;
-    node.style.top = `${box.y}px`;
     node.style.width = `${box.w}px`;
     node.style.fontSize = `${size}px`;
-    node.style.color = box.color;
+    // `dress` owns left and top: a card's padding shifts the element back by
+    // what it gains, so the two cannot be set independently.
+    this.dress(node, box, size);
     this.grow(node, box);
+  }
+
+  /**
+   * A card, or words straight onto the page. ADR-079.
+   *
+   * The padding inflates OUTWARD -- the element is offset back by exactly what
+   * it gains -- so colouring a note never moves a word. `cardBounds` computes
+   * the same rectangle for the lasso and the export.
+   *
+   * The ink is derived from the fill rather than stored, which is what makes it
+   * impossible to end up with a card whose text cannot be read on it.
+   */
+  private dress(node: HTMLTextAreaElement, box: TextBox, size: number) {
+    const pad = box.fill ? size * CARD_PAD : 0;
+    node.classList.toggle("jd-card", Boolean(box.fill));
+    node.style.background = box.fill ?? "transparent";
+    node.style.color = box.fill ? inkOn(box.fill) : box.color;
+    node.style.caretColor = box.fill ? inkOn(box.fill) : "";
+    node.style.padding = `${pad}px`;
+    node.style.borderRadius = box.fill ? `${size * 0.5}px` : "";
+    node.style.left = `${box.x - pad}px`;
+    node.style.top = `${box.y - pad}px`;
   }
 
   /**
