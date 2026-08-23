@@ -125,7 +125,7 @@ export function HeroCanvas({ children }: { children: React.ReactNode }) {
  * modal, not on every keystroke.
  */
 function status(state: DraftState, limit: string | null, saves: number): string {
-  if (state === "idle") return "Nothing to sign up for. Start typing.";
+  if (state === "idle") return "Nothing to sign up for. Start typing or writing.";
   if (state === "saving") return "Saving…";
   if (state === "full") return limit ?? "Sign in to keep writing.";
   if (state === "error") return "That did not send. It is safe here and will retry.";

@@ -11,7 +11,9 @@
 .jd-prose h3 { margin-top: 1.75rem; margin-bottom: 0.5rem; font-family: var(--font-head); font-size: 1.15rem; }
 .jd-prose p, .jd-prose li { line-height: 1.7; }
 .jd-prose p, .jd-prose ul, .jd-prose ol, .jd-prose pre, .jd-prose table { margin-block: 1rem; }
-.jd-prose ul, .jd-prose ol { padding-left: 1.25rem; }
+/* Lists read on the same measure as the paragraphs around them. Without this
+   they run the full width of the band and the column visibly widens mid-page. */
+.jd-prose ul, .jd-prose ol { padding-left: 1.25rem; max-width: var(--measure); }
 .jd-prose ul { list-style: disc; }
 .jd-prose ol { list-style: decimal; }
 .jd-prose li { margin-block: 0.35rem; }
@@ -36,7 +38,14 @@
   padding-left: 1rem;
   opacity: 0.85;
 }
-.jd-prose table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+/* Wider than the text measure, because a table needs columns -- but not the
+   whole band, which stretched two columns to opposite edges of the page. */
+.jd-prose table {
+  width: 100%;
+  max-width: 42rem;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
 .jd-prose th, .jd-prose td {
   border-bottom: 1px solid var(--color-base-300);
   padding: 0.5rem 0.75rem;

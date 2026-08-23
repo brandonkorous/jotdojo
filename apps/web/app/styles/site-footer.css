@@ -1,0 +1,81 @@
+/* The site footer. docs/13-security-and-privacy.md, docs/16-web-presence.md.
+ *
+ * Split out of site.css at the size limit. The last thing on the page is the
+ * promises we make about other people's notes, so it gets room to say them. */
+
+.jd-site-foot {
+  border-top: 1px solid var(--color-base-300);
+  background: var(--color-base-200);
+}
+.jd-foot-inner {
+  max-width: 62rem;
+  margin-inline: auto;
+  padding: clamp(2.5rem, 6vw, 4rem) clamp(1rem, 4vw, 3rem);
+}
+
+/* --- links -------------------------------------------------------------- */
+
+.jd-foot-top {
+  display: grid;
+  gap: 2rem 1.5rem;
+  grid-template-columns: 1fr 1fr;
+}
+.jd-foot-brand { grid-column: 1 / -1; }
+
+@media (min-width: 48rem) {
+  .jd-foot-top { grid-template-columns: 2.2fr 1fr 1.4fr 1fr; gap: 3rem; }
+  .jd-foot-brand { grid-column: auto; }
+}
+
+.jd-foot-tagline { margin-top: 0.35rem; font-size: 0.9rem; opacity: 0.6; }
+.jd-foot-line {
+  margin-top: 1.375rem;
+  font-family: var(--font-head);
+  font-size: 1.125rem;
+  line-height: 1.45;
+  max-width: 22rem;
+}
+
+.jd-foot-nav { display: grid; align-content: start; gap: 0.7rem; }
+.jd-foot-nav h2 { font-size: 0.95rem; margin-bottom: 0.2rem; }
+.jd-foot-nav a { font-size: 0.875rem; opacity: 0.75; }
+.jd-foot-nav a:hover { opacity: 1; text-decoration: underline; }
+
+/* 44px targets on a phone, where these are thumbed rather than clicked. */
+@media (max-width: 47.99rem) {
+  .jd-foot-nav { gap: 0; }
+  .jd-foot-nav a { padding-block: 0.65rem; }
+}
+
+/* --- the promises ------------------------------------------------------- */
+
+.jd-foot-promises {
+  margin-top: 3rem;
+  padding-top: 2rem;
+  border-top: 1px solid var(--color-base-300);
+  display: grid;
+  gap: 1.75rem;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+}
+.jd-foot-promises h2 { font-size: 0.95rem; margin-bottom: 0.35rem; }
+.jd-foot-promises p { font-size: 0.875rem; line-height: 1.6; opacity: 0.72; }
+
+/* --- fine print --------------------------------------------------------- */
+
+.jd-foot-fine {
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--color-base-300);
+  display: grid;
+  gap: 0.65rem;
+}
+.jd-foot-fine p { font-size: 0.8rem; line-height: 1.6; opacity: 0.55; max-width: 40rem; }
+.jd-foot-fine nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem;
+  font-size: 0.8rem;
+  opacity: 0.55;
+}
+.jd-foot-fine nav a:hover { text-decoration: underline; }

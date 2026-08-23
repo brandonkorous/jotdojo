@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { listPosts } from "@/lib/posts";
+import { formatDate } from "@/lib/format-date";
 
 export const metadata: Metadata = {
   title: "Writing",
@@ -9,9 +10,6 @@ export const metadata: Metadata = {
     + "capturing to a web app from iOS Shortcuts.",
   alternates: { canonical: "/blog" },
 };
-
-const when = (iso: string) =>
-  new Date(iso).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
 
 export default async function Blog() {
   const posts = await listPosts();
@@ -31,10 +29,20 @@ export default async function Blog() {
             <li key={post.slug}>
               <Link href={`/blog/${post.slug}`}>{post.title}</Link>
               <p>{post.description}</p>
-              <time dateTime={post.date}>{when(post.date)}</time>
+              <time dateTime={post.date}>{formatDate(post.date)}</time>
             </li>
           ))}
         </ul>
+      </section>
+
+      <section className="jd-band jd-band-quiet">
+        <h2 className="font-head">Or skip the reading</h2>
+        <p>
+          The box at the top of the front page is a real canvas, not a screenshot.
+          Write something in it and it is saved before you have finished the
+          sentence — no account, no card, nothing to install.
+        </p>
+        <Link className="btn btn-primary" href="/">Write something</Link>
       </section>
     </main>
   );

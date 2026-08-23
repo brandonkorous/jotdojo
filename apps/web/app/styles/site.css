@@ -56,6 +56,7 @@
 }
 .jd-band-quiet {
   background: var(--color-base-200);
+  border-block: 1px solid var(--color-base-300);
   max-width: none;
 
   /* Full-bleed background, same text column as every other band.
@@ -90,8 +91,15 @@
 
 /* --- lists of things ---------------------------------------------------- */
 
-.jd-beats { counter-reset: beat; display: grid; gap: 2rem; }
-.jd-beats > li { counter-increment: beat; max-width: var(--measure); }
+/* Three across where there is room. The beats are a sequence to scan, not
+   three paragraphs to read. */
+.jd-beats {
+  counter-reset: beat;
+  display: grid;
+  gap: 2rem;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+}
+.jd-beats > li { counter-increment: beat; }
 .jd-beats h3::before {
   content: counter(beat) ". ";
   opacity: 0.4;
@@ -129,7 +137,7 @@
   line-height: 1.4;
 }
 .jd-plans li { padding-left: 1rem; text-indent: -1rem; }
-.jd-plans li::before { content: "\2014 "; opacity: 0.4; }
+.jd-plans li::before { content: "\2014\00a0"; opacity: 0.4; }
 
 .jd-plan-cta {
   margin-top: 2rem;
@@ -151,15 +159,3 @@
 .jd-post-list p { font-size: 0.95rem; opacity: 0.75; margin-top: 0.25rem; }
 .jd-post-list time { font-size: 0.8rem; opacity: 0.45; }
 
-/* --- footer ------------------------------------------------------------- */
-
-.jd-site-foot {
-  border-top: 1px solid var(--color-base-300);
-  padding: 2.5rem clamp(1rem, 4vw, 3rem);
-  display: grid;
-  gap: 1.25rem;
-  font-size: 0.9rem;
-}
-.jd-site-foot nav { display: flex; flex-wrap: wrap; gap: 1.25rem; }
-.jd-site-foot nav a:hover { text-decoration: underline; }
-.jd-site-fine { font-size: 0.8rem; opacity: 0.5; }

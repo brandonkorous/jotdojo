@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getPost, listPosts } from "@/lib/posts";
+import { formatDate } from "@/lib/format-date";
 
 type Params = { params: Promise<{ slug: string }> };
 
@@ -30,9 +31,6 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   };
 }
 
-const when = (iso: string) =>
-  new Date(iso).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
-
 export default async function PostPage({ params }: Params) {
   const post = await getPost((await params).slug);
   if (!post) notFound();
@@ -41,13 +39,23 @@ export default async function PostPage({ params }: Params) {
     <main className="jd-site-main">
       <article className="jd-band jd-prose">
         <h1 className="font-head">{post.title}</h1>
-        <time dateTime={post.date}>{when(post.date)}</time>
+        <time dateTime={post.date}>{formatDate(post.date)}</time>
         {/* Ours, from a markdown file in this repository. */}
         <div dangerouslySetInnerHTML={{ __html: post.html }} />
-        <p className="jd-fineprint">
+      </article>
+
+      {/* A post ends at the canvas, never at a sign-up form. docs/16. */}
+      <section className="jd-band jd-band-quiet">
+        <h2 className="font-head">Try the thing this is about</h2>
+        <p>
+          The front page is a working canvas. Write a line in it and it is already
+          saved — then connect Claude and ask it what you said.
+        </p>
+        <p className="jd-plan-cta">
+          <Link className="btn btn-primary" href="/">Write something</Link>
           <Link href="/blog">All writing</Link>
         </p>
-      </article>
+      </section>
     </main>
   );
 }

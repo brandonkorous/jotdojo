@@ -14,6 +14,8 @@ export async function GET(): Promise<Response> {
     { loc: "/pricing", priority: "0.8" },
     { loc: "/blog", priority: "0.6" },
     ...posts.map((post) => ({ loc: `/blog/${post.slug}`, priority: "0.5" })),
+    { loc: "/privacy", priority: "0.3" },
+    { loc: "/terms", priority: "0.3" },
   ];
 
   const body = [

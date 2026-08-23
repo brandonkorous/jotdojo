@@ -48,6 +48,13 @@
 }
 .jd-hero-titles .jd-lede { margin-bottom: 0; }
 
+/* The rail and the formatting pill are centred over the writing surface and
+   reach ~106px down it. Below this width the headline is wide enough to run
+   under both, so start the titles beneath the chrome instead. */
+@media (max-width: 75rem) {
+  .jd-hero-stage { --pad-block: 7.5rem; }
+}
+
 .jd-hero-input {
   position: absolute;
   inset: 0;

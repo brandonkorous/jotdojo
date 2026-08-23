@@ -9,7 +9,9 @@
 @import "./styles/media.css";
 @import "./styles/prose.css";
 @import "./styles/site.css";
+@import "./styles/site-sections.css";
 @import "./styles/site-hero.css";
+@import "./styles/site-footer.css";
 
 /* Silica's React components live in node_modules, which Tailwind does not scan
    by default. Without this their utility classes are never emitted. */

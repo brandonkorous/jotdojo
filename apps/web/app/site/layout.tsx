@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import Link from "next/link";
 import { appOrigin, siteOrigin } from "@/lib/hosts";
+import { SiteFooter } from "@/components/site/SiteFooter";
 
 /**
  * The marketing site. ADR-010, ADR-040.
@@ -59,21 +60,7 @@ export default function SiteLayout({ children }: { children: React.ReactNode }) 
 
       {children}
 
-      <footer className="jd-site-foot">
-        <div>
-          <p className="font-head text-lg">jotdojo</p>
-          <p className="opacity-60">Where the thought lands.</p>
-        </div>
-        <nav aria-label="Footer">
-          <Link href="/pricing">Pricing</Link>
-          <Link href="/blog">Writing</Link>
-          <a href={appOrigin()}>Open the app</a>
-          <a href="https://kanninja.com">kanNINJA</a>
-        </nav>
-        <p className="jd-site-fine">
-          Built by WizeWorks. Your notes are yours; nothing here is trained on.
-        </p>
-      </footer>
+      <SiteFooter />
     </div>
   );
 }
