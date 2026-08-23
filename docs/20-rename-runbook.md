@@ -70,39 +70,39 @@ the product name appears in the password before assuming a rename is safe.
 Vault. A renamed role with an old connection string is an app that cannot log
 in, and the failure is immediate.
 
-### The three vault keys, by name
+### The vault keys, by name
 
-`release.yml` reads Key Vault by key name and turns underscores into hyphens,
-and its **required** list names `JOTACULAR_APP_PASSWORD`. That is a key which
-has to be *created*: the vault holds `JOTDOJO-APP-PASSWORD`, so the deploy asks
-for a name nothing answers to and stops.
+The vault is `kv-jotdojo-prod-cus` and keeps that name (§7). So does the app
+password: `release.yml` reads `JOTDOJO_APP_PASSWORD` and the vault key is not
+renamed. ADR-090 — renaming it means destroying and recreating the only copy of
+a live credential to change a string nothing but that list reads.
+
+The first attempt got this wrong. The sweep renamed the key in the required
+list, the vault had no such key, and the deploy stopped:
 
     ##[error]Missing required secrets in kv-jotdojo-prod-cus: JOTACULAR-APP-PASSWORD
 
-The gate sits in front of the migration, so a deploy attempted before this
-window fails harmlessly — the images build, the namespace and ConfigMap apply,
-and nothing rolls. That is also why creating this one key *alone* makes the next
-run worse rather than better: it opens the gate, `0034` renames the role, and
-the pods then start against a `DATABASE-URL` that still says `jotdojo_app`.
+That gate sits in front of the migration, so a deploy attempted before this
+window fails harmlessly — images build, the namespace and ConfigMap apply, and
+nothing rolls.
 
-The three move together or not at all:
+**One value still has to change, and the key rename does not save you from it.**
 
 | Key | Change |
 | --- | --- |
-| `JOTACULAR-APP-PASSWORD` | new — copy the value of `JOTDOJO-APP-PASSWORD` |
+| `JOTDOJO-APP-PASSWORD` | none — the workflow reads this name now |
 | `DATABASE-URL` | `jotdojo_app` → `jotacular_app` |
 | `DATABASE-ADMIN-URL` | `jotdojo_owner` → `jotacular_owner`, after the superuser rename above |
 
-**Copy the password across, never retype it.** Reading one secret straight into
-the other keeps the value out of a terminal and out of a shell history:
+`0034` renames the role. A connection string still naming `jotdojo_app` after
+that points at a role which does not exist, and every service crashloops
+together. Edit the value in place rather than retyping the string, so the
+password inside it carries across untouched:
 
-    az keyvault secret set --vault-name kv-jotdojo-prod-cus \
-      --name JOTACULAR-APP-PASSWORD \
-      --value "$(az keyvault secret show --vault-name kv-jotdojo-prod-cus \
-                   --name JOTDOJO-APP-PASSWORD --query value -o tsv)"
+    az keyvault secret set --vault-name kv-jotdojo-prod-cus --name DATABASE-URL       --value "$(az keyvault secret show --vault-name kv-jotdojo-prod-cus                    --name DATABASE-URL --query value -o tsv                  | sed 's/jotdojo_app/jotacular_app/')"
 
-A copy is also what disarms the trap above. The value crosses unchanged, so it
-cannot be caught by a sweep rewriting the product name — the danger is only ever
+That is also what disarms the trap above: the password crosses unchanged and
+cannot be caught by a sweep rewriting the product name. The danger is only ever
 in a human retyping it.
 
 The *database* name inside both URLs changes in §5, not here.

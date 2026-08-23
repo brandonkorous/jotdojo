@@ -3592,3 +3592,180 @@ them is a separate decision from repairing one that was already claimed.
 
 **A script in `package.json` is a claim that something is checked. This one was
 that claim and nothing behind it, for as long as the app has existed.**
+
+### ADR-088 — The page moves, and a crawler never sees it move
+
+**Status.** Accepted, 2026-08-23.
+
+**Context.** The marketing site was a still page. Every surface on it was
+already right — ADR-076 gave it shape, ADR-080 gave it drawings, ADR-082 gave
+it a close — and none of it did anything. design.md §21 has had a motion
+vocabulary since the brand was written, naming ink drawing in, a note settling,
+a mint dot on save and an underline appearing quickly, and not one of those
+existed anywhere in the product.
+
+The obvious way to build it is an `IntersectionObserver` that adds a class, and
+it is the wrong way here. The apex exists to be read by crawlers (ADR-010): a
+reveal driven by JavaScript means the initial state — `opacity: 0` — is what a
+crawler that does not run scripts is served, and a page whose text is invisible
+without JavaScript is a page that has been hidden from search. It also means
+shipping a client component to a route that has none.
+
+**Decision.** All of it is CSS, and everything scroll-driven is a scroll-driven
+animation: `animation-timeline: view()` for a reveal, a named `view-timeline`
+for a scene with an order to keep, `scroll(root)` for the sticky bar. No
+observer, no client component, no class toggled by anything.
+
+Every scroll-driven rule sits behind two gates:
+
+    @media (prefers-reduced-motion: no-preference) {
+      @supports (animation-timeline: view()) { ... }
+    }
+
+Outside them there is no hidden state to fail open from — the page is exactly
+what it was before any of this existed. That is the answer for a browser that
+cannot drive an animation from a scroll position, for a reader who has asked us
+not to move things, and for a crawler, which is all three at once.
+
+The one sequence that is not scroll-driven is the hero, because it is above the
+fold and there is no scroll to drive it with. It runs once on load.
+
+**Consequences.** Three things had to change shape to be animated at all.
+
+The underline is now a real `<path>` rather than a background image. A
+background can only be revealed by squashing it — `background-size` from 0%
+puts the far end of the stroke on the page at 10% — whereas a path with
+`pathLength="1"` can be drawn along itself with a dash. `components/site/Underline.tsx`
+replaces nine hand-written spans, `.jd-ul` became `inline-block` to hold the
+stroke, and the mint variants in `.jd-band-ink` and `.jd-hero-turn` are now a
+`color` on the stroke instead of a second copy of the SVG.
+
+The drawings carry two numbers each: how long the path is, so a dash can cover
+it, and where it comes in the order. Both are set in `Ink.tsx` because only the
+shape knows either, and `pathLength` is not relied on for `<rect>`.
+
+**Nothing that moves may animate `transform` if it also moves under a pointer.**
+A filling animation outranks a declared value, so a card whose arrival animates
+`transform` refuses to lift on hover for the rest of the session. Every hover
+and press state uses `translate` / `rotate` / `scale`, which compose with
+`transform` rather than fighting it, and `jd-pop` animates `scale` for the same
+reason — the hero's tool rail is centred by a Tailwind `translate`.
+
+Two smaller traps are recorded in the sheets themselves. `.jd-band-quiet` clips
+its drifting dot grid with `clip-path` and not `overflow: hidden`, because
+hiding overflow would make that band a scroll container and every `view()`
+timeline inside it — the whole lake story — would be measured against a box
+that never scrolls. And the sticky bar animates its shadow only: anything that
+changed its height would shift the document up mid-scroll.
+
+The lake story is the one scene with a script rather than a reveal. All seven
+stages hang off a single named timeline on `.jd-story`, so the note finishes
+drawing before the reply to it arrives however tall the band lands on a given
+screen; per-element timelines would restart the clock for each piece. It
+finishes by about two thirds of the band's pass, because a beat that lands
+after its own section has left the screen has not landed.
+
+`smoke:site` asserts the claim rather than the effect: the stroke ships as a
+path, the underlined phrases are still readable as one phrase in the HTML,
+nothing is hidden by an inline style, and no observer is shipped.
+
+**A reveal that a crawler sees as a hidden page is not a reveal. It is a
+deoptimisation with an animation on it.**
+
+### ADR-089 — Mint comes back, at the top of the page rather than the bottom
+
+**Status.** Accepted, 2026-08-23.
+
+**Context.** The hero and the first section under it were both paper. Nothing
+marked where the pitch stopped and the page began, so the four ways in read as
+a continuation of the hero rather than as the first thing the page says.
+
+ADR-082 deleted `.jd-band-mint` seven decisions ago, and the reasoning still
+holds for what it was deleted from. Mint at full bleed **closing** the page
+reads as a second brand arriving in the last screen, and it forced the one
+button we most want pressed to be the one colour that could not be mint.
+
+Neither objection survives the move. Directly under the hero, mint is not a
+brand arriving late — it is the product's own colour, stated in the first
+screen after the headline and then spent. And "Capture Anything" has no CTA in
+it, so nothing is competing for the button colour.
+
+**Decision.** `.jd-band-mint` is a real ground again, and `CaptureModes` is the
+band that carries it. The class never fully left: ADR-082 removed the colour
+but the full-bleed padding rule in `site.css` still named it, so this revives a
+half-deleted class rather than inventing one.
+
+Inside it, the rule is the same one `.jd-band-ink` follows — **the stroke is
+whichever brand ink the ground is not.** On paper the underline is violet; on
+charcoal it is mint; on mint it is paper, `#ece6da`. The marker tiles invert
+for the same reason: a cream tile carrying a mint glyph disappears into a mint
+ground twice over, so on mint the tile becomes the paper and the marker becomes
+the ink — the same paper, declared once as `--mint-paper` on the band so the
+stroke and the tiles cannot drift apart.
+
+`--mint-paper` is base-300's value written out rather than taken from the
+token, and the reason is worth keeping. This band is theme-invariant by
+construction — `--color-primary` and `--color-primary-content` are the same in
+`paper` and `paper-night` — but `--color-base-300` is not: it flips to `#262b32`
+at night, which measures 6.30:1 against mint and **1.19:1 against the text it is
+drawn under.** Following the token would have reinstated after dark exactly the
+"stroke looks like an underline the text grew" problem the paper stroke exists
+to solve. The literal is the same instrument `--ink-2` already uses for the same
+class of problem, and the tiles had the identical fault before they were moved
+onto it: `var(--color-base-100)` is white on paper and `#111418` at night, which
+put a near-black tile on a band that changes nothing else between themes.
+
+`--ink-2` is redeclared at `#0d3f37`, which measures 5.21:1 on mint. Body text
+at `--color-primary-content` measures 7.52:1.
+
+**Consequences.** The page now runs paper, mint, cream, charcoal, paper, paper,
+cream, paper, charcoal. Two charcoal bands still bookend it as ADR-082 arranged;
+mint is spent once, early, on the section that is about the product rather than
+about us.
+
+**This band must never carry a CTA.** Mint is the button colour in the bar, the
+hero and the close, and a mint button on a mint ground has nowhere to go. That
+is the half of ADR-082 that was never wrong, and moving the field to the top of
+the page does not repeal it.
+
+### ADR-090 — The credential keeps the old name, because a secret is not a label
+
+**Context.** The rebrand renamed `JOTDOJO_APP_PASSWORD` to `JOTACULAR_APP_PASSWORD`
+in `release.yml`'s required list, the way it renamed every other string. Key
+Vault stores that under the hyphenated name, and the vault holds
+`JOTDOJO-APP-PASSWORD`. The deploy asked for a key nothing answered to and
+stopped:
+
+    ##[error]Missing required secrets in kv-jotdojo-prod-cus: JOTACULAR-APP-PASSWORD
+
+The sweep treated a secret's key as prose. It is not. Every other renamed
+string had both ends move together in the same commit — the workspace scope,
+the namespace, the image names. A vault key's other end is a value that exists
+in exactly one place and is not in this repository.
+
+**Decision.** The workflow reads `JOTDOJO_APP_PASSWORD`. The vault key keeps
+the name it has.
+
+Renaming it would mean creating a second copy of a live credential and deleting
+the first, in the window where the site is already down — a destroy-and-recreate
+of the only copy, to change a string that nothing but this list reads. That is
+the same reasoning that left `kv-jotdojo-prod-cus` alone in ADR-086, applied one
+level down. The name is not something a person reads; the value is something a
+service cannot start without.
+
+**Consequences.** The role still becomes `jotacular_app` — `0034` renames it and
+the release job runs `ALTER ROLE jotacular_app LOGIN PASSWORD` with the value
+read from the old key. Key and role no longer share a name, which is exactly
+what the extra indirection in `release.yml` is for.
+
+`DATABASE-URL` is a different problem and is **not** solved by this. Its value
+names `jotdojo_app`, and after `0034` that role does not exist — so the vault
+value has to change in the same window regardless. A key name can be worked
+around; a role name inside a connection string cannot.
+
+The sweep made the same mistake once more, in `17-shared-infrastructure.md`: it
+renamed `kv-jotdojo-prod-cus` to `kv-jotacular-prod-cus` in five places, sending
+a future operator to a vault that does not exist. Corrected here.
+
+**A rename is safe exactly where both ends of the name are in the commit. The
+sweep could not see the end that lives in Azure.**

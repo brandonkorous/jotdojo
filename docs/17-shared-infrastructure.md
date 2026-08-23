@@ -16,7 +16,7 @@ production and fails for a reason nothing here would have suggested.
 | AKS cluster `aks-sparx-prod-cus` | sparx | the `jotacular` **namespace** |
 | Caddy ingress + its routing table | sparx | nothing — see [Cross-repo](#the-cross-repo-part) |
 | Postgres server `psql-sparx-prod-cus` | sparx | the `jotacular` **database** |
-| Key Vault | — | `kv-jotacular-prod-cus`, ours alone |
+| Key Vault | — | `kv-jotdojo-prod-cus`, ours alone |
 | Blob storage | — | `stjotacularprodcus`, ours alone |
 | Azure CI identity | — | ours alone, `brandonkorous/jotacular` only |
 
@@ -103,7 +103,7 @@ environment you are unsure about.
 
 ## Secrets
 
-Key Vault `kv-jotacular-prod-cus`, read at deploy time and materialised into a
+Key Vault `kv-jotdojo-prod-cus`, read at deploy time and materialised into a
 Kubernetes Secret named `jotacular-secrets` in the `jotacular` namespace. The
 manifests in `infra/k8s` mount it with `envFrom.secretRef`; nothing in this repo
 contains a secret value.
@@ -113,7 +113,7 @@ a compromised workflow cannot rewrite a credential the product then deploys.
 Loading a secret is a human action:
 
 ```
-az keyvault secret set --vault-name kv-jotacular-prod-cus --name DATABASE-URL --value '...'
+az keyvault secret set --vault-name kv-jotdojo-prod-cus --name DATABASE-URL --value '...'
 ```
 
 Key Vault secret names allow only alphanumerics and hyphens, so an env var like
@@ -149,7 +149,7 @@ variables:
 | `AZURE_CLIENT_ID` | from `terraform output jotacular_github_setup` |
 | `AZURE_TENANT_ID` | ” |
 | `AZURE_SUBSCRIPTION_ID` | ” |
-| `AZURE_KEY_VAULT_NAME` | `kv-jotacular-prod-cus` |
+| `AZURE_KEY_VAULT_NAME` | `kv-jotdojo-prod-cus` |
 
 Run `terraform output jotacular_github_setup` in the sparx repo — it prints the
 four `gh variable set` commands verbatim.
@@ -243,11 +243,11 @@ running a second ingress, which would mean a second load balancer.
 - [ ] Apply the sparx-side Terraform so the database, vault, storage and CI
       identity exist.
 - [ ] Set the four repository variables (step 1 above).
-- [ ] Load the secrets into `kv-jotacular-prod-cus`. Key Vault names allow only
+- [ ] Load the secrets into `kv-jotdojo-prod-cus`. Key Vault names allow only
       alphanumerics and hyphens, so the release step maps `DATABASE_URL` to a
       secret named `DATABASE-URL`; the authoritative list is the `required` and
       `optional` arrays in `.github/workflows/release.yml`.
-- [ ] `JOTACULAR-APP-PASSWORD` must be the SAME password that appears inside
+- [ ] `JOTDOJO-APP-PASSWORD` must be the SAME password that appears inside
       `DATABASE-URL`. A release job runs `ALTER ROLE jotacular_app LOGIN PASSWORD`
       with it, so a mismatch resets the role out from under the connection
       string every service is using, and they all crashloop together.

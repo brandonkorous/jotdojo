@@ -149,7 +149,10 @@ jobs:
           required=(
             DATABASE_URL
             DATABASE_ADMIN_URL
-            JOTACULAR_APP_PASSWORD
+            # The vault key kept the OLD name. Renaming a secret is a delete
+            # and a recreate of the only copy of a live credential, and the
+            # name is not something the app reads -- only this list. ADR-090.
+            JOTDOJO_APP_PASSWORD
             AUTH_SECRET
             AUTH_GOOGLE_ID
             AUTH_GOOGLE_SECRET
@@ -365,14 +368,14 @@ jobs:
                     args:
                       - echo "ALTER ROLE jotacular_app LOGIN PASSWORD :'app_password';"
                         | psql "$DATABASE_ADMIN_URL" -v ON_ERROR_STOP=1
-                        -v app_password="$JOTACULAR_APP_PASSWORD"
+                        -v app_password="$JOTDOJO_APP_PASSWORD"
                     env:
                       - name: DATABASE_ADMIN_URL
                         valueFrom:
                           secretKeyRef: { name: jotacular-secrets, key: DATABASE_ADMIN_URL }
-                      - name: JOTACULAR_APP_PASSWORD
+                      - name: JOTDOJO_APP_PASSWORD
                         valueFrom:
-                          secretKeyRef: { name: jotacular-secrets, key: JOTACULAR_APP_PASSWORD }
+                          secretKeyRef: { name: jotacular-secrets, key: JOTDOJO_APP_PASSWORD }
           YAML
 
           if ! kubectl wait --for=condition=complete job/db-role-password \
