@@ -29,8 +29,8 @@ Priced on the "affordable" value. Per **space**, not per seat — families will 
 
 | Plan | Price | Members | What you get |
 |---|---|---|---|
-| **Free** | $0 | 1 | Unlimited typed notes, search, **read-only MCP**, 100 readings/mo (a page, a photo or a started minute is one) |
-| **Solo** | $5/mo | 1 | Everything, full MCP (write + comment), 300 readings/mo |
+| **Free** | $0 | 1 | Unlimited typed notes, search, **an assistant can read your notes**, 100 readings/mo (a page, a photo or a started minute is one) |
+| **Solo** | $5/mo | 1 | Everything, **an assistant can also add notes and comment**, 300 readings/mo |
 | **Family** | $9/mo | up to 6 | Solo limits, pooled, shared spaces |
 | **Team** | $19/mo | up to 5, then $4/member | Family limits scaled by members, shared spaces, triage agent |
 

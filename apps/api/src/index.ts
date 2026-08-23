@@ -2,6 +2,7 @@ import Fastify from "fastify";
 import {
   resolveCaptureToken, captureNote, RateLimited, DomainError,
 } from "@jotdojo/domain";
+import { registerCaptureMedia } from "./capture-media.js";
 
 const PORT = Number(process.env.API_PORT ?? 3401);
 const APP_URL = process.env.APP_URL ?? "http://localhost:3400";
@@ -14,6 +15,10 @@ const app = Fastify({
 });
 
 app.get("/health", async () => ({ ok: true }));
+
+// Reserve, PUT, finalize -- so a Shortcut can send a photo without the bytes
+// ever passing through this service. ADR-064.
+registerCaptureMedia(app, APP_URL);
 
 // Development only. See apps/api/src/media.ts -- on Azure the browser uploads
 // straight to Blob and these routes do not exist.
@@ -42,6 +47,11 @@ app.setNotFoundHandler((request, reply) => {
 
 type CaptureBody = {
   text?: string;
+  /** A shared link. Formatted by the domain, so a link from an iOS Shortcut and
+   *  the same link from the Android share sheet make the same note. ADR-064. */
+  url?: string;
+  /** The page title, when the sharing app supplies one. */
+  title?: string;
   request_id?: string;
   source?: string;
 };
@@ -65,9 +75,15 @@ app.post("/v1/capture", async (request, reply) => {
   }
 
   const body = (request.body ?? {}) as CaptureBody;
-  const text = typeof body.text === "string" ? body.text : "";
+  const shared = {
+    text: typeof body.text === "string" ? body.text : "",
+    url: typeof body.url === "string" ? body.url : "",
+    title: typeof body.title === "string" ? body.title : "",
+  };
 
-  if (!text.trim()) {
+  // A URL alone is a capture. Requiring `text` is what made a shared link
+  // impossible to send without the caller pre-formatting it.
+  if (!shared.text.trim() && !shared.url.trim() && !shared.title.trim()) {
     return reply.code(400).send({
       success: false,
       error: { code: "EMPTY", message: "Nothing to capture" },
@@ -76,7 +92,7 @@ app.post("/v1/capture", async (request, reply) => {
 
   try {
     const result = await captureNote(actor, {
-      text,
+      ...shared,
       requestId: body.request_id ?? null,
       source: body.source ?? null,
     });

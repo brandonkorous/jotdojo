@@ -2,7 +2,9 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { Search } from "lucide-react";
 import { CommandPalette } from "@wizeworks/silicaui-react";
+import { RemarksButton } from "./RemarksButton";
 import type { CommandItem } from "@wizeworks/silicaui-react";
 import type { Align } from "@/lib/toolbar-side";
 import type { CanvasTool } from "@/lib/canvas-tool";
@@ -94,18 +96,20 @@ export function Chrome({
     <>
       <div
         data-dimmed={dimmed}
-        className={`jd-chrome glass top-3 z-20 flex items-center gap-1 rounded-full p-1 ${pos}`}
-        style={{ width: "min(94vw, 34rem)" }}
+        // `gap-0.5` matches the tool rail's own gap, so every button in the bar
+        // is spaced like every other one and the separators do the grouping.
+        // Sized by what is in it, now that nothing in it stretches. ADR-062.
+        className={`jd-chrome glass top-3 z-20 flex items-center gap-0.5 rounded-full p-1 ${pos}`}
+        style={{ maxWidth: "calc(100vw - 1.5rem)" }}
       >
         <button
           type="button"
           onClick={() => setOpen(true)}
           aria-label="Search notes and commands"
-          className="jd-search"
+          title="Search notes, or jump somewhere  ⌘K"
+          className="jd-tool"
         >
-          <span aria-hidden className="opacity-50">{"⌕"}</span>
-          <span className="jd-search-label">Search notes, or jump somewhere</span>
-          <kbd aria-hidden className="jd-search-kbd font-mono">{"⌘K"}</kbd>
+          <Search aria-hidden strokeWidth={1.75} />
         </button>
 
         <span aria-hidden className="jd-rail-sep-v" />
@@ -117,6 +121,10 @@ export function Chrome({
         />
 
         <span aria-hidden className="jd-rail-sep-v" />
+
+        {/* The way back to what an agent said, days after it said it. The live
+            line only speaks while something is outstanding. ADR-061. */}
+        <RemarksButton />
 
         <a href="/account" aria-label="Account" className="jd-tool overflow-hidden">
           {user?.image

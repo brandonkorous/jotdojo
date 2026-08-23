@@ -27,11 +27,12 @@ export type NoteDetail = NoteSummary & {
 export async function createNote(
   actor: Actor, spaceId: string, body = "",
 ): Promise<NoteDetail> {
-  // Both scopes permit creating a note. capture:write simply permits nothing
-  // else -- see the capture actor in actor.ts.
-  if (!hasScope(actor, "notes:write") && !hasScope(actor, "capture:write")) {
-    throw new Forbidden("This connection cannot create notes");
-  }
+  // `notes:write` is the person and `capture:write` is the person through a
+  // narrower door. `notes:append` is an agent, and creating a note adds without
+  // touching anything that exists -- the same bargain appending makes. ADR-070.
+  const mayCreate = ["notes:write", "capture:write", "notes:append"]
+    .some((scope) => hasScope(actor, scope));
+  if (!mayCreate) throw new Forbidden("This connection cannot create notes");
 
   if (!canReachSpace(actor, spaceId)) throw new Forbidden("This connection cannot reach that space");
 
@@ -120,7 +121,10 @@ export async function noteBody(
 export async function saveNote(
   actor: Actor, noteId: string, body: string, expectedRevision: number,
 ): Promise<NoteDetail> {
-  if (!hasScope(actor, "notes:edit")) throw new Forbidden("This connection cannot edit notes");
+  // Only a person replaces a person's words. There is no scope that buys this
+  // and no MCP tool that reaches it, so an agent cannot overwrite a note at
+  // all -- a property of the server rather than a promise about it. ADR-070.
+  if (actor.type !== "user") throw new Forbidden("Only the person who owns a note can replace its content");
 
   const saved = await withActor(actor.userId, async (tx) => {
     const rows = await tx.select().from(notes)
@@ -142,10 +146,9 @@ export async function saveNote(
 
     await writeTextBlock(tx, note, body);
 
-    await writeRevision(
-      tx, actor, { ...note, revision: nextRevision }, body,
-      actor.type === "agent" ? "edited by agent" : "edited",
-    );
+    // No "edited by agent" branch: only a person reaches this, and the
+    // typechecker knows it. ADR-070.
+    await writeRevision(tx, actor, { ...note, revision: nextRevision }, body, "edited");
     await audit(tx, actor, note.spaceId, "note.update", noteId);
 
     await queueEmbedding(tx, noteId, nextRevision);
@@ -163,9 +166,9 @@ export async function saveNote(
 /**
  * Append blocks to the end of a note.
  *
- * The preferred agent write: non-destructive by construction, so nothing an
- * agent adds can remove what a person wrote. `update_note` exists but is
- * deliberately harder to reach. ADR-004.
+ * How an agent changes a note at all: non-destructive by construction, so
+ * nothing an agent adds can remove what a person wrote. There is no edit path
+ * for an agent to fall back to. ADR-004, ADR-070.
  */
 export async function appendToNote(
   actor: Actor, noteId: string, text: string,

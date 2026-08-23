@@ -1,19 +1,20 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { getInkAction, correctTranscriptAction } from "@/app/actions";
+import { getInkAction } from "@/app/actions";
 import { useLiveNote } from "@/lib/use-live";
+import { usePublish, type FeedEntry } from "@/lib/live-feed";
+import { TranscriptCard } from "./TranscriptCard";
 
 /**
- * What the machine read, and the way to disagree with it.
+ * The reading of a page of handwriting, and its place on the live line.
+ * docs/08-ink.md, ADR-061.
  *
- * docs/08-ink.md: confidence is always carried and always shown. Below roughly
- * 0.6 the correction affordance stops being a quiet pencil icon and says so
- * outright, because a transcript nobody trusts and nobody can see is worse than
- * no transcript at all -- it will be quoted back by an agent as though it were
- * what the person wrote.
+ * Confidence is always carried and always shown -- a transcript nobody trusts
+ * and nobody can see is worse than none, because an agent will quote it back as
+ * though it were what the person wrote. The line says how sure it is; opening
+ * the line shows the words and the way to correct them.
  */
-const LOW_CONFIDENCE = 0.6;
 
 /**
  * The fallback, not the mechanism. ADR-058.
@@ -44,9 +45,6 @@ export function InkTranscript(
   { noteId: string; blockId: string | null; live?: boolean },
 ) {
   const [ink, setInk] = useState<Ink | null>(null);
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState("");
-  const [saving, setSaving] = useState(false);
   /** Set once the wait stops being a wait, so the card can stop promising. */
   const [waited, setWaited] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -91,84 +89,58 @@ export function InkTranscript(
     };
   }, [blockId, poll]);
 
-  if (!blockId || !ink || ink.strokeCount === 0) return null;
+  /** Stable, so correcting the reading does not republish the line on every
+   *  render of the card behind it. */
+  const corrected = useCallback((text: string) => {
+    setInk((was) => (was ? { ...was, transcript: text, confidence: null } : was));
+  }, []);
 
-  const confident = ink.confidence === null || ink.confidence >= LOW_CONFIDENCE;
-  const byAuthor = ink.confidence === null && Boolean(ink.transcript);
+  const showing = Boolean(blockId) && ink !== null && ink.strokeCount > 0;
 
-  const save = async () => {
-    setSaving(true);
-    try {
-      await correctTranscriptAction(blockId, draft);
-      setInk({ ...ink, transcript: draft, confidence: null, transcriptState: "ready" });
-      setEditing(false);
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  return (
-    <div className="jd-chrome glass jd-transcript">
-      {ink.transcriptState === "pending" && (
-        <p className="jd-transcript-note">
-          {waited
-            ? "Your ink is saved. Nothing has read it back yet."
-            : "Reading your handwriting…"}
-        </p>
-      )}
-
-      {ink.transcriptState === "failed" && (
-        <p className="jd-transcript-note">
-          {/* Precise on purpose. The page is fine; only the reading failed, and
-              saying "could not save" would be a lie that causes panic. */}
-          Your ink is saved. Reading it did not work &mdash; it will try again.
-        </p>
-      )}
-
-      {ink.transcriptState === "ready" && ink.transcript !== null && !editing && (
-        <>
-          <p className="jd-transcript-text">{ink.transcript || <em>No text on this page.</em>}</p>
-          <div className="jd-transcript-foot">
-            <span className={`badge badge-sm ${confident ? "badge-soft" : "badge-warning"}`}>
-              {byAuthor
-                ? "your wording"
-                : `read at ${Math.round((ink.confidence ?? 0) * 100)}% confidence`}
-            </span>
-            <button
-              type="button"
-              className={`btn btn-xs ${confident ? "btn-ghost" : "btn-warning"}`}
-              onClick={() => { setDraft(ink.transcript ?? ""); setEditing(true); }}
-            >
-              {confident ? "Fix" : "Fix this"}
-            </button>
-          </div>
-        </>
-      )}
-
-      {editing && (
-        <div className="jd-transcript-edit">
-          <textarea
-            autoFocus
-            className="textarea w-full"
-            style={{ fontSize: 16 }}
-            rows={3}
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            aria-label="What this says"
-          />
-          <div className="jd-transcript-foot">
-            <span className="text-xs opacity-60">
-              Your version is final. Nothing will re-read this page.
-            </span>
-            <button type="button" className="btn btn-xs btn-ghost" onClick={() => setEditing(false)}>
-              Cancel
-            </button>
-            <button type="button" className="btn btn-xs btn-primary" disabled={saving} onClick={save}>
-              Save
-            </button>
-          </div>
-        </div>
-      )}
-    </div>
+  usePublish(
+    "transcript",
+    showing && blockId && ink ? entryFor(ink, waited, blockId, corrected) : null,
+    [showing, ink?.transcriptState, ink?.transcript, ink?.confidence, waited, blockId],
   );
+
+  return null;
+}
+
+/** What this page's reading says on the line, and what opening it shows. */
+function entryFor(
+  ink: Ink, waited: boolean, blockId: string, onCorrected: (text: string) => void,
+): FeedEntry {
+  const base = { tone: "standing" as const, rank: 10 };
+
+  if (ink.transcriptState === "pending") {
+    return {
+      ...base,
+      line: waited
+        ? "Nothing has read your handwriting back yet"
+        : "Reading your handwriting…",
+    };
+  }
+
+  // Precise on purpose. The page is fine; only the reading failed, and saying
+  // "could not save" would be a lie that causes panic.
+  if (ink.transcriptState === "failed") {
+    return { ...base, line: "Your ink is saved — reading it did not work" };
+  }
+
+  if (ink.transcript === null) return { ...base, line: "This page has not been read" };
+
+  const byAuthor = ink.confidence === null && Boolean(ink.transcript);
+  return {
+    ...base,
+    line: byAuthor
+      ? "Your wording for this page"
+      : `Read at ${Math.round((ink.confidence ?? 0) * 100)}% confidence`,
+    detail: (
+      <TranscriptCard
+        blockId={blockId}
+        reading={{ transcript: ink.transcript, confidence: ink.confidence }}
+        onCorrected={onCorrected}
+      />
+    ),
+  };
 }

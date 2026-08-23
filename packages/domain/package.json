@@ -11,6 +11,9 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "smoke:rls": "dotenv -e ../../.env -- tsx scripts/smoke-rls.ts",
+    "smoke:export": "dotenv -e ../../.env -- tsx scripts/smoke-export.ts",
+    "smoke:changes": "dotenv -e ../../.env -- tsx scripts/smoke-changes.ts",
+    "smoke:canvas": "dotenv -e ../../.env -- tsx scripts/smoke-canvas.ts",
     "smoke:oauth": "dotenv -e ../../.env -- tsx scripts/smoke-oauth.ts",
     "smoke:search": "dotenv -e ../../.env -- tsx scripts/smoke-search.ts",
     "smoke:ink": "dotenv -e ../../.env -- tsx scripts/smoke-ink.ts",

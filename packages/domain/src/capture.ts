@@ -7,6 +7,7 @@ import type { Actor } from "./actor";
 import { Forbidden, NotFound } from "./errors";
 import { assertMember } from "./spaces";
 import { createNote, type NoteDetail } from "./notes";
+import { captureText, type Shared } from "./capture-text";
 
 const PREFIX = "jd_cap_";
 
@@ -119,11 +120,14 @@ export class RateLimited extends Forbidden {
  */
 export async function captureNote(
   actor: Actor,
-  input: { text: string; requestId?: string | null; source?: string | null },
+  input: Shared & { requestId?: string | null; source?: string | null },
 ): Promise<{ note: NoteDetail | null; noteId: string; deduplicated: boolean }> {
   if (actor.type !== "capture") throw new Forbidden("Not a capture credential");
 
-  const text = input.text.trim();
+  // The same formatting the Android share target uses, because a link sent from
+  // a phone's share sheet and the same link sent by a Shortcut should not
+  // produce two different notes. ADR-064.
+  const text = captureText(input);
   if (!text) throw new NotFound("Nothing to capture");
 
   const existingOrLimited = await withActor(actor.userId, async (tx) => {

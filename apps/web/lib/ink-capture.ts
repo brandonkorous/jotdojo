@@ -42,6 +42,15 @@ export class StrokeCapture {
   begin(p: Point) { this.pts = [p]; this.id = newStrokeId(); }
   extend(p: Point) { this.pts.push(p); }
 
+  /**
+   * Replace the in-progress stroke's points, keeping its identity. ADR-066.
+   *
+   * The id is minted at `begin` and the preview has already been drawn with
+   * it, so a snap has to be the SAME stroke with different points -- a new one
+   * would draw the shape twice on any device watching.
+   */
+  reshape(pts: Point[]) { if (this.pts.length > 0) this.pts = pts; }
+
   /** What to draw for the in-progress stroke, using the same painter as a
    *  finished one so the line does not change appearance when it commits. */
   preview(): Stroke {

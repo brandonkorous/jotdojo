@@ -18,7 +18,7 @@ Everything below follows from those two facts.
 | Token replay against a sibling service | RFC 8707 resource indicators, audience-bound tokens. A jotdojo token must not work at kanninja |
 | Leaked capture token | Scope is `capture:write` on one space. Cannot read, list, or search. Blast radius is "a stranger can add notes" |
 | Over-broad agent grant | Per client, per space. Consent screen defaults to personal space only, never pre-selects a shared space |
-| Agent silently destroying content | Comment by default; `notes:edit` off by default; every mutation writes a revision; review inbox; soft delete only |
+| Agent silently destroying content | **Impossible: no MCP tool can replace a note's content** (ADR-070). Comment by default; every agent write adds a revision; review inbox; soft delete only |
 | Application bug crossing tenants | Postgres RLS keyed to space membership. A bug becomes an error, not a leak |
 | SSRF via Client ID Metadata Document fetch | Scheme allowlist, private-range blocking, size and time caps, aggressive caching |
 | Runaway agent burning money | Per-client rate limits, not just per-user |
@@ -60,6 +60,8 @@ Choose providers that contractually exclude training on our data, and **say who 
 **Deletion means deletion.** Deleting a space purges its blobs, not just its rows. This must be a tested job, not an intention.
 
 **Export** is available from day one: a zip of markdown files plus original artifacts. Markdown as the native format makes this credible rather than a checkbox — and a product people can leave is a product people trust enough to join.
+
+Built as of 2026-08-22 (ADR-067), and it was a false claim on a live page until then. `GET /export/space/<id>` is the archive this paragraph describes, linked from the account page; `GET /export/note/<id>?format=md|svg|png|zip` is one note. Handwriting exports as SVG — the strokes themselves, not a picture of them — so what leaves is what a better recognizer could still be run over. Where an archive hits its size ceiling its `README.txt` names every file left out, because a silent truncation is this same failure one layer down.
 
 ## What we promise users
 

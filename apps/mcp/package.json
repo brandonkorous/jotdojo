@@ -10,10 +10,14 @@
     "typecheck": "tsc --noEmit",
     "smoke:mcp": "dotenv -e ../../.env -- tsx scripts/smoke-mcp.ts",
     "check:discovery": "dotenv -e ../../.env -- tsx scripts/check-discovery.ts",
-    "smoke:render": "tsx scripts/smoke-render.ts"
+    "smoke:render": "tsx scripts/smoke-render.ts",
+    "smoke:view": "tsx scripts/smoke-view.ts",
+    "check:tools": "tsx scripts/check-tools.ts"
   },
   "dependencies": {
     "@jotdojo/domain": "workspace:*",
+    "@jotdojo/ink-render": "workspace:*",
+    "sharp": "^0.33.5",
     "@modelcontextprotocol/sdk": "^1.30.0",
     "zod": "^3.24.1",
     "tsx": "^4.19.2"

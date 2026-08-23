@@ -1,9 +1,9 @@
-import { and, desc, eq, isNull, sql } from "drizzle-orm";
-import { withActor, notes, blocks } from "@jotdojo/db";
-import { canReachSpace, hasScope, type Actor } from "./actor";
+import { eq, sql } from "drizzle-orm";
+import { withActor, notes } from "@jotdojo/db";
+import { canReachSpace, type Actor } from "./actor";
 import { Forbidden, NotFound } from "./errors";
-import { assertMember } from "./spaces";
 import { previewOf, audit } from "./note-body";
+import { windowSql, afterSql, type Cursor, type TimeWindow } from "./time-window";
 import type { NoteSummary } from "./notes";
 
 /**
@@ -13,9 +13,28 @@ import type { NoteSummary } from "./notes";
  * is a different job from editing the one you do.
  */
 
+export type ListOptions = TimeWindow & {
+  limit?: number;
+  /** Where the last page stopped. Keyset, not OFFSET. See time-window.ts. */
+  after?: Cursor;
+};
+
+/** The cursor for the page after this one, or null when there is no more. A
+ *  caller should never have to know which columns the order is built from. */
+export function nextCursor(page: NoteSummary[], limit: number): Cursor | null {
+  if (page.length < limit) return null;
+  const last = page[page.length - 1]!;
+  return { updatedAt: last.updatedAt, id: last.id, pinned: last.pinned };
+}
+
 export async function listNotes(
-  actor: Actor, spaceId: string, limit = 50,
+  actor: Actor, spaceId: string, options: ListOptions | number = {},
 ): Promise<NoteSummary[]> {
+  // A number is the old signature -- `listNotes(actor, space, 25)`. Kept
+  // working rather than chased through every caller at once.
+  const opts: ListOptions = typeof options === "number" ? { limit: options } : options;
+  const limit = opts.limit ?? 50;
+
   if (!canReachSpace(actor, spaceId)) throw new Forbidden("This connection cannot reach that space");
 
   return withActor(actor.userId, async (tx) => {
@@ -26,6 +45,10 @@ export async function listNotes(
     // Joining on position 0 previewed those notes as blank -- a page someone
     // had written on by hand appeared in their list as an untitled empty row,
     // and there was no way to tell it apart from a note they had abandoned.
+    //
+    // The ORDER BY ends with `id` so the order is TOTAL. Two notes saved in the
+    // same millisecond are ordinary, and without a tiebreak a keyset page
+    // boundary lands in the middle of them and drops one. ADR-063.
     const rows = await tx.execute(sql`
       SELECT n.id, n.title, n.pinned, n.updated_at, n.revision,
              coalesce(first_block.content, '') AS preview
@@ -41,7 +64,9 @@ export async function listNotes(
        WHERE n.space_id = ${spaceId}
          AND n.deleted_at IS NULL
          AND n.archived_at IS NULL
-       ORDER BY n.pinned DESC, n.updated_at DESC
+         ${windowSql(opts)}
+         ${afterSql(opts.after)}
+       ORDER BY n.pinned DESC, n.updated_at DESC, n.id DESC
        LIMIT ${limit}
     `);
 

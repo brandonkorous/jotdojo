@@ -6,12 +6,15 @@
  * that every agent write is attributed, visible, and reversible by a person.
  *
  * The agent here is a REAL agent actor, minted through the OAuth path with a
- * real `notes:edit` grant -- not a hand-built object. What is under test is the
- * attribution that arrives with a genuine token.
+ * real `notes:append` grant -- not a hand-built object. What is under test is
+ * the attribution that arrives with a genuine token.
+ *
+ * Appending is the only way an agent touches a note now (ADR-070), so it is
+ * what the inbox has to catch.
  */
 import { randomBytes, createHash } from "node:crypto";
 import {
-  upsertUserFromGoogle, asUser, createNote, getNote, saveNote, defaultSpaceId,
+  upsertUserFromGoogle, asUser, createNote, getNote, appendToNote, defaultSpaceId,
   registerClient, issueAuthCode, exchangeAuthCode, verifyAccessToken,
   listAgentChanges, revertRevision,
   applyBillingEvent,
@@ -50,11 +53,11 @@ const other = await upsertUserFromGoogle({
 });
 const stranger = asUser(other.id);
 
-// A real connection, with the edit scope granted for this space.
+// A real connection, with the append scope granted for this space.
 const client = await registerClient({ client_name: "Claude (review)", redirect_uris: [REDIRECT] });
 const code = await issueAuthCode({
   actor: person, clientId: client.client_id, redirectUri: REDIRECT, codeChallenge: challenge,
-  scopes: ["notes:read", "notes:edit"], spaceIds: [space], resource: RESOURCE,
+  scopes: ["notes:read", "notes:append"], spaceIds: [space], resource: RESOURCE,
 });
 const tokens = await exchangeAuthCode({
   code, codeVerifier: verifier, clientId: client.client_id,
@@ -76,11 +79,12 @@ await applyBillingEvent({
 }, "smoke");
 
 
-console.log("\nan agent edits a note");
+console.log("\nan agent adds to a note");
 const note = await createNote(person, space, "milk, eggs, bread");
 const beforeBody = (await getNote(person, note.id)).body;
-const edited = await saveNote(agent, note.id, "milk, eggs, bread, AND A PONY", note.revision);
-check("the edit lands", edited.body.includes("PONY"));
+const edited = await appendToNote(agent, note.id, "and a pony");
+check("the addition lands", edited.body.includes("pony"));
+check("...without disturbing what the person wrote", edited.body.startsWith(beforeBody));
 check("the note's revision advanced", edited.revision === note.revision + 1);
 
 console.log("\nit shows up in the inbox, attributed");
@@ -118,7 +122,7 @@ await refused("it cannot be reverted twice", "forbidden",
 
 console.log("\nreverting an agent's FIRST write empties the note");
 const fresh = await createNote(person, space, "");
-const written = await saveNote(agent, fresh.id, "an agent wrote this from nothing", fresh.revision);
+const written = await appendToNote(agent, fresh.id, "an agent wrote this from nothing");
 const firstEntry = (await listAgentChanges(person, { spaceId: space }))
   .find((c) => c.noteId === fresh.id && c.revision === written.revision);
 check("that change is listed too", Boolean(firstEntry));

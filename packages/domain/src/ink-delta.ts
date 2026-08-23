@@ -3,8 +3,9 @@ import { withActor } from "@jotdojo/db";
 import { canReachSpace, hasScope, type Actor } from "./actor";
 import { Forbidden, NotFound, DomainError } from "./errors";
 import { validateStrokes, MAX_STROKES, MAX_BATCH, type Stroke } from "./ink-doc";
+import { validateTexts, syncTextBlock, MAX_TEXTS, type TextBox } from "./ink-text";
 import { markPageChanged, announceInk } from "./ink-recognition";
-import { lockPage, bumpPage } from "./ink-page";
+import { lockPage, bumpPage, writeTexts } from "./ink-page";
 
 /**
  * Changing the middle of a page: erase, move, recolour, delete. ADR-058.
@@ -29,10 +30,23 @@ import { lockPage, bumpPage } from "./ink-page";
  */
 
 export type InkDelta = {
-  /** Stroke ids to remove. Unknown ids are ignored -- somebody got there first. */
+  /**
+   * Ids to remove, of EITHER kind. Unknown ids are ignored -- somebody got
+   * there first. One lasso can hold strokes and text boxes, and deleting that
+   * selection has to be one delta or the two halves can interleave with
+   * somebody else's edit and leave half a selection behind.
+   */
   remove: string[];
   /** Strokes to add, or to replace in place when the id is already on the page. */
   upsert: Stroke[];
+  /**
+   * Text boxes, same rules. A SEPARATE FIELD rather than a polymorphic
+   * `upsert`, for the reason ink-text.ts gives: keeping typed text out of the
+   * stroke array is what stops the recogniser reading it back as handwriting,
+   * and a validator that accepted either would be one edit away from losing
+   * that. ADR-065.
+   */
+  texts?: TextBox[];
 };
 
 /** Erasing a big scribble can touch a lot of strokes; this is still a guard. */
@@ -47,7 +61,8 @@ export async function applyInkDelta(
 
   const remove = validateIds(delta.remove ?? []);
   const upsert = validateUpserts(delta.upsert ?? []);
-  if (remove.length === 0 && upsert.length === 0) {
+  const texts = delta.texts === undefined ? null : validateTexts(delta.texts);
+  if (remove.length === 0 && upsert.length === 0 && texts === null) {
     throw new DomainError("a delta must change something", "empty_delta", 400);
   }
 
@@ -62,7 +77,22 @@ export async function applyInkDelta(
       throw new DomainError("this page has too many strokes", "page_full", 400);
     }
 
-    const version = await bumpPage(tx, row.artifactId, next);
+    // `remove` spans both kinds, so a delta that only deletes still has to
+    // reach the text array -- otherwise a lasso holding one stroke and one box
+    // deletes the stroke and leaves the box behind.
+    const nextTexts = mergeTexts(row.texts, remove, texts);
+    if (nextTexts.length > MAX_TEXTS) {
+      throw new DomainError("this page has too many text boxes", "page_full", 400);
+    }
+
+    let version = await bumpPage(tx, row.artifactId, next);
+    if (changed(row.texts, nextTexts)) {
+      version = await writeTexts(tx, row.artifactId, nextTexts);
+      // The searchable copy, in the same transaction. A box that is saved but
+      // not indexed is invisible to search forever with nothing to indicate it.
+      await syncTextBlock(tx, row, nextTexts);
+    }
+
     await markPageChanged(tx, { blockId, noteId: row.noteId }, next.length > 0);
     return { ...row, strokeCount: next.length, version };
   });
@@ -102,6 +132,40 @@ function merge(page: Stroke[], remove: string[], upsert: Stroke[]): Stroke[] {
     if (replacements.has(stroke.id) && !gone.has(stroke.id)) kept.push(stroke);
   }
   return kept;
+}
+
+/**
+ * The same merge, for boxes.
+ *
+ * `texts === null` means the delta said nothing about text, which is not the
+ * same as saying there is none -- a plain erase must not wipe the page's typed
+ * boxes. Removal still applies either way, because `remove` spans both kinds.
+ */
+function mergeTexts(page: TextBox[], remove: string[], texts: TextBox[] | null): TextBox[] {
+  const gone = new Set(remove);
+  const replacements = new Map((texts ?? []).map((t) => [t.id, t]));
+
+  const kept: TextBox[] = [];
+  for (const box of page) {
+    if (gone.has(box.id)) continue;
+    const replacement = replacements.get(box.id);
+    if (replacement) {
+      kept.push(replacement);
+      replacements.delete(box.id);
+      continue;
+    }
+    kept.push(box);
+  }
+  for (const box of texts ?? []) {
+    if (replacements.has(box.id) && !gone.has(box.id)) kept.push(box);
+  }
+  return kept;
+}
+
+/** Whether the text actually moved. A stroke-only delta must not rewrite the
+ *  flattened block and re-queue an embedding for text nobody touched. */
+function changed(before: TextBox[], after: TextBox[]): boolean {
+  return before.length !== after.length || JSON.stringify(before) !== JSON.stringify(after);
 }
 
 function validateIds(ids: unknown): string[] {

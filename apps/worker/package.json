@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit",
     "smoke:worker": "dotenv -e ../../.env -- tsx scripts/smoke-worker.ts",
     "smoke:recognize": "dotenv -e ../../.env -- tsx scripts/smoke-recognize.ts",
+    "smoke:structure": "dotenv -e ../../.env -- tsx scripts/smoke-structure.ts",
     "smoke:media": "dotenv -e ../../.env -- tsx scripts/smoke-media.ts",
     "smoke:metering": "dotenv -e ../../.env -- tsx scripts/smoke-metering.ts",
     "reread": "dotenv -e ../../.env -- tsx scripts/reread.ts",

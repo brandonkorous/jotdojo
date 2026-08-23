@@ -3,6 +3,7 @@ import type { InkViewport } from "./ink-viewport";
 import { drawAll, drawFrame, type Scene } from "./ink-draw";
 import { FrameLoop, type Dirty } from "./ink-frame";
 import { paintGrid } from "./ink-grid";
+import type { InkTextLayer } from "./ink-text-layer";
 
 /**
  * When the page gets painted, and which parts of it.
@@ -24,6 +25,10 @@ export class InkPainter {
     private readonly view: InkViewport,
     private readonly scene: () => Scene,
     private readonly grid?: HTMLElement,
+    /** The object plane. Its transform is written HERE rather than anywhere
+     *  else, because text that lags the ink by one frame during a pinch is
+     *  worse than text that does not move at all. ADR-065. */
+    private readonly texts?: InkTextLayer,
   ) {
     this.frame = new FrameLoop((dirty) => this.paint(dirty));
   }
@@ -50,13 +55,17 @@ export class InkPainter {
    */
   now() {
     if (this.grid) paintGrid(this.grid, this.view);
+    this.texts?.frame(this.view);
     drawAll(this.surface, this.scene());
   }
 
   cancel() { this.frame.cancel(); }
 
   private paint(dirty: ReadonlySet<Dirty>) {
-    if (dirty.has("grid") && this.grid) paintGrid(this.grid, this.view);
+    if (dirty.has("grid")) {
+      if (this.grid) paintGrid(this.grid, this.view);
+      this.texts?.frame(this.view);
+    }
     drawFrame(this.surface, dirty, this.scene());
   }
 }

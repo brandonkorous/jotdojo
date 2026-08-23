@@ -140,6 +140,7 @@ jobs:
           pnpm worker:smoke
           pnpm park:smoke
           pnpm recognize:smoke
+          pnpm structure:smoke
           pnpm partial:smoke
           pnpm media:smoke
           pnpm members:smoke
@@ -148,10 +149,17 @@ jobs:
           pnpm billing:smoke
           pnpm anon:smoke
           pnpm lasso:smoke
+          pnpm objects:smoke
+          pnpm shapes:smoke
           pnpm viewport:smoke
           pnpm gestures:smoke
           pnpm marks:smoke
           pnpm render:smoke
+          pnpm raster:smoke
+          pnpm view:smoke
+          pnpm export:smoke
+          pnpm changes:smoke
+          pnpm canvas:smoke
           pnpm reread:smoke
           pnpm triage:smoke
           # Two devices on one page: the delta that survives a concurrent draw,
@@ -162,6 +170,12 @@ jobs:
       # The HTTP suites are the ones that have caught real bugs, because they
       # exercise the wire format rather than the function signature. They need
       # the three servers actually listening.
+      # Held to what a directory reviewer checks mechanically: titles,
+      # annotations, name length, and descriptions that do not steer. Needs no
+      # database and no server, so it runs before anything is started. ADR-069.
+      - name: MCP directory readiness
+        run: pnpm mcp:tools
+
       - name: Build web
         run: pnpm --filter @jotdojo/web build
 
@@ -212,6 +226,7 @@ jobs:
       - name: Smoke - over real HTTP
         run: |
           pnpm api:smoke
+          pnpm share:smoke
           pnpm mcp:smoke
           pnpm oauth:http-smoke
           pnpm billing:http-smoke
@@ -220,6 +235,7 @@ jobs:
           # the SSE framing is right, and that nothing buffers the stream. An
           # in-process test passes all three even if none of them work. ADR-058.
           pnpm live:http-smoke
+          pnpm export:http-smoke
           pnpm mcp:check
 
       # Server logs are the only way to tell a refusal from a crash once a suite

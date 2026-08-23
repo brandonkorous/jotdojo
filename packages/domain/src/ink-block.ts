@@ -20,12 +20,18 @@ export type InkBlock = {
   noteId: string;
   spaceId: string;
   strokeCount: number;
+  /** How many typed boxes are on the plane. A page with text and no strokes
+   *  still has to be loaded. ADR-065. */
+  textCount: number;
   /** Moves on every write to the page, append included. What a follower
    *  compares against to decide whether it is behind. ADR-058. */
   version: number;
   canvas: { w: number; h: number };
   transcript: string | null;
   transcriptState: string;
+  /** WHAT read it. 'user' means the person typed it out and it is not a guess
+   *  -- the one thing a confidence figure must never be attached to. */
+  transcriptSource: string | null;
   confidence: number | null;
 };
 
@@ -74,8 +80,8 @@ export async function createInkBlock(
 
     return {
       blockId: block.id, artifactId: asset.id, noteId, spaceId: note.spaceId,
-      strokeCount: 0, version: 0, canvas, transcript: null,
-      transcriptState: block.transcriptState, confidence: null,
+      strokeCount: 0, textCount: 0, version: 0, canvas, transcript: null,
+      transcriptState: block.transcriptState, transcriptSource: null, confidence: null,
     };
   });
 }
@@ -103,7 +109,8 @@ async function nextPosition(tx: Tx, noteId: string): Promise<number> {
 export async function getInk(actor: Actor, blockId: string): Promise<InkBlock & { document: InkDocument }> {
   return withActor(actor.userId, async (tx) => {
     const rows = await tx.execute(sql`
-      SELECT b.id, b.note_id, b.space_id, b.transcript, b.transcript_state, b.confidence,
+      SELECT b.id, b.note_id, b.space_id, b.transcript, b.transcript_state,
+             b.transcript_source, b.confidence,
              a.id AS artifact_id, a.strokes, a.strokes_version
         FROM blocks b
         JOIN media_assets a ON a.id = b.artifact_id
@@ -122,10 +129,12 @@ export async function getInk(actor: Actor, blockId: string): Promise<InkBlock & 
       noteId: String(row.note_id),
       spaceId: String(row.space_id),
       strokeCount: document.strokes.length,
+      textCount: document.texts?.length ?? 0,
       version: Number(row.strokes_version ?? 0),
       canvas: document.canvas,
       transcript: (row.transcript as string | null) ?? null,
       transcriptState: String(row.transcript_state),
+      transcriptSource: (row.transcript_source as string | null) ?? null,
       confidence: row.confidence === null ? null : Number(row.confidence),
       document,
     };

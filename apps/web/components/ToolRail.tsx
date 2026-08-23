@@ -3,7 +3,7 @@
 import {
   Type, PenLine, Highlighter, Eraser, Lasso, Mic, Camera, type LucideIcon,
 } from "lucide-react";
-import { isInk, type CanvasTool } from "@/lib/canvas-tool";
+import { isInk, type CanvasTool, type InkTool } from "@/lib/canvas-tool";
 
 /**
  * The tools, once, so the app and the marketing hero cannot drift apart.
@@ -82,4 +82,4 @@ export function ToolRail({
 
 /** Which ink tool the engine should hold. `text` is not one, but unmounting the
  *  ink layer to say so would orphan everything already drawn. */
-export const inkToolFor = (tool: CanvasTool) => (isInk(tool) ? tool : "pen");
+export const inkToolFor = (tool: CanvasTool): InkTool => (isInk(tool) ? tool : "pen");

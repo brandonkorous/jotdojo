@@ -16,12 +16,16 @@ import { transcriber } from "@jotdojo/speech";
 import { reasoner } from "@jotdojo/reason";
 import { runCycle } from "./embed";
 import { runRecognitionCycle } from "./recognize";
+import { runStructureCycle } from "./structure";
 import { runTriageCycle } from "./triage";
 import { enqueueDueTriage } from "./schedule";
 
 const IDLE_MS = Number(process.env.WORKER_IDLE_MS ?? 2000);
 const BATCH = Number(process.env.WORKER_BATCH ?? 16);
 // Smaller, because each one is a vision call over a whole page.
+/** Smaller than recognition's: one call over a whole page, and the answer is
+ *  worth less than a transcript if it has to wait. */
+const STRUCTURE_BATCH = Number(process.env.WORKER_STRUCTURE_BATCH ?? 2);
 const RECOGNIZE_BATCH = Number(process.env.WORKER_RECOGNIZE_BATCH ?? 4);
 const TRIAGE_BATCH = Number(process.env.WORKER_TRIAGE_BATCH ?? 4);
 
@@ -105,6 +109,11 @@ async function cycle(): Promise<number> {
     ? await runRecognitionCycle(reader, listener, RECOGNIZE_BATCH)
     : { claimed: 0, read: 0, failed: 0 };
 
+  // What is DRAWN on a page, as opposed to what it says. Same queue shape, a
+  // different question, and it settles later than the transcript so a diagram
+  // somebody is still drawing is not read twice. ADR-066.
+  const shapes = await runStructureCycle(reader, STRUCTURE_BATCH);
+
   // Queued on a schedule rather than by an event: triage is about notes that
   // have STOPPED changing, and there is no event for somebody putting their
   // pen down. Nothing is queued when no provider can answer it.
@@ -119,10 +128,13 @@ async function cycle(): Promise<number> {
   if (ink.claimed > 0) {
     console.log(`[worker] ink: ${ink.claimed} claimed, ${ink.read} read, ${ink.failed} failed`);
   }
+  if (shapes.claimed > 0) {
+    console.log(`[worker] structure: ${shapes.claimed} claimed, ${shapes.read} read, ${shapes.failed} failed`);
+  }
   if (triage.claimed > 0) {
     console.log(`[worker] triage: ${triage.claimed} claimed, ${triage.spoke} commented, ${triage.failed} failed`);
   }
-  return embed.claimed + ink.claimed + triage.claimed;
+  return embed.claimed + ink.claimed + shapes.claimed + triage.claimed;
 }
 
 // Back off when the queue is empty, so an idle worker is not a busy loop

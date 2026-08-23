@@ -1,4 +1,4 @@
-import type { Stroke } from "@jotdojo/domain";
+import type { Stroke, TextBox } from "@jotdojo/domain";
 import { getInkAction } from "@/app/actions";
 import { strokesSinceAction } from "@/app/actions/live";
 import { needsFullRead } from "./ink-merge";
@@ -25,6 +25,10 @@ import type { InkSync, ServerPage } from "./ink-sync";
 export type CatchupTarget = {
   applyRemote(strokes: Stroke[]): void;
   reconcile(server: Stroke[], pending: readonly Stroke[]): void;
+  /** Somebody else's text boxes. Only ever reaches here through a FULL read:
+   *  a text edit bumps the version without moving the stroke count, which
+   *  `needsFullRead` already treats as "the middle changed". ADR-065. */
+  applyRemoteTexts(texts: TextBox[]): void;
 };
 
 export class InkCatchup {
@@ -76,6 +80,7 @@ export class InkCatchup {
   private async readWholePage(): Promise<void> {
     const ink = await getInkAction(this.blockId);
     this.target.reconcile(ink.document.strokes as Stroke[], this.sync.unsent);
+    this.target.applyRemoteTexts((ink.document.texts ?? []) as TextBox[]);
     this.sync.believe({ count: ink.strokeCount, version: ink.version });
   }
 }

@@ -1,11 +1,12 @@
 import type { Point, Stroke } from "@jotdojo/domain";
-import type { InkTool } from "./canvas-tool";
+import { isDrawing, type InkTool } from "./canvas-tool";
 import type { StrokeCapture } from "./ink-capture";
 import type { InkSelection } from "./ink-selection";
 import type { InkSurface } from "./ink-surface";
 import type { InkViewport } from "./ink-viewport";
 import { bindPointer, PalmGuard, pointFrom, samplesOf } from "./ink-pointer";
 import { ViewGestures } from "./ink-gestures";
+import { classify, snap } from "./ink-shapes";
 
 /**
  * The pointer state machine, split from the page it draws on. ADR-053.
@@ -14,6 +15,19 @@ import { ViewGestures } from "./ink-gestures";
  * what a pointer is currently DOING lives here, and the two grew apart the
  * moment the canvas gained a camera.
  */
+
+/**
+ * Hold this long after the pen stops, and a rough shape becomes a real one.
+ *
+ * Long enough not to fire on the pause between two letters, short enough that
+ * somebody who meant it does not think it is broken. There is no confirm step:
+ * a popup would put a DECISION in the capture moment, which docs/02 forbids.
+ * Lifting immediately keeps exactly what was drawn. ADR-066.
+ */
+const HOLD_MS = 420;
+
+/** How far the pen may drift and still count as held, in SCREEN pixels. */
+const HOLD_SLOP = 3;
 
 /** What the input machine is allowed to ask of the page. Deliberately narrow:
  *  it may start, extend and finish things, and it may never paint. */
@@ -28,6 +42,12 @@ export type InputHost = {
   /** The erase drag ended; resend the page if it actually removed anything. */
   endErase(erased: boolean): void;
   commit(stroke: Stroke): void;
+  /** Put a caret on the plane, in a box that is there or a new one. True when
+   *  the plane took the tap, which is when the canvas must do nothing. */
+  tapText(x: number, y: number): boolean;
+  /** Let go of whatever has the caret. A pen coming down should not leave one
+   *  blinking behind it. */
+  blurText(): void;
   finishSelect(): void;
   dropSelection(): void;
   dragSelection(x: number, y: number): void;
@@ -44,6 +64,9 @@ export class InkInput {
   private activePointer: number | null = null;
   private startedAt = 0;
   private erasedThisDrag = false;
+  /** When the pointer last actually went anywhere, for hold-to-snap. */
+  private lastMovedAt = 0;
+  private snapped = false;
   private readonly unbind: () => void;
   private readonly gestures: ViewGestures;
 
@@ -104,9 +127,24 @@ export class InkInput {
     this.penDown = true;
     this.startedAt = performance.now();
     this.erasedThisDrag = false;
+    this.lastMovedAt = this.startedAt;
+    this.snapped = false;
 
     const p = this.pointAt(e);
     const host = this.host;
+
+    // The plane first, so a tap meant for a box never lands as a stroke under
+    // one. An existing box takes its own tap natively -- the textarea is above
+    // the canvas and pointer-events are on for this tool -- so what reaches
+    // here is either empty ground or a box the hit test disagrees about.
+    if (host.tool === "textbox") {
+      host.tapText(p[0], p[1]);
+      this.penDown = false;
+      this.activePointer = null;
+      return;
+    }
+    // Any other tool coming down means the caret is finished with.
+    host.blurText();
 
     if (host.tool === "eraser") return void this.erase(p);
 
@@ -144,11 +182,43 @@ export class InkInput {
     // the pen actually produced rather than the one per frame the event carries.
     const rect = host.surface.rect();
     const view = host.view;
+    const before = host.capture.points.length;
     for (const sample of samplesOf(e)) {
       host.capture.extend(pointFrom(sample, rect, this.startedAt, view));
     }
+    this.watchHold(before);
     host.scheduleLive();
   };
+
+  /**
+   * Still holding? Then that circle probably was one. ADR-066.
+   *
+   * Measured in SCREEN pixels, so the slop means the same thing at any zoom,
+   * and it only ever fires once per stroke -- a snapped shape that kept
+   * re-snapping would fight anyone still moving.
+   */
+  private watchHold(pointsBefore: number) {
+    const host = this.host;
+    if (this.snapped || !isDrawing(host.tool)) return;
+
+    const pts = host.capture.points;
+    const now = performance.now();
+    const last = pts[pts.length - 1];
+    const prev = pts[Math.max(0, pointsBefore - 1)];
+    const moved = last && prev
+      ? Math.hypot(last[0] - prev[0], last[1] - prev[1]) * host.view.k > HOLD_SLOP
+      : false;
+
+    if (moved) { this.lastMovedAt = now; return; }
+    if (now - this.lastMovedAt < HOLD_MS) return;
+
+    const guess = classify(pts);
+    if (!guess) { this.snapped = true; return; }
+    // The same stroke with different points. A new one would draw the shape
+    // twice on any device watching this page.
+    host.capture.reshape(snap(pts, guess.kind));
+    this.snapped = true;
+  }
 
   private up = (e: PointerEvent) => {
     if (this.gestures.up(e)) return;

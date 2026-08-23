@@ -1,4 +1,5 @@
 import { DomainError } from "./errors";
+import type { TextBox } from "./ink-text";
 
 /**
  * What an ink document IS, and what a client is allowed to send. docs/08-ink.md.
@@ -47,6 +48,18 @@ export type InkDocument = {
   v: 1;
   canvas: { w: number; h: number };
   strokes: Stroke[];
+  /**
+   * Typed text boxes on the same plane. ADR-065.
+   *
+   * OPTIONAL, because every document written before this shipped has no such
+   * key -- and a reader that assumed one would break every existing page.
+   *
+   * A separate array from `strokes` on purpose. `toSvg` renders strokes, so
+   * typed text cannot reach the recogniser by accident; if it did, the model
+   * would read it back as handwriting and replace a certainty with a
+   * confidence-scored guess. See ink-text.ts.
+   */
+  texts?: TextBox[];
 };
 
 /** Generous, and far above a real page. A guard against a runaway client, not

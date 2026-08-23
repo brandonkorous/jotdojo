@@ -4,7 +4,7 @@ import { Bot } from "lucide-react";
  * The proof section. A note as it was jotted, and what an agent made of it.
  *
  * Human ink is sumi, agent ink is `agent` (docs/10-design-system.md). The
- * colour is the fast signal; the "Claude · via MCP" label is the accessible one.
+ * colour is the fast signal; the "Claude · an agent" label is the accessible one.
  */
 
 const HEADING = "The part that sounds made up.";
@@ -51,7 +51,7 @@ export function AgentDemo() {
         <figure className="jd-agent">
           <figcaption>
             <Bot aria-hidden size={16} strokeWidth={1.75} />
-            <span>Claude · via MCP · Wed 08:12</span>
+            <span>Claude · an agent · Wed 08:12</span>
           </figcaption>
           <div className="jd-agent-body">
             {REPLY.map((line) => <p key={line}>{line}</p>)}

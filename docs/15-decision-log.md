@@ -37,7 +37,7 @@ Decisions that are settled, with the reasoning. Reopening one is fine; doing it 
 ---
 
 ### ADR-004 — Comment by default, edit by grant
-**Settled.** An agent's normal output is a comment. The `notes:edit` scope is off until explicitly granted per space. Every mutation is attributed and reversible; delete is always soft.
+**Settled.** An agent's normal output is a comment. Every mutation is attributed and reversible; delete is always soft. **Superseded in part by ADR-070**, which went further than this decision did: the edit tool and the `notes:edit` scope are gone, so an agent cannot replace a note's content at all.
 
 **Why:** prompt injection through note content is unpreventable, so the mitigation must be that agent writes are non-destructive and reviewable rather than that they are somehow safe.
 
@@ -1808,3 +1808,862 @@ under the thumb, which is the whole reason to resize a selection you can see.
   instead of jumping it the moment it is touched.
 - The nib preview is drawn at the true width up to 22px and then stops growing; past that
   the number beside it is the only honest signal, which is why it is there.
+
+### ADR-060 — The save line becomes a toast, and stops repeating itself
+
+**2026-08-22.** `SaveIndicator` was a line of small text centred over the foot of the page.
+Its states are `idle | saving | saved | retrying | conflict` and it never returns to `idle`,
+so from the first save onward "Saved" simply sat on the washi for the rest of the session —
+at the same size and weight as the writing, in the same column, on the same paper. It read
+as something somebody had jotted there.
+
+Next to the transcript panel's own "Your ink is saved. Nothing has read it back yet." it was
+the word twice, one above the other, about two different things.
+
+It is now a Silica toast (`ToastProvider` / `useToast`, already a dependency for the command
+palette). A toast is off the page by construction and it leaves on its own, which is the
+whole complaint answered: the reassurance stops being furniture.
+
+#### It is rate limited, and that is the point
+
+Autosave fires 600ms after every pause in typing, so a toast per `saved` would be a check
+mark every time somebody stopped to think. Two rules:
+
+- **Settle.** A `saved` schedules the toast 1.2s out and any further activity cancels it, so
+  a burst of keys is one toast rather than one per keystroke.
+- **Quiet.** Having spoken, it says nothing for 30s. The promise only needs making once
+  until something changes.
+
+`retrying` and `conflict` ignore both and stay until dismissed (`timeout: 0`) — they are not
+reassurance, they are news. A save that lands after trouble always speaks, however recently
+it last did, because it is the answer to a warning still on the screen.
+
+#### Consequences
+
+- The pending transcript note is now "Nothing has read your handwriting back yet." The
+  *failed* note keeps "Your ink is saved" — that one is a moment of alarm and the
+  reassurance is load bearing there. The pending one was only duplicating the save line.
+- `.toast-viewport` is lifted to `4.75rem` off the bottom. Silica parks it 16px up, which on
+  a phone is on top of the selection bar; a message about saving must never cover Delete.
+- The "Saved" toast hides its close button. It leaves in 2.4s on its own, and a dismiss
+  control makes reassurance look like an alert. The two that stay keep theirs.
+- `Canvas` is wrapped in `ToastProvider`. The root layout is a server component, and the
+  canvas is the only surface with save state to report.
+
+### ADR-067 — Export, because the privacy policy already promised it
+
+**Date:** 2026-08-22
+**Status:** accepted
+
+`apps/web/content/legal/privacy.md`, live on the site since it went up:
+
+> **Export** is available at any time and gives you a zip of markdown files plus the
+> original recordings and images.
+
+`docs/13-security-and-privacy.md` says the same thing and adds the reasoning: *"a product
+people can leave is a product people trust enough to join"*. There was no export anywhere in
+the codebase. A repo-wide search found no markdown, SVG, PNG or zip download and no route
+that set `content-disposition`.
+
+That is a false statement in a legal document, made by the only holder of handwriting that
+exists nowhere else. It is why export went to the front of the queue ahead of five features
+with better demos, and it also settled the format argument before it started: the policy had
+already specified markdown plus originals, so the job was to make the sentence true rather
+than to design something.
+
+#### What ships
+
+    GET  /export/note/<id>?format=md|svg|png|zip
+    POST /export/note/<id>   {format, strokeIds}    just what the lasso caught
+    GET  /export/space/<id>                         everything, as one archive
+
+The space route is the one the policy describes, and it is reachable from the account page
+rather than from a support address. A promise you have to email someone to collect on is a
+slower way of saying no.
+
+#### The renderer moved to the domain
+
+`renderNote` and `renderBlock` were module-private inside `apps/mcp`. They are now
+`packages/domain/src/render.ts`, because what a person downloads and what an agent is handed
+have to be the same account of the same page. Two copies would drift, and only one of them is
+ever checked — the export would quietly stop marking handwriting as handwriting while the MCP
+suite stayed green.
+
+#### A third render mode, and why two were not enough
+
+`recognition` flattens every pen to black on white, because a model reading pale grey ink on
+cream paper is doing two jobs and does the second one worse. `preview` keeps colour but
+leaves the background `fill="none"`, caps the longest edge at 480px and refuses to enlarge —
+correct for a thumbnail on a card that supplies its own background.
+
+Neither suits a person. So `viewing`: real colours, opaque white paper, 1600px, upscaling
+allowed. **The white is the load-bearing part.** A transparent PNG opened against a dark
+background is invisible ink, and the person who exported it has no way to tell that from an
+empty page.
+
+#### The rasteriser is a separate entry point
+
+`sharp` is a native binary. `apps/web` imports `@jotdojo/ink-render` for its geometry, so
+`toPng` lives at `@jotdojo/ink-render/raster` — a second export path — rather than behind the
+package's main one. The four inline lines that used to do this in `apps/worker/src/recognize.ts`
+are gone; the worker, the export routes and (next) the MCP page view all call the same
+function. `sharp` is now also a dependency of `apps/web` and is named in
+`serverExternalPackages`; it traces into `.next/standalone` correctly, which was checked
+rather than assumed.
+
+#### The zip is written by hand, and stored rather than deflated
+
+`apps/web` has no archive dependency and this is a hundred lines of a format from 1989.
+Stored, not compressed: the contents are markdown, SVG, and already-compressed JPEG and Opus.
+
+The archive is built in memory, which is the honest constraint — a year of voice notes is
+gigabytes and a route handler holding that gets killed. So there is a ceiling, and when it is
+reached `README.txt` **names every file that was left out**. A silent truncation would be the
+same failure as the missing export itself, one layer down.
+
+#### Exporting is not four hundred reads
+
+`getNote` writes a `note.read` audit row per call, so a space export built by looping it would
+bury every read that meant something under four hundred that meant "a zip was made".
+`exportSpace` is two queries and one `space.export` row.
+
+It also calls `assertMember` explicitly. `canReachSpace` returns `true` for any signed-in
+person by design — RLS is the real boundary — so without it, exporting a stranger's space
+would hand back a perfectly valid archive of nothing *and* leave a row in their log saying it
+happened. Refused, not empty. ADR-020.
+
+#### A selection exports as a picture
+
+`SelectionSummary` gains `ids`, and `SelectionBar` a download button. The client posts the ids
+and nothing else: the strokes are taken from the **server's** copy of the page, so an export
+can never contain a stroke that was not saved. The frame comes from the strokes being drawn,
+so a lasso round one diagram crops to that diagram.
+
+#### Consequences
+
+- `apps/web/lib/zip.ts` is verified against Python's `zipfile` — `testzip()` checks every CRC.
+  Signature bytes are not evidence that an archive opens.
+- `packages/ink-render/scripts/smoke-raster.ts` decodes the PNG and reads pixels. Every
+  earlier bug in this renderer was valid markup and a wrong image; asserting on the string
+  would have passed all of them.
+- The first version of `smoke-export.ts` read `audit_log` through `withoutActor`, where the
+  policy matches nothing and every count is zero — so "the export read nothing" passed for the
+  wrong reason. It reads as the user now, and asserts the contrasting case.
+- `docs/12-roadmap.md` still claims the iOS share sheet is built. It is not (ADR pending,
+  M9); the roadmap is corrected here.
+
+### ADR-068 — An agent can look at the page, not only read it
+
+**Date:** 2026-08-22
+**Status:** accepted
+
+A transcript carries words. That is the whole of what it carries.
+
+An arrow between two boxes, a crossed-out line, a freehand table, a sketch of a room, a
+circled total with a line to a margin note — recognition returns
+`_[handwritten, nothing legible on it]_`, which is **true**, and which an agent correctly
+reads as "this page is blank". The recogniser did not fail. It was asked for text and there
+was no text; the meaning was in the layout, and layout is not what it was asked for.
+
+This is a structural limit of Tier 2 (docs/08-ink.md), not a quality problem, so no better
+prompt and no better model fixes it. The fix is to stop asking for a description and hand
+over the thing itself.
+
+**We can, and almost nobody else could.** We never flattened the strokes (docs/08 is
+emphatic about this), so a page can be redrawn at any size on demand. A product holding a
+photograph of that page has one fixed raster and no way back.
+
+#### One tool, and it costs a slot
+
+`view_note(note_id)`. The budget is "under a dozen" and this makes ten. It earns the slot
+because it is the only capability in the surface that is ours alone — everything else we
+expose, a competent notes API could expose too.
+
+It takes a note id, not a block id. `findInkBlock` already means "the note's writing surface",
+and inventing a block-id vocabulary for agents before a second ink page per note exists would
+be building an address space for one address.
+
+#### The caption is load bearing
+
+`view_note` returns **two** content blocks: a caption, then the image.
+
+An image arriving unframed is one a model describes as though somebody had emailed it a
+photograph. Worse, an agent holding both a picture and a transcript has no way to know which
+to believe when they differ — and they will differ. So the caption says, in order: what the
+page is, that **the drawing is the record**, that the transcript is a reading of it, and that
+where they disagree the page wins.
+
+Its branches are the same honesty `renderBlock` applies to text, and one of them is the whole
+point of the tool:
+
+> A reader found no words on it. That is often RIGHT and not a failure — a diagram, a sketch
+> or a table has layout rather than sentences. Describe what you can see.
+
+A transcript the author typed themselves is attributed to them and carries no confidence
+figure, for the reason ADR-056 gives: they are not "82% sure".
+
+#### Consequences
+
+- `apps/mcp` gains `@jotdojo/ink-render` and `sharp`. `mcp.Dockerfile` carries both, and its
+  header now repeats worker.Dockerfile's warning verbatim: sharp's musl binaries are fetched
+  by an install script pnpm runs *only* because of `pnpm.onlyBuiltDependencies`. Remove that
+  entry and the install still succeeds; the first `view_note` in production dies.
+- **`images:check` now asserts that entry**, for every app that depends on sharp — three of
+  them now. The rule that caught `@jotdojo/reason` did not cover native packages, and this is
+  the same failure with a different shape: green everywhere, dead in the container.
+- `InkBlock` gains `transcriptSource`. The caption has to tell a person's own correction from
+  a model's guess, and `findInkBlock` was not returning it.
+- A blank ink layer returns a **sentence**, not a 1x1 image. `bounds()` is null by design for
+  an empty page and every caller has to handle it; presenting a transparent pixel as somebody's
+  page is worse than saying the page is empty.
+- `smoke-view.ts` is pure and checks the caption's branches. `smoke-mcp.ts` checks that the
+  image block survives a real MCP transport — a renderer unit test passes whether or not the
+  SDK ever puts the bytes on the wire.
+
+### ADR-063 — When a thought arrived, and what has happened since
+
+**Date:** 2026-08-22
+**Status:** accepted
+
+`docs/00-vision.md` opens with *"in the car, at the school gate, three minutes before a
+meeting"*. The whole thesis is about **when** a thought arrived.
+
+`searchNotes` and `listNotes` took `(actor, spaceId, query|limit)`. No date range, no cursor,
+no `since`, anywhere in the product.
+
+#### The date has to go inside each strategy, not after fusion
+
+This is the part that is easy to get wrong and impossible to see once wrong.
+
+`searchNotes` fuses three independently ranked lists with RRF, and recalls **four times
+deeper than the limit** so fusion has something to rank — `search.ts` documents why. A date
+predicate applied to the fused list spends all of that headroom on rows it then throws away,
+and returns fewer than `limit` whenever a date is supplied.
+
+It does not look like a bug. It looks like "the search found less this time".
+
+So the predicate lives in `time-window.ts` and every strategy takes it. Proved rather than
+asserted: `smoke-changes.ts` puts exactly five matching notes inside a window, out of twelve
+that match the query equally well, and asks for five. Moving the filter back outside was
+tried, and the check went from 5 to 1.
+
+`search.ts` was at 247 lines, so this split it — `search-strategies.ts` is how each way of
+looking recalls, `search.ts` is how three answers become one. They change for different
+reasons.
+
+#### Keyset, not OFFSET
+
+`(pinned, updated_at, id)`, matching the ORDER BY exactly. OFFSET drops a note whenever
+somebody edits one on an earlier page between two requests, and editing notes is what people
+do here all day. `id` is in both the order and the cursor because two notes saved in the same
+millisecond are ordinary, and without a tiebreak the page boundary lands between them and
+loses one.
+
+#### The feed, and the two things wrong with the log it is built on
+
+`audit_log` had the right shape and the right index. It had almost nothing worth reading:
+
+- **Five actions were ever written**, all by a signed-in person. Comments — the single
+  highest-signal event in a shared space — were not audited at all. Neither were transcripts
+  arriving, nor a person correcting one.
+- **`note.read` outnumbers everything else put together.** `get_note` writes one per call.
+
+So `audit()` gained an `extra` metadata argument and three new call sites, and the feed
+excludes `note.read` — with a partial index on exactly that predicate, so the common query
+never touches the dominant rows.
+
+#### The worker could not write to it, and would not have said so
+
+`recordSystemChange` goes through `app_record_change`, a SECURITY DEFINER function, because
+the worker runs inside `withoutActor` — and `audit_log`'s policy is `app_can_reach_space()`.
+With no actor, a plain INSERT there **does not fail**. It inserts zero rows and reports
+success.
+
+Which meant `audit_log` had to lose FORCE. 0028 left it set with a reason that was true then
+("no definer function writes to them") and is not now. `smoke-rls`'s catalogue-derived guard
+is what makes that safe to have got wrong: it derives the rule from `pg_proc` rather than a
+list, so the migration and the check cannot drift. ADR-057.
+
+#### Consequences
+
+- One MCP slot spent (`changes_notes`, eleven of under twelve). `since`/`until` went onto the
+  existing `search_notes` and `list_notes` rather than spawning dated variants — the budget
+  does not allow a tool per filter.
+- **An unparseable date is refused, not ignored.** A model asked for "notes since last
+  Tuesday" computes a date and sends it; a parser that turns garbage into `undefined` answers
+  that with the whole notebook, which reads as a working filter returning a lot of results.
+- The feed carries the comment body inline. One that says somebody commented and makes you
+  fetch the note to find out what they said is a notification, not a feed.
+- `who` is words — "you", "an agent", "jotdojo", "someone else in this space" — never a uuid.
+  This is read by something that will paraphrase it to a person.
+- Old call signatures still work: `listNotes(actor, space, 25)` and `searchNotes(..., 25)` take
+  a number as before. Chasing every caller in the same commit as the feature is how a
+  refactor becomes the thing that broke production.
+
+### ADR-061 — One live line, and a drawer for the work
+
+**2026-08-22.** The canvas had four places to look for "something happened": a save line
+centred at the foot, a save toast bottom right (ADR-060), a stack of agent cards bottom left,
+and a 34rem transcript panel bottom centre. Three of them occupied the same band along the
+bottom of the page, none of them knew the others existed, and two of them said "saved" at
+once about different things. On a page whose whole claim is that it stays out of your way,
+four status surfaces is three too many.
+
+There is now **one line**, bottom centre, small, in the same place every time.
+
+#### Trouble, then a flash, then the baseline
+
+Everything that speaks publishes an entry with a tone, and the line resolves them:
+
+- **trouble** — `retrying`, `conflict`, ink that will not sync. Holds the line until it is
+  fixed. These are news, not reassurance.
+- **transient** — "Saved". Sits over the top of whatever was standing for two seconds and
+  then falls back to it.
+- **standing** — outstanding agent remarks, the reading of a page of handwriting. The
+  baseline, and ranked: something to DEAL WITH (rank 20) outranks something to know (10).
+
+The line **opens** rather than growing, upward, so the line itself never moves. What is
+behind it is every standing entry that has a body — the newest remark, the transcript with
+its confidence badge and its Fix button. Nothing that can be acted on is ever only a line.
+
+The `+N` on the line counts what opening would actually show, not how many entries exist.
+"Reading your handwriting" is standing but has no body, and promising a second item that
+does not appear is a small lie the line cannot afford.
+
+#### A remark is work, and work needs somewhere to live
+
+The feed is about NOW. An agent's remark is not: "the MOT has a deadline" may not be dealt
+with until Thursday, and something you come back to cannot live somewhere that scrolls away.
+So remarks also have a **drawer** — every remark this note has ever collected, newest first,
+resolved ones kept and greyed rather than deleted, because "did I already deal with that?"
+is a question a list of only the outstanding ones cannot answer.
+
+Two ways in, on purpose. The line carries them while they are outstanding. The button in the
+chrome carries them afterwards, and appears only once an agent has ever spoken about the page
+— a button for a conversation that has not happened teaches nobody anything.
+
+#### Consequences
+
+- `Notices.tsx` is gone. `RemarksDrawer` / `RemarksFeed` / `RemarksButton` replace it, over a
+  `RemarksProvider` that holds the comments and the drawer's open state.
+- The pages compose `CanvasStage` around the canvas instead of rendering `Notices` as a
+  sibling. Two surfaces reporting on one note have to share a provider.
+- `InkTranscript` is headless and publishes; `TranscriptCard` is the body it publishes, and
+  owns its own editing state so a correction does not republish the line per keystroke.
+- Ink speaks only when something is wrong. "Saving ink…" was true for a tenth of a second at
+  a time and told nobody anything they could act on. `useInkTrouble` in `use-ink-feed.ts`,
+  because `InkCanvas` was at the size limit and being edited.
+- The toast is retired, and with it `ToastProvider`. A toast that fires on autosave is a
+  drumbeat wherever you put it.
+- **`.jd-live` must not carry `jd-chrome`.** That class forces `position: absolute`, which
+  takes the line out of the dock's flow and hangs it below the fold — the exact failure
+  canvas.css documents at length. Glass surfaces declare `--u-accent`, `--glass-tint` and the
+  shadow themselves.
+
+### ADR-064 — A link is a capture, and a photo goes round us
+
+**Date:** 2026-08-22
+**Status:** accepted
+
+The risk register calls slow capture **fatal**. The share sheet is where most thoughts
+actually arrive — a link, a screenshot, a paragraph from a message — and none of them could
+reach jotdojo without opening it first.
+
+#### A URL had to arrive pre-formatted, and then titled the note with itself
+
+`POST /v1/capture` took `text` and nothing else. A shared link therefore arrived as literal
+text, and `inferTitle` names a note from its first line — so a note captured from a news
+article was titled with two hundred characters of slug and tracking parameters, which is
+unreadable in a list a week later.
+
+`captureText` in the domain now takes `{title, text, url}` and orders them so that whatever a
+person would call the thing is first. A **bare URL** gets its host as the first line:
+
+    theguardian.com
+
+    https://www.theguardian.com/lifeandstyle/2026/aug/12/a-very-long-slug…?utm_source=share
+
+The link is kept whole, tracking parameters and all. A title is recoverable; a truncated link
+is not.
+
+`apps/web/app/share/route.ts` was doing its own version of this join. It calls the same
+function now, because a link shared from Android and the same link sent by a Shortcut should
+not make two different notes.
+
+#### The photo does NOT come through us
+
+The obvious design is `POST /v1/capture` with multipart. It was rejected.
+
+`docs/04-data-model.md` requires that media bytes never pass through the API: on Azure the
+client PUTs straight to Blob with a short-lived SAS URL and our servers hold only the
+metadata. A multipart endpoint would put every photo anybody ever captures through a service
+whose `bodyLimit` is 1MB and whose pods are sized for JSON, on a **public route authenticated
+by a long-lived bearer token**.
+
+So a Shortcut does what the browser already does:
+
+    POST /v1/capture/media        reserve a block, get somewhere to put it
+    PUT  <upload_url>             the bytes, straight to storage
+    POST /v1/capture/media/:id    say how many bytes arrived
+
+Three requests instead of one is awkward. Shortcuts chains them without complaint, and
+awkward is a better trade than a byte proxy. The note exists from step one — in `pending` —
+so a capture interrupted between steps leaves a visible, explainable gap rather than nothing.
+
+The domain needed no new permission for any of this: `createMediaBlock` and `finalizeMedia`
+already accepted a capture actor. What was missing was HTTP surface.
+
+#### The one place bytes DO pass through us
+
+`share/route.ts`, and it is not a choice. The manifest has advertised `image/*` and `audio/*`
+since launch and the route ignored them, so **a shared screenshot silently became an empty
+note**. The Web Share Target spec has no browser→blob path: the file arrives inside the POST
+body or it does not arrive.
+
+So it is implemented, capped at 30MB, and named as the exception it is — in the route, in
+`docs/04`, and here. A photo that fails to store costs the photo and nothing else; the text is
+already saved and the person still lands on their note.
+
+#### Consequences
+
+- `assets/shortcuts/README.md` now exists: the three recipes in one place, with the reason
+  `request_id` is worth an extra action and the reason a link goes in `url` rather than `text`.
+- A photo with no words on it gets a first line anyway (`Photo: IMG_4821.jpg`), so it does not
+  land in the list as an untitled blank row — the same complaint `listNotes`' preview join
+  exists to answer.
+- `docs/12-roadmap.md` ticked "iOS Shortcuts: … share sheet" for months while
+  `docs/09-shortcuts.md` correctly said it was not built. Both are true now, which is the
+  ordinary way to resolve that disagreement and not the one that was available before.
+- `byte_size` is a CLAIM. It is bounds-checked at finalize and rechecked by the worker against
+  what it actually reads; trusting it would let a client reserve a block for "2KB" and upload
+  two gigabytes.
+
+### ADR-062 — The search field becomes an icon
+
+**2026-08-22.** The pill at the top of the canvas held a search field dressed as an input —
+a button styled to look like a field, so it read as somewhere to type while never taking
+focus off the note (ADR-022). It was the widest thing in the pill by a distance: 212px of a
+544px bar, against 32px for every tool beside it.
+
+Two things made that untenable. ADR-061 added a remarks button, and the pill was already
+over the width of a phone once touch targets grow to 2.75rem. And the field was the only
+element in a bar of icons wearing a costume — a costume whose whole job was to say "you can
+search here", which the magnifier says in a tenth of the space.
+
+The pill is now **378px** instead of 544px, with the remarks button included: a 166px
+reduction while gaining a control.
+
+#### Nothing was lost, it moved
+
+"Search notes, or jump somewhere" is the command palette's own placeholder, so the sentence
+now appears where somebody is actually about to type it rather than on a button that cannot
+be typed into. `⌘K` moved to the `title`, which is where a keyboard hint belongs on a control
+that is one key away anyway.
+
+The glyph changed too. It was `⌕` (U+2315) — a bare Unicode character of exactly the kind
+ADR-044 removed from the tool rail, because Inter serves none of them and every one falls
+through to a system font. It is Lucide's `Search` now, like every other icon in the bar.
+
+#### One rhythm across the bar
+
+Adding a second control after the trailing separator exposed a spacing bug that had been
+invisible while the avatar sat there alone. The pill spaced its own children at `gap-1`
+(4px) while the tool rail spaced its seven at `gap-0.5` (2px), and the separators add 4px of
+their own margin on each side. So the bar ran 8px, 8px, 2px ×6, 8px, 8px, **4px** — the last
+pair being the only two-item group whose internal gap did not match the tools.
+
+The pill now uses the rail's `gap-0.5`, which leaves one rhythm: **2px inside a group, 6px
+across a separator, every button 32x32.** The separators do the grouping, which is what they
+are for; proximity was doing it a second time and disagreeing about the amount.
+
+The one deliberate exception is an account photo, which renders at 24px inside its 32px
+button where every icon renders at 16px. A 16px face is not a face.
+
+#### The pill is sized by its contents
+
+`width: min(94vw, 34rem)` was the width the search field wanted. With nothing in the bar
+that stretches, that fixed width was mostly empty glass, so it is `max-width:
+calc(100vw - 1.5rem)` and otherwise sized by what is in it.
+
+#### What this does not fix
+
+At a coarse pointer the ten controls want 498px, and a 390px phone offers 366px. They are
+flex items with no `flex: none`, so they compress rather than clip — landing at about the
+32px they already are on a desktop. It degrades, it does not break, and the underlying
+squeeze (seven tools at 2.75rem is 308px of a phone) is older than this ADR and not
+addressed by it.
+
+### ADR-065 — Text is an object on the canvas, not the surface under it
+
+**Date:** 2026-08-22
+**Status:** accepted
+
+Three observations that turn out to be one:
+
+1. You could not select typed text and handwriting together.
+2. The base of the canvas *felt* like a typing area with drawing on top, rather than a canvas
+   that holds typing.
+3. The endless canvas made this incoherent rather than merely inelegant: **the ink plane
+   panned and zoomed; the `<textarea>` did not.** Pan twice and your handwriting annotated
+   empty space.
+
+(1) and (2) are the same problem — typed text was a DOM `<textarea>`, ink was pixels on a
+canvas above it, and a lasso is canvas geometry that cannot reach into a textarea. (3) means
+it was not optional: the page was inconsistent with itself.
+
+#### Spine plus boxes, not full freeform
+
+The full-freeform version — every piece of text a placed box — was rejected on two counts
+that are not aesthetic:
+
+- `docs/02-product-spec.md` calls *"tap capture, input is live in 300ms or less"*
+  **non-negotiable**. A canvas that needs a box placed before typing adds an interaction to
+  the one path the product exists to protect.
+- `docs/08-ink.md` Tier 1: **Apple Scribble only works in real text fields.** Canvas-drawn
+  text deletes the free handwriting story on the platform most of our users are on.
+
+So the spine stays exactly what it was: one full-bleed textarea, `blocks` position 0, tap and
+type. Boxes are the *additional* thing, and placing one is armed from the text tool's options
+rather than from the rail — putting it in the rail would make every tap a decision about
+where the words go.
+
+#### Boxes live in the layer document, NOT as `blocks` rows
+
+The obvious choice is a row per box. It breaks live collaboration.
+
+`useNoteBody`'s `adopt()` refuses a remote revision while `dirty()`, and with N boxes sharing
+one `notes.revision`, "dirty" means **any box is mid-edit**. Somebody moving box A is
+silently dropped because you are typing in box B. N objects contending on one optimistic
+counter is a conflict machine.
+
+In `media_assets.strokes` they inherit ADR-058 whole: id-named objects, commutative
+`{remove, upsert}` deltas, one version, one subscription, `mergePages` folding the upload
+queue back in.
+
+#### Two arrays, and that is the correctness argument
+
+The plan called for one polymorphic `CanvasObject[]` discriminated on `type`. It ships as
+`strokes[]` and `texts[]`, and the reason is worth more than the uniformity:
+
+**`toSvg` renders `doc.strokes`.** With two arrays, typed text cannot reach the recogniser —
+not by convention, by construction. If it could, the model would read it back as handwriting
+and `renderBlock` would present a confidence-scored guess where a certainty already existed.
+A single array plus a filter is one careless edit away from losing that; `RenderOptions.text`
+defaults to **false** as the second belt.
+
+`remove` still spans both kinds, because one lasso holds both and deleting it has to be ONE
+delta — two would let somebody else's edit interleave and leave half a selection behind.
+
+#### The wire did not have to change
+
+A text edit bumps `strokes_version` without moving the stroke count. `needsFullRead` already
+reads that as "the middle changed, re-read it whole" — which is exactly right for text. No
+`strokeCount` → `objectCount` rename, no coordinated client and server deploy.
+
+#### Findable, because a companion row makes it so
+
+`blocks.searchable` is `GENERATED ALWAYS AS to_tsvector(coalesce(body, transcript, ''))`, so
+text living only in jsonb is invisible to lexical search, embeddings, `inferTitle` and
+`renderBlock`. The layer gets a companion `blocks` row — `kind='text'`, `artifact_id` → the
+layer, body = the boxes flattened in reading order — and all four work with **no new paths**.
+
+Reading order is derived: top to bottom, then left to right, with row banding so a two-column
+layout does not interleave. `tiles.ts` already solves this for recognition and the rule is
+borrowed rather than reinvented. The flattened text **says** the order is spatial, because
+this codebase does not present a derived fact as an authored one.
+
+**This forced a latent bug fixed.** `readBody` selected `WHERE kind='text'` and joined *all*
+of them, while `writeTextBlock` only ever wrote position 0. Dormant with one row; with a
+second it would put box text into the typing surface and the next autosave would save it into
+the spine as though it had been typed. Both now agree on `artifact_id IS NULL`.
+
+#### The plane
+
+    .jd-ink-shell
+      .jd-ink-grid          CSS custom properties, per frame
+      .jd-object-plane      CSS transform: translate(x,y) scale(k)   <- new
+        .jd-text-box*       absolutely positioned, world units, real <textarea>
+      canvas committed      internal setTransform(dpr*k, ...)
+      canvas live           internal setTransform
+
+The canvases stay OUTSIDE the transformed layer: scaling a `<canvas>` through a transformed
+ancestor scales its bitmap and blurs the ink. Both read the same `InkViewport`, and the
+plane's transform is written where `paintGrid` is written — inside the frame loop — because
+text one frame behind the ink during a pinch reads as the two layers coming apart.
+
+A box is never declared below **16px**. iOS Safari zooms the page when a focused field's
+COMPUTED font-size is under 16, and it tests that before any ancestor transform, so the
+camera does the shrinking and the declared size never moves.
+
+The plane itself never takes a pointer — a lasso has to pass through it to reach the canvas.
+Individual boxes take one only while the box tool is armed **or while a box has the caret**,
+which is what lets placing a box hand the tool straight back to the spine without the caret
+dying with it.
+
+#### Two product calls, both matching whiteboard convention
+
+- **The eraser does not delete text boxes.** Rubbing at a diagram should not silently swallow
+  the label beside it. Lasso and Delete are how a box goes.
+- **`restyleSelection`'s `{color, width}` does not apply to them.** A width means nothing to a
+  paragraph, and a mixed selection should recolour the ink it caught rather than quietly
+  restyling the words too.
+
+Selection uses **one containment rule for both kinds**: all four corners inside the lasso,
+which is ADR-033's whole-object rule applied to a rectangle. A mixed selection is only
+explicable if one standard governs it.
+
+#### Consequences
+
+- `ink-engine.ts` split. `ink-engine-select.ts` is what a selection can be turned into — it
+  reaches two arrays now and had outgrown a class that also owns the frame loop. The text
+  half is `ink-text-layer.ts` (state) and `ink-plane.ts` (DOM).
+- `fitToContent` unions text bounds, and `contentBounds` joins `bounds` in ink-render. A note
+  with nothing but a typed box has no stroke bounds at all and would otherwise open on blank
+  paper and export as a 1x1 image.
+- **No migration.** `blocks.kind` already allows `'text'` with an `artifact_id`, and the boxes
+  live in a jsonb column that already existed. The plan expected to widen
+  `media_assets.kind`; it did not need to, because the layer is still an ink layer.
+- `docs/04-data-model.md` claimed a `unique (note_id, position)` constraint for months that
+  `0000_init.sql` never created. Reading order depends on position now, so it is corrected
+  rather than added.
+- Verified in a browser, on the running app: a box placed, typed into, saved to the layer,
+  written to the companion row, and restored on reload — with the spine still showing the
+  spine. Three bugs this week passed every suite and were only visible in production.
+
+### ADR-066 — Shapes snap when you hold, and nothing ever asks you to confirm
+
+**Date:** 2026-08-22
+**Status:** accepted
+
+Two halves, and they answer different questions about the same page.
+
+#### Hold to snap, and the popup we did not build
+
+The obvious design is a suggestion with a green check and a red X. It was considered and
+rejected, on grounds that are in the product spec rather than in taste:
+`docs/02-product-spec.md` calls sub-second capture **non-negotiable**, and the risk register
+calls slow capture **fatal**. A confirm dialog puts a *decision* in the capture moment, every
+time, including the overwhelming majority of times when the answer is no.
+
+So: finish a stroke, keep the pen down a beat, and the rough circle becomes a circle. Lift
+immediately and you keep exactly what you drew. **The rule is that ignoring a suggestion must
+be free** — and here ignoring it is the thing your hand already does.
+
+`HOLD_MS` is 420: long enough not to fire on the pause between two letters, short enough that
+somebody who meant it does not think it is broken. The drift allowance is measured in SCREEN
+pixels, so it means the same thing at any zoom, and it fires once per stroke — a shape that
+kept re-snapping would fight anyone still moving.
+
+#### The classifier is built to say nothing
+
+Most of what anybody draws is not a shape. A recogniser that fired on the letter O would make
+writing on the canvas impossible, so every threshold is set so that "ambiguous" returns
+`null`.
+
+`smoke-shapes.ts` leads with the false-positive cases, and that ordering is the argument:
+**a snap nobody asked for silently replaces what somebody drew; a snap that did not happen
+leaves the page exactly as they left it.** Only one of those is recoverable. The suite checks
+that a small letter O, a scribble, a lumpy loop and a wavy line are all left alone before it
+checks that a circle is a circle.
+
+A snapped stroke carries the original's pressure, tilt and timing rather than inventing them.
+They are what a better recogniser reads later, and a shape with fabricated pressure is a
+stroke claiming to have been drawn. It also keeps its **id**: the preview has already been
+painted under that id, so a snap has to be the same stroke with different points, or every
+watching device draws the shape twice.
+
+#### Structure, asynchronously, which is the bigger prize
+
+A transcript carries words. An arrow is not a word.
+
+`block_structures` holds what a second pass over the same page found: shapes with bounds,
+labels, and — the valuable part — `from` and `to` indices saying which shapes an arrow joins.
+That is the difference between a diagram an agent can look at (ADR-068) and one it can reason
+over.
+
+**A table, not jsonb on `blocks`.** `blocks` has ONE transcript slot and `app_store_transcript`
+overwrites it wholesale, so structure kept there would be destroyed by the next re-read — and
+re-reading is something this product does deliberately (ADR-046). `smoke-structure.ts`
+re-reads on purpose and then looks.
+
+**Its own staleness key**, `struct:vlm:{model}/r2`, in its own column. 0026 explains why at
+length: suffixing `transcript_source` would make every structured block permanently stale to
+`countStale` and re-bill the entire corpus for readings that had not changed.
+
+**Metered as `structure`, not as `ink`.** Without the distinction one page read twice looks
+like two pages, and the allowance in docs/01 is counted in pages. `app_record_recognition`
+gained a third argument by overload, so every existing caller keeps meaning what it meant.
+
+#### One model, two questions
+
+`Recognizer` gained `ask(pages, prompt)` returning the RAW answer, and `read` is now
+`readWith(ask)` — one transport, two questions, and the parsing belongs to whoever asked,
+because the answers have different shapes.
+
+`fakeRecognizer` answers whichever question it was asked. The first version keyed on the word
+"SHAPES" and the structural prompt never said it in capitals, so the fake replied to every
+structural request with a transcript and the pipeline died on a parse error — **in the one
+place a suite exists to catch exactly that.** Both sides now name a shared constant.
+
+#### Consequences
+
+- `RenderOptions.text` stays FALSE for the structural pass. Typed boxes on the plane are not
+  drawn shapes, and a model handed them would report the note's own paragraphs as diagram
+  nodes. ADR-065.
+- ONE image, not tiles: a diagram's meaning is in the relationships between its parts, and a
+  model handed a quarter of it at a time cannot see them.
+- A page with nothing drawn on it still gets a stored, empty result. "Looked, no diagram" and
+  "never looked" are different facts, and a reader that conflates them reports a blank page as
+  a considered answer — the same distinction ADR-056 draws for coverage.
+- A malformed shape from the model is DROPPED, not fatal. One bad box must not cost somebody
+  the reading of their whole diagram.
+- **0031 was already applied when the metering overload was written, so it went into 0032.**
+  Editing an applied migration means the change never runs on that database and does run on
+  every fresh one — a divergence that reads as "works in CI, broken locally". A migration is a
+  record of what ran.
+- `meteredKinds` reads AS the actor. `recognition_usage`'s policy is `app_can_reach_space()`,
+  and `withoutActor` there returns zero for everything — which makes "nothing was billed" pass
+  for entirely the wrong reason. The same trap `audit_log` set in ADR-063, caught this time by
+  a check that was expecting it.
+
+### ADR-069 — The tool surface is a submission, not just an interface
+
+**2026-08-22.** jotdojo's whole competitive position is that an agent can reach your notes
+from your phone with no computer running. That position is worth nothing to a buyer who has
+never heard of MCP, and two of our three audiences in
+[01-audience-and-pricing.md](01-audience-and-pricing.md) have not.
+
+The fix is a directory listing — Anthropic's Connectors Directory, and the ChatGPT app
+directory. Neither is a second product. **A listing IS this MCP server**, with a name, an
+icon, and an install button in front of it, and the expensive half was built a year ago in
+[06-auth.md](06-auth.md). Full research in [18-app-directories.md](18-app-directories.md).
+
+What that costs us is a permanent constraint on how tools are declared.
+
+#### Annotations, which we had simply never shipped
+
+Every tool carried a `title` and a description and no `annotations` object at all. Both
+directories check for them mechanically — Anthropic's portal syncs the tool list off the live
+server and refuses one that is missing them, and OpenAI names bad annotations as its first
+rejection reason.
+
+They are not paperwork. `readOnlyHint` is what lets a client run a tool without asking, and
+`destructiveHint` is what makes it always ask. Shipping neither means a client has to guess,
+and it guesses conservatively — every call a prompt.
+
+#### Descriptions may not rank each other
+
+This is the part that cost something real. Our descriptions said `PREFER THIS over editing`,
+`Prefer this over update_note`, `Almost always the wrong tool`. Every one was true, and every
+one is a stated rejection cause: a description that steers a model away from its neighbours is
+indistinguishable, to a reviewer and to a scanner, from one that steers it anywhere else.
+
+So descriptions now say what a tool does and what it is for, and stop. The safety those
+sentences were carrying moved to annotations, which enforce rather than ask.
+
+#### Consequences
+
+- `tools.ts` passed 250 lines and split by responsibility, as the repo rule requires:
+  `tools-read.ts` is what can be looked at, `tools-write.ts` is what can be added, and
+  `tool-kit.ts` is what a declaration is made of. The split is the one the directories
+  themselves insist on — a tool may not be both.
+- **`pnpm mcp:tools` is the guard.** It registers every tool into a recorder and holds it to
+  what a reviewer checks: name length, namespacing, title, annotations, description substance,
+  and the absence of steering language. No network, no database, runs in CI.
+- The server's own `instructions` were reworded the same way. "Do not rewrite what the person
+  wrote" became a description of what comments are for.
+- The check caught its own author: the namespacing rule in
+  [05-mcp-server.md](05-mcp-server.md) is written as "ends in `_note`, `_notes` or `_spaces`",
+  which `list_note_comments` has always violated while satisfying the actual requirement.
+  The rule is that a name carries our noun, so a collision with kanninja's `list_comments` is
+  impossible. The check encodes the requirement, not the shorthand.
+
+### ADR-070 — An agent cannot overwrite what you wrote, because there is no tool that can
+
+**2026-08-22.** `update_note` is gone from the MCP surface. So is the `notes:edit` scope.
+
+We had already decided this three times without finishing it: an agent's normal output is a
+comment (ADR-004), the edit scope is off until granted per space, and `update_note`'s
+description was written to be as discouraging as prose can be. A capability that is off by
+default, awkward on purpose, and granted by almost nobody was still costing a tool slot from a
+budget of eleven, a row on the consent screen, a scope in every grant, and — once ADR-069
+landed — the only confirmation prompt in the entire surface.
+
+Removing it converts a promise into a property. [13-security-and-privacy.md](13-security-and-privacy.md)
+listed "agent silently destroying content" as a *mitigated* risk. It is now an impossible one,
+and that is a sentence the family and the small business can both check: **an agent can read
+your notes and add to them, and it cannot change or delete what you wrote.**
+
+#### What we gave up
+
+An agent correcting a bad handwriting transcript in place. That is a real use case and this
+was a poor instrument for it: replacing a whole note body destroys per-block provenance and
+contradicts ADR-068, where the drawing is the record and the transcript is a reading of it. If
+it earns a tool later it wants a narrow one that touches a single block and leaves the strokes
+alone — and there is now a free slot for it.
+
+#### Consequences
+
+- `saveNote` refuses any actor that is not a person. Not a scope check — a type check, and the
+  typechecker immediately proved it by flagging the `"edited by agent"` branch downstream as
+  unreachable. That branch is gone.
+- **`create_note` had never worked.** It required `notes:write`, which is not in `SCOPES` and
+  therefore cannot be granted to any OAuth client, so the tool threw `Forbidden` for every
+  agent that ever called it. [05-mcp-server.md](05-mcp-server.md) said `notes:write` in the
+  tool table and `notes:append` in the scope table, and the code followed the wrong one. It
+  now follows the scope table: creating a note adds without touching anything that exists,
+  which is the same bargain appending makes. A tool that cannot succeed is also an automatic
+  directory rejection.
+- The review inbox is unchanged and still the safety control it was — appends write revisions
+  exactly as edits did. `smoke-review` now exercises it through `appendToNote`, which is the
+  only way an agent touches a note at all.
+- `mcp:tools` asserts that **no tool is destructive**. If that check ever fails, an edit path
+  came back and the consent screen started lying.
+
+### ADR-071 — A definer function cannot READ a forced table either
+
+**2026-08-23.** `media_assets` loses `FORCE ROW LEVEL SECURITY`, and `smoke-rls`'s guard stops
+asking about writes.
+
+ADR-057 found this on three tables and 0028 found it on twelve more, and both times we wrote
+the rule down as being about **writes**. The sentence 0028 used to justify leaving
+`media_assets` alone is still true and was never the whole rule:
+
+> no definer function writes to them — the application does, as `jotdojo_app`
+
+`app_claim_recognize_jobs` is `SECURITY DEFINER` and does not write to `media_assets`. It
+**joins** it, twice, to answer "does this block still have anything on it worth reading".
+FORCE strips the owner's exemption for `SELECT` exactly as thoroughly as for `UPDATE`, so the
+join matched nothing and the function's own guard — `NOT EXISTS (... jsonb_array_length(
+a.strokes -> 'strokes') > 0)` — was true for every job. The comment above that clause says
+what it believed it was doing: *"Nothing to read. Per kind: an ink page erased back to empty."*
+
+**Every page in the product looked erased.**
+
+#### What that actually did
+
+Each job was marked completed **with no error**. The claim returned zero rows. The worker logs
+only when it claims something, so it logged nothing. Every block stayed at `transcript_state
+'pending'` forever. Handwriting was never read and not one line anywhere said so — the only
+visible symptom was a spinner that never resolved.
+
+It could not be seen from a laptop either, for the same reason ADR-057 could not: a
+developer's admin URL is `postgres`, a superuser, and superusers bypass RLS unconditionally,
+FORCE included. Same shape as ADR-057, one verb over.
+
+#### Consequences
+
+- `ALTER TABLE media_assets NO FORCE ROW LEVEL SECURITY` (0033), with a table comment saying
+  why it must never be set again.
+- **`smoke-rls`'s guard was the reason this survived two migrations.** It derived offenders
+  from function bodies matching `insert into|update|delete from <table>`, so a definer
+  function that merely SELECTs a forced table was invisible to it. It now matches **any**
+  reference to the table name, and the check is renamed from WRITES to TOUCHES. Deliberately
+  broad: a false positive costs a comment explaining why a table is exempt, and a false
+  negative costs a feature that reports success while doing nothing at all.
+- What defends the boundary is unchanged, and it was never this flag. `assertNotOwner()`
+  refuses at startup if `DATABASE_URL` connects as a role that owns these tables, and
+  `smoke-rls` asserts the same. FORCE was only ever a second lock on a door that is already
+  bolted, fitted to a frame the hinges pass through.
+
+**A read is not the lesser case. It is the one that fails quietly.**

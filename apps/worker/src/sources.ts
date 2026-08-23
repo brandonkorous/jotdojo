@@ -32,3 +32,15 @@ export function sourceFor(
   if (kind === "image") return `caption:vlm:${models.vision}`;
   return `asr:${models.speech}`;
 }
+
+/**
+ * What read a page's STRUCTURE, and how. ADR-066.
+ *
+ * Its OWN key, in its own column, and 0026 explains why at length: suffixing
+ * `transcript_source` would make every structured block permanently stale to
+ * `countStale`, and re-bill the entire corpus for readings that had not
+ * changed. Two questions, two answers, two staleness keys.
+ */
+export function structureSourceFor(model: string | undefined): string {
+  return `struct:vlm:${model}/${INK_RENDERER}`;
+}

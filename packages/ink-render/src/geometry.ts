@@ -1,4 +1,4 @@
-import type { InkDocument, Point, Stroke } from "@jotdojo/domain";
+import type { InkDocument, Point, Stroke, TextBox } from "@jotdojo/domain";
 
 /**
  * Where the ink actually is, in document units.
@@ -101,13 +101,48 @@ export function intersects(a: Bounds, b: Bounds): boolean {
 }
 
 /**
- * The content box, or null when there is nothing to bound.
+ * The INK box, or null when nothing is drawn.
  *
  * Null rather than a degenerate 1x1: a blank page rendered and sent to a vision
  * model is a billed request that answers nothing. The caller decides.
+ *
+ * Strokes only, and deliberately so: this is what recognition frames, and
+ * including typed text would stretch the frame over ground with no handwriting
+ * on it -- more tiles, each carrying less, all of them billed. ADR-065.
  */
 export function bounds(doc: InkDocument): Bounds | null {
   return strokesBounds(doc.strokes);
+}
+
+/**
+ * One text box's rectangle.
+ *
+ * The height is estimated from the wrapped line count, because nothing here has
+ * a font engine. A box framed slightly generously costs a little whitespace; one
+ * framed short clips the last line off an export.
+ */
+export function textBounds(box: TextBox): Bounds {
+  const perLine = Math.max(1, Math.floor(box.w / (box.size * 0.55)));
+  const lines = box.text.split("\n")
+    .reduce((n, p) => n + Math.max(1, Math.ceil(p.length / perLine)), 0);
+  return { x: box.x, y: box.y, w: box.w, h: Math.max(1, lines) * box.size * 1.25 };
+}
+
+/**
+ * Everything ON the page -- ink and typed text both.
+ *
+ * What a person means by "the content", and therefore what export, `view_note`
+ * and the canvas's own fit-to-content use. A note with nothing but a typed box
+ * on it has no `bounds()` at all, and would otherwise open on blank paper or
+ * export as a 1x1 image.
+ */
+export function contentBounds(doc: InkDocument): Bounds | null {
+  let box = strokesBounds(doc.strokes);
+  for (const text of doc.texts ?? []) {
+    const b = textBounds(text);
+    box = box ? union(box, b) : b;
+  }
+  return box;
 }
 
 /** The same, for a caller holding strokes rather than a document -- the

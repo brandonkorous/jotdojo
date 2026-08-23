@@ -28,7 +28,7 @@ const server = createServer(async (req, res) => {
     return json(res, 200, {
       resource: RESOURCE,
       authorization_servers: [AS_ISSUER],
-      scopes_supported: ["notes:read", "notes:comment", "notes:append", "notes:edit"],
+      scopes_supported: ["notes:read", "notes:comment", "notes:append"],
       bearer_methods_supported: ["header"],
     }, { "cache-control": "public, max-age=300" });
   }
@@ -69,8 +69,9 @@ const server = createServer(async (req, res) => {
     {
       instructions:
         "jotdojo holds the user's captured notes -- typed, handwritten, spoken and " +
-        "photographed. Search before assuming a note does not exist. To say something " +
-        "about a note, leave a comment; do not rewrite what the person wrote.",
+        "photographed. A note is the user's own words, and handwriting is kept as " +
+        "strokes, so a page can be looked at as well as read. Comments are the record " +
+        "of anything said about a note; every agent write is attributed and revertible.",
     },
   );
 

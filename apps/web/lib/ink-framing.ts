@@ -1,5 +1,5 @@
 import type { Stroke } from "@jotdojo/domain";
-import { strokesBounds } from "@jotdojo/ink-render";
+import { strokesBounds, union, type Bounds } from "@jotdojo/ink-render";
 import type { InkSurface } from "./ink-surface";
 import type { InkViewport } from "./ink-viewport";
 import type { InkPainter } from "./ink-painter";
@@ -23,9 +23,18 @@ export class InkFraming {
     private readonly onView?: (k: number, home: boolean) => void,
   ) {}
 
-  /** Frame the ink. An empty page lands exactly where it always did. */
-  fitTo(strokes: readonly Stroke[]) {
-    this.view.fitTo(strokesBounds(strokes), this.surface.width, this.surface.height);
+  /**
+   * Frame the CONTENT. An empty page lands exactly where it always did.
+   *
+   * Text is in the union because a note with nothing but a typed box on it has
+   * no stroke bounds at all, and would open on blank paper somewhere off to the
+   * side -- the exact complaint ADR-054 exists to answer, arriving through a
+   * new kind of object. ADR-065.
+   */
+  fitTo(strokes: readonly Stroke[], texts?: Bounds | null) {
+    const ink = strokesBounds(strokes);
+    const box = ink && texts ? union(ink, texts) : (ink ?? texts ?? null);
+    this.view.fitTo(box, this.surface.width, this.surface.height);
     this.tell();
     this.painter.now();
   }

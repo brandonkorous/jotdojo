@@ -46,7 +46,7 @@ Four. Not fourteen.
 | Pen | Pressure-modulated width, the default | Five colours, three widths |
 | Highlighter | Fixed width, multiply blend, low alpha | Four colours. Alpha is **always** applied |
 | Eraser | Stroke-wise, not pixel-wise. Removes whole strokes | — |
-| Select | Lasso: move, recolour, resize, delete | Acts on what it caught |
+| Select | Lasso: move, recolour, resize, delete, save as an image | Acts on what it caught |
 
 **Style is held per tool** (ADR-045). One shared colour is what made the highlighter
 useless: it inherited the pen's near-black, and a near-black marker at 35% is a grey smear.
@@ -69,6 +69,10 @@ Reasons this matters more than it looks:
 - Vector strokes are what recognition engines consume. A PNG is a one-way door.
 
 We render a raster preview for thumbnails and for VLM-based recognition, but the vectors remain the truth.
+
+**And an export is vectors too.** A page leaves as SVG rather than PNG (ADR-067), so what somebody takes with them is still the strokes they drew — re-recognizable by a better model, on their own disk, without us. A PNG export would hand them the one-way door on the way out.
+
+A lasso can be exported on its own. A diagram in the middle of a page of notes is usually the part somebody wants to send, and the frame comes from the strokes being drawn, so it crops to the diagram rather than sitting in the corner of the whole surface.
 
 ### Sync must be eager
 
@@ -144,6 +148,8 @@ Google's ML Kit Digital Ink Recognition is Android and iOS native only. It is no
 
 ## Confidence and honesty
 
+**And when a reading is not enough, an agent can look at the page.** `view_note` renders the strokes and returns the image (ADR-068). This is the answer to the structural limit of Tier 2: a vision model asked for *text* returns text, so a diagram comes back empty. The page itself does not have that problem, and we can produce it at any size because we never flattened it.
+
 Recognition output always carries a confidence value, and it is always shown — subtly in the UI, explicitly over MCP:
 
     > [handwritten, confidence 0.82] check with Dana about the margins
@@ -164,8 +170,26 @@ A faint dot grid gives the surface somewhere to be. It scales with the zoom on a
 
 Nothing about the camera is stored. Where you were last looking is not a property of the note, and two people opening the same shared page should both land on the writing rather than on each other's scroll position.
 
+## Shapes
+
+**Hold to snap.** Finish a rough circle, keep the pen down a beat, and it becomes a circle. Lift immediately and you keep exactly what you drew.
+
+There is no green check and no red X. A confirm dialog inserts a *decision* into the capture moment, and [02-product-spec.md](02-product-spec.md) calls sub-second capture non-negotiable while the risk register calls slow capture fatal. The rule instead: **ignoring a suggestion must be free.** ADR-066.
+
+The classifier is deliberately quiet. Most of what anybody draws is not a shape, and a recogniser that fired on the letter O would make writing impossible - so the answer is `null` unless it is confident, and `smoke-shapes.ts` leads with the false-positive cases because those are the ones that cost something. A snap nobody asked for silently replaces what somebody drew; a snap that did not happen leaves the page as they left it.
+
+A snapped stroke carries the original's pressure, tilt and timing rather than inventing them. They are what a better recogniser reads later, and a shape with fabricated pressure is a stroke claiming to have been drawn.
+
+### Structure, read asynchronously
+
+The bigger prize, and it needs no interaction at all. A recognised box with bounds, and an arrow saying it connects *this* box to *that* one, turn a hand-drawn diagram into a graph an agent can reason over - where a transcript of the same page returns `[handwritten, nothing legible on it]`, which is true and useless.
+
+It rides the recognition pass that already exists, settles later than the transcript, and stores into `block_structures` - its own table with its own staleness key, because `blocks` has one transcript slot and re-reading a page would otherwise destroy it. Metered as `structure`, not as another page of ink.
+
 ## Not in v1
 
-Shape recognition and beautification, handwriting search that highlights within strokes (search the transcript instead), layers, PDF annotation.
+Handwriting search that highlights within strokes (search the transcript instead), layers, PDF annotation.
+
+> **Shape recognition and beautification came off this list on 2026-08-22 (ADR-066).** Once text and ink are objects on a plane (ADR-065), a shape is a third kind of object and inherits selection, movement and export for free. Building it before that would have meant building it twice.
 
 > **"Infinite canvas panning (fixed page size is enough)" used to be on this list.** It came off on 2026-08-22 (ADR-053, ADR-054). The deciding argument was not the feature: it was that recognition already read the wrong rectangle, and fixing that meant deriving geometry from the strokes — which is the whole of what an endless canvas needs from the server.

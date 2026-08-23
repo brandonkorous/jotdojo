@@ -7,9 +7,14 @@ are minted and revoked from `/account`. `pnpm api:smoke` exercises the endpoint 
 real HTTP — the happy path, idempotent retry, rate limiting, an empty body, a missing
 bearer, a garbage token, a revoked token, and the cross-space refusal.
 
-Not yet built: photo and share-sheet capture (they need the media pipeline from M4), and
-the generated iCloud Shortcut link. The setup instructions in `/account` are manual for
-now, which is fine for one user and not fine for a hundred.
+**Photo and share-sheet capture are built too, as of 2026-08-22 (ADR-064).** A URL is a
+capture in its own right, and a photo goes up in three steps — reserve, PUT, finalize — so
+the bytes never pass through the API. `pnpm share:smoke` covers all of it. The recipes are
+in [assets/shortcuts/README.md](../assets/shortcuts/README.md).
+
+Not yet built: the generated iCloud Shortcut link. A `.shortcut` file is a signed archive
+that only iOS can produce, so the instructions in `/account` are typed by hand — which is
+fine for one user and not fine for a hundred.
 
 ## Why this is not optional
 
@@ -38,15 +43,21 @@ This is the bar-napkin path. It is the single highest-leverage thing in the whol
 
 ### 2. Snap
 
-    Take Photo  ->  POST multipart  ->  Show Notification
+    Take Photo  ->  reserve  ->  PUT straight to storage  ->  finalize  ->  Show Notification
 
 Camera straight to a note. The photo runs through the image recognizer and becomes searchable text. This is the literal napkin case.
+
+**Three requests, not a multipart POST.** [04-data-model.md](04-data-model.md) requires that media bytes never pass through the API — on Azure the client PUTs to Blob with a short-lived SAS URL and our servers hold only the metadata. A multipart endpoint would have been one request and would have put every photo anybody ever captures through a service sized for 1KB of JSON, on a public route authenticated by a long-lived bearer token. Shortcuts chains three requests without complaint; awkward is the better trade.
+
+Send `text` with it — "van hire receipt" — and the photo is findable before the recognizer has read it.
 
 ### 3. Send to jotdojo (share sheet)
 
     Accept: text, URLs, images  ->  POST  ->  Show Notification
 
 Turns every app on the phone into a capture source. Reading an article, seeing a message, looking at a receipt — send it.
+
+**Send a link as `url`, not as `text`.** The two are formatted by the same domain function (`captureText`) as the Android share target, and a link that arrives in its own field is titled with the site it came from. The same link pasted into `text` is titled with its own query string, which is unreadable in a list a week later.
 
 ## The endpoint
 

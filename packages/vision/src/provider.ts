@@ -18,8 +18,33 @@ export type Reading = {
 
 export type Recognizer = {
   readonly model: string;
+  /**
+   * Ask the model a question about these images, and hand back what it said.
+   *
+   * RAW, and parameterised by prompt, because there are two questions now:
+   * what does this page SAY (a transcript) and what is DRAWN on it (structure,
+   * ADR-066). One transport, two questions, and the parsing belongs to
+   * whoever asked -- the answers have different shapes.
+   */
+  ask(pages: Page[], prompt: string): Promise<string>;
+  /** The transcript question, which is the common one. */
   read(pages: Page[]): Promise<Reading>;
 };
+
+/**
+ * How a fake tells the two questions apart.
+ *
+ * A SHARED CONSTANT, not a phrase the fake hopes is in the prompt. The first
+ * version keyed on the word "SHAPES" and the structural prompt never said it in
+ * capitals, so the fake answered every structural request with a transcript and
+ * the whole pipeline failed on a parse error -- in the one place a suite exists
+ * to catch that. Both sides now name the same thing.
+ */
+export const STRUCTURE_MARKER = "STRUCTURE-QUESTION";
+
+/** `read` in terms of `ask`, so no provider implements it twice. */
+export const readWith = (ask: Recognizer["ask"]) => async (pages: Page[]): Promise<Reading> =>
+  parseReading(await ask(pages, PROMPT));
 
 export class RecognitionError extends Error {
   constructor(message: string, readonly retryable: boolean) {
@@ -86,9 +111,8 @@ export function parseReading(raw: string): Reading {
 export function anthropicRecognizer(config: {
   apiKey: string; model: string; baseUrl?: string;
 }): Recognizer {
-  return {
-    model: config.model,
-    async read(pages) {
+  const ask: Recognizer["ask"] = async (pages, prompt) => {
+    {
       const res = await fetch(`${config.baseUrl ?? "https://api.anthropic.com"}/v1/messages`, {
         method: "POST",
         headers: {
@@ -106,7 +130,7 @@ export function anthropicRecognizer(config: {
                 type: "image",
                 source: { type: "base64", media_type: p.mediaType, data: p.base64 },
               })),
-              { type: "text", text: PROMPT },
+              { type: "text", text: prompt },
             ],
           }],
         }),
@@ -124,9 +148,10 @@ export function anthropicRecognizer(config: {
       const json = await res.json() as { content?: Array<{ type: string; text?: string }> };
       const text = json.content?.filter((c) => c.type === "text").map((c) => c.text).join("");
       if (!text) throw new RecognitionError("the model returned no content", false);
-      return parseReading(text);
-    },
+      return text;
+    }
   };
+  return { model: config.model, ask, read: readWith(ask) };
 }
 
 // ------------------------------------------------------------ openai-like --
@@ -134,9 +159,8 @@ export function anthropicRecognizer(config: {
 export function openAiRecognizer(config: {
   endpoint: string; apiKey: string; model: string; azure: boolean;
 }): Recognizer {
-  return {
-    model: config.model,
-    async read(pages) {
+  const ask: Recognizer["ask"] = async (pages, prompt) => {
+    {
       const res = await fetch(config.endpoint, {
         method: "POST",
         headers: {
@@ -155,7 +179,7 @@ export function openAiRecognizer(config: {
                 type: "image_url",
                 image_url: { url: `data:${p.mediaType};base64,${p.base64}` },
               })),
-              { type: "text", text: PROMPT },
+              { type: "text", text: prompt },
             ],
           }],
         }),
@@ -173,9 +197,10 @@ export function openAiRecognizer(config: {
       const json = await res.json() as { choices?: Array<{ message?: { content?: string } }> };
       const text = json.choices?.[0]?.message?.content;
       if (!text) throw new RecognitionError("the model returned no content", false);
-      return parseReading(text);
-    },
+      return text;
+    }
   };
+  return { model: config.model, ask, read: readWith(ask) };
 }
 
 // ------------------------------------------------------------------ fake --
@@ -190,11 +215,18 @@ export function openAiRecognizer(config: {
  * accuracy. Nothing in the suite claims otherwise.
  */
 export function fakeRecognizer(text = "handwritten note"): Recognizer {
-  return {
-    model: "fake-recognizer-v1",
-    async read(pages) {
-      if (pages.length === 0) return { text: "", confidence: 1 };
-      return { text, confidence: 0.82 };
-    },
+  const ask: Recognizer["ask"] = async (pages, prompt) => {
+    if (pages.length === 0) return JSON.stringify({ text: "", confidence: 1 });
+    // Answers whichever question it was asked, in the shape that question
+    // expects. A fake that only knew about transcripts would make the
+    // structural pipeline untestable without a model. ADR-066.
+    if (prompt.includes(STRUCTURE_MARKER)) {
+      return JSON.stringify({
+        shapes: [{ kind: "rectangle", bounds: { x: 0, y: 0, w: 100, h: 60 }, label: text }],
+        confidence: 0.8,
+      });
+    }
+    return JSON.stringify({ text, confidence: 0.82 });
   };
+  return { model: "fake-recognizer-v1", ask, read: readWith(ask) };
 }

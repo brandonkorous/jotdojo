@@ -1,6 +1,6 @@
 "use client";
 
-import { Trash2 } from "lucide-react";
+import { Download, Trash2 } from "lucide-react";
 import { MARKER_COLORS, PEN_COLORS } from "@/lib/ink-style";
 import { PenSize } from "./PenSize";
 import type { SelectionSummary } from "@/lib/ink-engine";
@@ -18,7 +18,7 @@ import { Swatches } from "./ToolOptions";
  * is a grey smear, so the marker palette appears whenever the lasso holds one.
  */
 export function SelectionBar({
-  selection, onColor, onWidth, onCommitWidth, onDelete,
+  selection, onColor, onWidth, onCommitWidth, onDelete, onExport,
 }: {
   selection: SelectionSummary;
   onColor: (color: string) => void;
@@ -27,6 +27,9 @@ export function SelectionBar({
   onWidth: (width: number) => void;
   onCommitWidth: (width: number) => void;
   onDelete: () => void;
+  /** Save just this, as a picture. A diagram on a page of notes is usually the
+   *  part somebody wants to send. ADR-067. */
+  onExport: () => void;
 }) {
   if (selection.count === 0) return null;
 
@@ -65,6 +68,16 @@ export function SelectionBar({
       )}
 
       <span aria-hidden className="jd-rail-sep-v" />
+
+      <button
+        type="button"
+        className="jd-tool"
+        title="Save as an image"
+        aria-label="Save selection as an image"
+        onClick={onExport}
+      >
+        <Download aria-hidden strokeWidth={1.75} />
+      </button>
 
       <button
         type="button"

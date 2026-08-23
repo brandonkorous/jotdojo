@@ -67,6 +67,38 @@ for (const app of TSX_IMAGES) {
     missing.length === 0, `missing: ${missing.join(", ")}`);
 }
 
+/**
+ * A native dependency that pnpm never builds is a runtime failure, not an
+ * install one. ADR-062.
+ *
+ * `sharp` ships prebuilt binaries per libc and fetches the right one from its
+ * INSTALL SCRIPT, which pnpm runs only for packages named in
+ * `pnpm.onlyBuiltDependencies`. Drop the entry and every install still succeeds;
+ * the first ink render in an Alpine container then dies with "Could not load
+ * the sharp module using the linuxmusl-x64 runtime". Three apps depend on it
+ * now -- worker, web and mcp -- so the entry is load bearing in three places
+ * and named in none of them.
+ */
+console.log("\nnative dependencies are actually built");
+
+const root = JSON.parse(read("package.json")) as {
+  pnpm?: { onlyBuiltDependencies?: string[] };
+};
+const built = new Set(root.pnpm?.onlyBuiltDependencies ?? []);
+const NATIVE = ["sharp"];
+
+for (const name of NATIVE) {
+  const users = ["api", "mcp", "web", "worker"].filter((app) => {
+    const json = JSON.parse(read(`apps/${app}/package.json`)) as {
+      dependencies?: Record<string, string>;
+    };
+    return name in (json.dependencies ?? {});
+  });
+  if (users.length === 0) continue;
+  check(`${name} is in onlyBuiltDependencies (needed by ${users.join(", ")})`, built.has(name),
+    "add it to package.json pnpm.onlyBuiltDependencies");
+}
+
 console.log(failures === 0
   ? "\nimage package check: all checks passed"
   : `\nimage package check: ${failures} FAILED`);

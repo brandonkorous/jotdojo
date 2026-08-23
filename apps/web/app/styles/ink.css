@@ -78,23 +78,6 @@
    drag would otherwise scroll the page out from under a stroke in progress. */
 .jd-ink-live { pointer-events: inherit; }
 
-.jd-ink-status {
-  position: absolute;
-  top: 0.75rem;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 6;
-  pointer-events: none;
-  font-size: 0.75rem;
-  opacity: 0.6;
-}
-
-/* A finger and a pencil want very different targets, and ink is the one place
-   where someone is definitely using their hand. */
-@media (pointer: coarse) {
-  .jd-ink-status { top: 3.5rem; }
-}
-
 /* Tier 1 handwriting, announced once. docs/08-ink.md, ADR-034. */
 .jd-scribble-hint {
   position: absolute;
@@ -122,19 +105,9 @@
   font-weight: 500;
 }
 
-/* What the machine read, and the way to disagree with it. docs/08-ink.md. */
-.jd-transcript {
-  position: absolute;
-  left: 50%;
-  bottom: 2.5rem;
-  transform: translateX(-50%);
-  z-index: 15;
-  width: min(94vw, 34rem);
-  padding: 0.75rem 0.875rem;
-  border-radius: 1rem;
-  font-size: 0.8125rem;
-}
-
+/* What the machine read, and the way to disagree with it. docs/08-ink.md.
+   The panel this used to be is gone -- the reading is behind the live line now
+   (ADR-061), so only the innards are still dressed here. */
 .jd-transcript-note { opacity: 0.6; }
 .jd-transcript-text { white-space: pre-wrap; line-height: 1.5; }
 
@@ -148,3 +121,53 @@
 .jd-transcript-foot > :first-child { margin-right: auto; }
 
 .jd-transcript-edit { display: flex; flex-direction: column; gap: 0.25rem; }
+
+/* ---------------------------------------------------------------------------
+ * The object plane: typed text on the same surface as the ink. ADR-065.
+ *
+ * OUTSIDE the canvases, and that is the whole reason it is a separate layer.
+ * Scaling a <canvas> through a transformed ancestor scales its BITMAP and blurs
+ * the ink, so the canvases keep their own internal setTransform and stay flat
+ * while this one is moved by CSS. Both read the same InkViewport, so they move
+ * together.
+ *
+ * The plane itself never takes a pointer -- a lasso has to pass through it to
+ * reach the canvas underneath. Individual boxes take one only while the text
+ * tool is active, which the engine sets.
+ * ------------------------------------------------------------------------- */
+.jd-object-plane {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  transform-origin: 0 0;
+  /* No transition. This is written every frame from the paint loop, and an
+     interpolated transform would put the text a frame behind the ink during a
+     pinch -- which reads as the two layers coming apart. */
+}
+
+.jd-text-box {
+  position: absolute;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  outline: 0;
+  overflow: hidden;
+  resize: none;
+  background: transparent;
+  font-family: var(--font-sans, ui-sans-serif, system-ui, sans-serif);
+  line-height: 1.35;
+  /* iOS Safari zooms the page when a field with a computed font-size under
+     16px takes focus, and it tests the COMPUTED size -- before this layer's
+     transform. The engine never creates a box below 16, and the camera does
+     the shrinking. */
+  min-height: 1em;
+  caret-color: var(--color-primary, currentColor);
+}
+
+.jd-text-box:focus {
+  /* Enough to see which box has the caret on a page of them, and not a box
+     around every paragraph the rest of the time. */
+  box-shadow: 0 0 0 1px color-mix(in oklch, currentColor 25%, transparent);
+  border-radius: 2px;
+}

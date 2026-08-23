@@ -65,26 +65,3 @@
 .jd-chrome:hover,
 .jd-chrome:focus-within { opacity: 1; }
 
-/* What an agent said, at the foot of the page. ADR-048.
- *
- * Bottom LEFT, because the toolbar owns the top and a remark must never sit
- * where the next word is about to be typed.
- *
- * Lifted clear of the save line rather than sitting on it: on a phone the card
- * is nearly the full width, and covering "Saved" would hide the one piece of
- * feedback the capture contract actually promises. */
-.jd-notices {
-  position: fixed;
-  bottom: calc(2.75rem + env(safe-area-inset-bottom));
-  left: max(1rem, env(safe-area-inset-left));
-  z-index: 20;
-  width: min(26rem, calc(100vw - 2rem));
-}
-
-.jd-notices > * {
-  /* Same argument as .jd-chrome: `glass` tints from --u-accent, which
-     inherits, so a card inside a text-coloured body would tint itself
-     near-black and vanish. */
-  --u-accent: var(--color-base-100);
-  --glass-tint: 82%;
-}

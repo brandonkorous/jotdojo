@@ -1,13 +1,15 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { Stroke } from "@jotdojo/domain";
-import { InkEngine, type SelectionSummary, type Tool } from "@/lib/ink-engine";
-import { InkSync, type SyncState } from "@/lib/ink-sync";
-import { InkCatchup } from "@/lib/ink-catchup";
+import type { InkEngine, SelectionSummary, Tool } from "@/lib/ink-engine";
+import { NO_SELECTION } from "@/lib/ink-selection";
+import type { InkSync, SyncState } from "@/lib/ink-sync";
+import type { InkCatchup } from "@/lib/ink-catchup";
 import { useLiveNote } from "@/lib/use-live";
+import { useInkTrouble } from "@/lib/use-ink-feed";
+import { downloadSelection } from "@/lib/export-client";
 import type { InkStyle } from "@/lib/ink-style";
-import { inkLayerAction, getInkAction } from "@/app/actions";
+import { useInkEngine } from "@/lib/use-ink-engine";
 import { SelectionBar } from "./SelectionBar";
 import { ZoomChip } from "./ZoomChip";
 
@@ -21,18 +23,17 @@ import { ZoomChip } from "./ZoomChip";
  * right: at pen sample rates a re-render per move is a re-render every few
  * milliseconds.
  */
-const NO_SELECTION: SelectionSummary = {
-  count: 0, pen: false, marker: false, penWidth: null,
-};
 
 export function InkCanvas({
-  noteId, tool, style, onReady, onDraw, live = false,
+  noteId, tool, style, onReady, onDraw, onTextPlaced, live = false,
 }: {
   noteId: string;
   tool: Tool;
   /** Colour and width for THIS tool. Held per tool by the caller. ADR-045. */
   style: InkStyle;
   onReady?: (blockId: string) => void;
+  /** A text box was placed, so the caller can hand the tool back to the spine. */
+  onTextPlaced?: () => void;
   /** Somebody is drawing here, for presence. Called per finished stroke, never
    *  per pointer sample -- the hot path stays out of React. ADR-058. */
   onDraw?: () => void;
@@ -50,12 +51,20 @@ export function InkCanvas({
   const liveRef = useRef<HTMLCanvasElement>(null);
   const shellRef = useRef<HTMLDivElement>(null);
   const gridRef = useRef<HTMLDivElement>(null);
+  /** The object plane. Outside the canvases, because scaling a canvas through
+   *  a transformed ancestor blurs its bitmap. ADR-065. */
+  const planeRef = useRef<HTMLDivElement>(null);
   const engineRef = useRef<InkEngine | null>(null);
   const syncRef = useRef<InkSync | null>(null);
   const catchupRef = useRef<InkCatchup | null>(null);
   /** In a ref, because the engine is built once and this changes per render. */
   const draw = useRef(onDraw);
   draw.current = onDraw;
+  /** In a ref for the same reason `draw` is: the engine is built once. */
+  const placed = useRef(onTextPlaced);
+  placed.current = onTextPlaced;
+  const ready = useRef(onReady);
+  ready.current = onReady;
 
   const [state, setState] = useState<SyncState>("idle");
   const [selected, setSelected] = useState<SelectionSummary>(NO_SELECTION);
@@ -84,82 +93,23 @@ export function InkCanvas({
     onResync: () => { void catchupRef.current?.check(); },
   });
 
-  useEffect(() => {
-    const committed = committedRef.current;
-    const live = liveRef.current;
-    const shell = shellRef.current;
-    const grid = gridRef.current;
-    if (!committed || !live || !shell || !grid) return;
-
-    let disposed = false;
-    let engine: InkEngine | null = null;
-    let sync: InkSync | null = null;
-    let observer: ResizeObserver | null = null;
-
-    (async () => {
-      const rect = shell.getBoundingClientRect();
-      const canvas = { w: Math.round(rect.width), h: Math.round(rect.height) };
-
-      let block: { blockId: string; strokeCount: number; version: number };
-      try {
-        block = await inkLayerAction(noteId, canvas);
-      } catch (err) {
-        setError((err as Error).message);
-        return;
-      }
-      if (disposed) return;
-
-      sync = new InkSync(block.blockId, setState, {
-        count: block.strokeCount, version: block.version,
-      });
-      engine = new InkEngine({
-        committed,
-        live,
-        grid,
-        onStrokes: (strokes) => { sync!.push(strokes); draw.current?.(); },
-        onDelta: (delta) => sync!.delta(delta),
-        onSelectionChange: setSelected,
-        onView: (k, home) => setView({ k, home }),
-      });
-      engine.setTool(tool);
-      engine.setStyle(style);
-      engine.resize(canvas.w, canvas.h);
-
-      // A block created a moment ago is empty, but a reload of an existing one
-      // is not -- and loading after resize matters, because resize repaints.
-      if (block.strokeCount > 0) {
-        const existing = await getInkAction(block.blockId);
-        if (!disposed) engine.load(existing.document.strokes as Stroke[]);
-      }
-
-      observer = new ResizeObserver(([entry]) => {
-        if (!entry || !engine) return;
-        engine.resize(Math.round(entry.contentRect.width), Math.round(entry.contentRect.height));
-      });
-      observer.observe(shell);
-
-      engineRef.current = engine;
-      syncRef.current = sync;
-      catchupRef.current = new InkCatchup(block.blockId, sync, engine);
-      setBlockId(block.blockId);
-      onReady?.(block.blockId);
-    })();
-
-    return () => {
-      disposed = true;
-      observer?.disconnect();
-      // Flush before tearing down. Whatever is queued exists nowhere else.
-      void sync?.flush();
-      sync?.destroy();
-      engine?.destroy();
-      engineRef.current = null;
-      syncRef.current = null;
-      catchupRef.current = null;
-    };
-    // noteId only: tool and colour are pushed imperatively below so that
-    // changing a pen does not rebuild the engine and lose the page.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [noteId]);
+  useInkEngine({
+    noteId,
+    surfaces: {
+      committed: committedRef, live: liveRef, shell: shellRef,
+      grid: gridRef, plane: planeRef,
+    },
+    held: { engine: engineRef, sync: syncRef, catchup: catchupRef },
+    initial: { tool, style },
+    onState: setState,
+    onSelection: setSelected,
+    onView: setView,
+    onError: setError,
+    onBlock: setBlockId,
+    onDraw: draw,
+    onTextPlaced: placed,
+    onReady: ready,
+  });
 
   /**
    * Delete and Backspace remove a lasso selection.
@@ -182,6 +132,8 @@ export function InkCanvas({
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [selected.count]);
+
+  useInkTrouble(state, error);
 
   useEffect(() => { engineRef.current?.setTool(tool); }, [tool]);
   useEffect(() => { engineRef.current?.setStyle(style); }, [style]);
@@ -212,6 +164,10 @@ export function InkCanvas({
   return (
     <div ref={shellRef} className="jd-ink-shell">
       <div ref={gridRef} className="jd-ink-grid" aria-hidden />
+      {/* Between the grid and the canvases in the DOM, and BELOW the live
+          canvas in z-order, so a highlighter drawn over a typed line reads the
+          way it does on paper. */}
+      <div ref={planeRef} className="jd-object-plane" />
       <canvas ref={committedRef} className="jd-ink-layer" aria-hidden />
       <canvas
         ref={liveRef}
@@ -225,21 +181,13 @@ export function InkCanvas({
         onWidth={(width) => engineRef.current?.restyleSelection({ width }, false)}
         onCommitWidth={(width) => engineRef.current?.restyleSelection({ width })}
         onDelete={() => engineRef.current?.deleteSelection()}
+        onExport={() => void downloadSelection(noteId, selected.ids)}
       />
       <ZoomChip
         zoom={view.k}
         home={view.home}
         onFit={() => engineRef.current?.fitToContent()}
       />
-      {(state !== "idle" || error) && (
-        <p role="status" aria-live="polite" className="jd-chrome jd-ink-status">
-          {error
-            ? `Ink could not start: ${error}`
-            : state === "retrying"
-              ? "Strokes are safe here and will retry."
-              : "Saving ink\u2026"}
-        </p>
-      )}
     </div>
   );
 }

@@ -8,7 +8,8 @@
     "start": "tsx src/index.ts",
     "build": "echo ok",
     "typecheck": "tsc --noEmit",
-    "smoke:capture": "dotenv -e ../../.env -- tsx scripts/smoke-capture.ts"
+    "smoke:capture": "dotenv -e ../../.env -- tsx scripts/smoke-capture.ts",
+    "smoke:share": "dotenv -e ../../.env -- tsx scripts/smoke-share.ts"
   },
   "dependencies": {
     "@jotdojo/domain": "workspace:*",

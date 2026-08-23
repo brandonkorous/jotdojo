@@ -1,5 +1,5 @@
-import type { InkDocument, Stroke } from "@jotdojo/domain";
-import { bounds, control, medianWidth, widthAt, type Bounds } from "./geometry";
+import type { InkDocument, Stroke, TextBox } from "@jotdojo/domain";
+import { bounds, contentBounds, control, medianWidth, widthAt, type Bounds } from "./geometry";
 
 /**
  * Strokes to SVG, for recognition and for thumbnails.
@@ -17,8 +17,14 @@ import { bounds, control, medianWidth, widthAt, type Bounds } from "./geometry";
  */
 
 export type RenderOptions = {
-  /** Recognition wants maximum legibility; a thumbnail wants fidelity. */
-  mode: "recognition" | "preview";
+  /**
+   * What the image is FOR, which decides three things at once.
+   *
+   *   recognition  black on white paper, enlarged to a legibility floor
+   *   preview      real colours, transparent, small, never enlarged
+   *   viewing      real colours on white paper, big enough for a person
+   */
+  mode: "recognition" | "preview" | "viewing";
   /** Longest edge of ONE image, in pixels. Tiling is what keeps a wall of
    *  writing under it without shrinking it to mush. */
   maxEdge?: number;
@@ -28,11 +34,26 @@ export type RenderOptions = {
   padPx?: number;
   /** How far recognition may enlarge small ink. */
   maxUpscale?: number;
+  /**
+   * Draw the page's typed text boxes as well. DEFAULT FALSE, and the default is
+   * the point. ADR-065.
+   *
+   * If typed text reaches the SVG the recogniser reads, the model reads it back
+   * as handwriting -- and `renderBlock` then presents a confidence-scored guess
+   * where a certainty already existed. Recognition never sets this. Export and
+   * `view_note` always do, because a person looking at the page expects to see
+   * what is on it.
+   */
+  text?: boolean;
 };
 
 /** Below this a stroke stops being reliably resolvable by a vision model. */
 const TARGET_INK_PX = 2.5;
 const MAX_UPSCALE = 4;
+
+/** Longest edge when the caller does not say. A thumbnail is a thumbnail; an
+ *  export is looked at by a person and a page of writing has to survive it. */
+const DEFAULT_EDGE = { recognition: 2000, preview: 480, viewing: 1600 } as const;
 
 const n = (v: number) => Math.round(v * 100) / 100;
 
@@ -75,30 +96,76 @@ function segments(stroke: Stroke, ink: string, alpha: number): string[] {
  * stop, then let `maxEdge` cap the result.
  */
 export function scaleFor(doc: InkDocument, box: Bounds, o: RenderOptions): number {
-  const recognition = o.mode === "recognition";
-  const maxEdge = o.maxEdge ?? (recognition ? 2000 : 480);
-  const cap = maxEdge / Math.max(box.w, box.h, 1);
-  if (!recognition) return Math.min(1, cap);
+  const cap = (o.maxEdge ?? DEFAULT_EDGE[o.mode]) / Math.max(box.w, box.h, 1);
+  const ceiling = o.maxUpscale ?? MAX_UPSCALE;
+
+  // A thumbnail is shown at thumbnail size whatever we do, so enlarging costs
+  // bytes and buys nothing.
+  if (o.mode === "preview") return Math.min(1, cap);
+  // An export fills its frame. A person asked for this image and will look at
+  // it, so the token argument above does not apply.
+  if (o.mode === "viewing") return Math.min(cap, ceiling);
 
   const typical = medianWidth(doc.strokes);
   const legible = typical > 0 ? TARGET_INK_PX / typical : 1;
-  return Math.min(cap, Math.max(1, Math.min(o.maxUpscale ?? MAX_UPSCALE, legible)));
+  return Math.min(cap, Math.max(1, Math.min(ceiling, legible)));
 }
 
 /** A page with no ink on it. Valid, tiny, and never worth sending to a model. */
 const EMPTY = '<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1" viewBox="0 0 1 1"></svg>';
 
+/**
+ * A text box, as SVG.
+ *
+ * Wrapped by hand, because SVG has no flow layout and the browser is not here.
+ * The estimate is deliberately crude -- this is a picture of a page, not a
+ * typesetter, and a line that breaks a word early costs nothing next to text
+ * that runs off the edge of the image.
+ */
+function textLines(box: TextBox, escape: (v: string) => string): string[] {
+  const perLine = Math.max(1, Math.floor(box.w / (box.size * 0.55)));
+  const out: string[] = [];
+  for (const paragraph of box.text.split("\n")) {
+    if (!paragraph.trim()) { out.push(""); continue; }
+    let line = "";
+    for (const word of paragraph.split(/\s+/)) {
+      if (line && (line.length + word.length + 1) > perLine) { out.push(line); line = word; }
+      else line = line ? `${line} ${word}` : word;
+    }
+    out.push(line);
+  }
+  // A leading dominant-baseline would fight the per-line dy below, so the first
+  // line sits one size down from the box's top edge, where a person put it.
+  return out.map((line, i) =>
+    `<text x="${n(box.x)}" y="${n(box.y + box.size * (i + 1))}"`
+    + ` font-family="ui-sans-serif, system-ui, sans-serif" font-size="${n(box.size)}"`
+    + ` fill="${escape(box.color)}" xml:space="preserve">${escape(line)}</text>`);
+}
+
 export function toSvg(doc: InkDocument, options: RenderOptions): string {
   const recognition = options.mode === "recognition";
-  const box = options.bounds ?? bounds(doc);
+  // Paper, rather than nothing. A thumbnail sits on a card that supplies its
+  // own background; a downloaded PNG is opened against whatever the viewer
+  // happens to be, and dark grey ink on a transparent ground disappears.
+  const paper = options.mode !== "preview";
+  // The frame follows what is being DRAWN. With text on, a note that is
+  // nothing but a typed box has to have a frame; with text off, the frame must
+  // not stretch over ground with no handwriting on it. ADR-065.
+  const box = options.bounds ?? (options.text ? contentBounds(doc) : bounds(doc));
   if (!box) return EMPTY;
 
   const scale = scaleFor(doc, box, options);
-  const padU = (options.padPx ?? (recognition ? 24 : 8)) / scale;
+  const padU = (options.padPx ?? (options.mode === "preview" ? 8 : 24)) / scale;
   const vx = box.x - padU;
   const vy = box.y - padU;
   const vw = box.w + padU * 2;
   const vh = box.h + padU * 2;
+
+  // Text UNDER the ink, so a highlighter drawn over a typed line reads the way
+  // it does on the canvas rather than being painted out by it.
+  const typed = options.text
+    ? (doc.texts ?? []).flatMap((box) => textLines(box, escapeAttr))
+    : [];
 
   const body = doc.strokes.flatMap((stroke) => {
     // Colour is thrown away for recognition on purpose. The highlighter keeps
@@ -118,7 +185,8 @@ export function toSvg(doc: InkDocument, options: RenderOptions): string {
     // with x/y defaulting to 0, so with a negative viewBox origin the white
     // lands off-screen and the PNG rasterises transparent. ADR-053.
     `<rect x="${n(vx)}" y="${n(vy)}" width="${n(vw)}" height="${n(vh)}"`,
-    ` fill="${recognition ? "#FFFFFF" : "none"}"/>`,
+    ` fill="${paper ? "#FFFFFF" : "none"}"/>`,
+    ...typed,
     ...body,
     "</svg>",
   ].join("");

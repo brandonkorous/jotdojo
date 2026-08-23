@@ -8,6 +8,8 @@ import { TriageSwitch } from "@/components/TriageSwitch";
 import { PlanSection } from "@/components/PlanSection";
 import { ownedPlans } from "@/lib/plans-view";
 import { Connections } from "@/components/Connections";
+import { ConnectToClaude } from "@/components/ConnectToClaude";
+import { ExportSection } from "@/components/ExportSection";
 import { requireActor, currentUser } from "@/lib/session";
 import { setToolbarSideAction } from "@/app/actions";
 import { signOut } from "@/auth";
@@ -26,6 +28,7 @@ export default async function Account() {
     ownedPlans(actor),
   ]);
   const apiUrl = process.env.API_URL ?? "http://localhost:3401";
+  const mcpUrl = process.env.MCP_RESOURCE ?? "http://localhost:3402/mcp";
 
   return (
     <main className="mx-auto max-w-xl px-5 py-10">
@@ -65,11 +68,19 @@ export default async function Account() {
       </div>
 
       <div className="mb-10">
+        <ConnectToClaude mcpUrl={mcpUrl} />
+      </div>
+
+      <div className="mb-10">
         <Connections connections={connections} />
       </div>
 
       <div className="mb-10">
         <CaptureTokens tokens={tokens} spaces={spaces} apiUrl={apiUrl} />
+      </div>
+
+      <div className="mb-10">
+        <ExportSection spaces={spaces} />
       </div>
 
       <form

@@ -2,6 +2,7 @@ import { sql } from "drizzle-orm";
 import { type Tx } from "@jotdojo/db";
 import { NotFound } from "./errors";
 import { type Stroke } from "./ink-doc";
+import { type TextBox } from "./ink-text";
 
 /**
  * Taking hold of an ink page, and putting it back. docs/08-ink.md, ADR-058.
@@ -43,12 +44,15 @@ export async function lockPageCount(tx: Tx, blockId: string): Promise<LockedPage
 }
 
 /** Lock the page and read it. For edits, which have to see what they change. */
-export async function lockPage(tx: Tx, blockId: string): Promise<LockedPage & { strokes: Stroke[] }> {
+export async function lockPage(
+  tx: Tx, blockId: string,
+): Promise<LockedPage & { strokes: Stroke[]; texts: TextBox[] }> {
   const rows = await tx.execute(sql`
     SELECT b.id AS block_id, b.space_id, b.note_id, a.id AS artifact_id,
            a.strokes_version AS version,
            jsonb_array_length(a.strokes -> 'strokes') AS count,
-           a.strokes -> 'strokes' AS page
+           a.strokes -> 'strokes' AS page,
+           a.strokes -> 'texts' AS texts
       FROM blocks b
       JOIN media_assets a ON a.id = b.artifact_id
      WHERE b.id = ${blockId} AND b.kind = 'ink'
@@ -56,7 +60,12 @@ export async function lockPage(tx: Tx, blockId: string): Promise<LockedPage & { 
   `);
   const page = shape(rows);
   const row = (rows as unknown as Array<Record<string, unknown>>)[0]!;
-  return { ...page, strokes: (row.page as Stroke[] | null) ?? [] };
+  return {
+    ...page,
+    strokes: (row.page as Stroke[] | null) ?? [],
+    // NULL for every page written before ADR-065, which is most of them.
+    texts: (row.texts as TextBox[] | null) ?? [],
+  };
 }
 
 /**
@@ -108,6 +117,28 @@ export async function bumpPage(
   tx: Tx, artifactId: string, strokes: Stroke[],
 ): Promise<number> {
   return write(tx, artifactId, sql`${JSON.stringify(strokes)}::jsonb`);
+}
+
+/**
+ * Replace the page's text boxes.
+ *
+ * Bumps `strokes_version` like every other write, and DELIBERATELY does not
+ * touch the stroke count. A follower comparing counts sees the version move
+ * without the count growing, which `needsFullRead` already reads as "the middle
+ * changed, re-read it whole" -- exactly right for a text edit, and it needed no
+ * change to the wire format at all. ADR-058, ADR-065.
+ */
+export async function writeTexts(
+  tx: Tx, artifactId: string, texts: TextBox[],
+): Promise<number> {
+  const rows = await tx.execute(sql`
+    UPDATE media_assets
+       SET strokes = jsonb_set(strokes, '{texts}', ${JSON.stringify(texts)}::jsonb),
+           strokes_version = strokes_version + 1
+     WHERE id = ${artifactId}
+    RETURNING strokes_version AS version
+  `);
+  return Number((rows as unknown as Array<{ version: number }>)[0]?.version ?? 0);
 }
 
 async function write(tx: Tx, artifactId: string, next: ReturnType<typeof sql>): Promise<number> {

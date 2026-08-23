@@ -4,6 +4,8 @@ import { type Actor } from "./actor";
 import { Forbidden, NotFound } from "./errors";
 import { assertMember } from "./spaces";
 import { publish } from "./events";
+import { audit } from "./note-body";
+import { queueStructure } from "./structures";
 
 /**
  * What follows a change to an ink page: a reading of it, or the withdrawal of
@@ -46,6 +48,10 @@ export async function markPageChanged(
 ): Promise<void> {
   if (hasStrokes) {
     await queueRecognition(tx, page.blockId);
+    // And what is DRAWN on it, which a transcript cannot carry. Settles later
+    // than the transcript so a diagram somebody is still drawing is not read
+    // twice. ADR-066.
+    await queueStructure(tx, page.blockId);
     await tx.update(blocks)
       .set({ transcriptState: "pending" })
       .where(and(eq(blocks.id, page.blockId), eq(blocks.transcriptState, "ready")));
@@ -120,6 +126,12 @@ export async function correctTranscript(
        WHERE topic = 'block.recognize' AND completed_at IS NULL
          AND payload ->> 'blockId' = ${blockId}
     `);
+
+    // A person overruling a machine reading is worth recording. It is also the
+    // one transcript that must never be re-read, so the feed showing when it
+    // happened is how "why did this stop improving" stays answerable. ADR-063.
+    await audit(tx, actor, rows[0].spaceId, "note.transcript.correct", rows[0].noteId,
+      undefined, { blockId });
 
     return rows[0];
   });

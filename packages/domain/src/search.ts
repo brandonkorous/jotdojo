@@ -4,14 +4,15 @@ import { embedder, EmbeddingError } from "@jotdojo/embeddings";
 import { canReachSpace, type Actor } from "./actor";
 import { Forbidden } from "./errors";
 import { assertMember } from "./spaces";
+import { lexical, fuzzy, semantic, type Ranked } from "./search-strategies";
+import { type TimeWindow } from "./time-window";
 import type { NoteSummary } from "./notes";
 
 /**
  * Hybrid retrieval: three recall strategies, fused.
  *
- *   lexical   -- the words you actually typed, stemmed (tsvector + GIN)
- *   semantic  -- the meaning you had in mind (pgvector + HNSW)
- *   fuzzy     -- the word you meant to type (pg_trgm)
+ * HOW each strategy recalls is search-strategies.ts. This is how three answers
+ * become one, which is a different job and changes for different reasons.
  *
  * Fused with Reciprocal Rank Fusion rather than by combining scores. RRF uses
  * only each strategy's *rank*, which matters because ts_rank, cosine distance
@@ -27,15 +28,10 @@ import type { NoteSummary } from "./notes";
  */
 const RRF_K = 60;
 
-/** Below this, trigram matches are noise -- shared prefixes that mean nothing. */
-const TRIGRAM_THRESHOLD = 0.35;
-
 export type SearchHit = NoteSummary & {
   /** Which strategies found it. Surfaced so "why did I get this?" is answerable. */
   matchedBy: Array<"lexical" | "semantic" | "fuzzy">;
 };
-
-type Ranked = { id: string; rank: number };
 
 function fuse(lists: Array<{ kind: SearchHit["matchedBy"][number]; hits: Ranked[] }>) {
   const scores = new Map<string, { score: number; matchedBy: SearchHit["matchedBy"] }>();
@@ -48,80 +44,6 @@ function fuse(lists: Array<{ kind: SearchHit["matchedBy"][number]; hits: Ranked[
     }
   }
   return [...scores.entries()].sort((a, b) => b[1].score - a[1].score);
-}
-
-function rowsToRanked(rows: unknown): Ranked[] {
-  return (rows as Array<Record<string, unknown>>).map((r) => ({
-    id: String(r.id),
-    rank: Number(r.rank),
-  }));
-}
-
-async function lexical(tx: Tx, spaceId: string, q: string, limit: number): Promise<Ranked[]> {
-  const rows = await tx.execute(sql`
-    SELECT n.id,
-           row_number() OVER (
-             ORDER BY ts_rank(b.searchable, websearch_to_tsquery('english', ${q})) DESC
-           ) AS rank
-      FROM notes n
-      JOIN blocks b ON b.note_id = n.id
-     WHERE n.space_id = ${spaceId}
-       AND n.deleted_at IS NULL
-       AND b.searchable @@ websearch_to_tsquery('english', ${q})
-     LIMIT ${limit}
-  `);
-  return rowsToRanked(rows);
-}
-
-async function fuzzy(tx: Tx, spaceId: string, q: string, limit: number): Promise<Ranked[]> {
-  const rows = await tx.execute(sql`
-    SELECT scored.id, row_number() OVER (ORDER BY scored.sim DESC) AS rank
-      FROM (
-        SELECT n.id,
-               max(greatest(
-                 word_similarity(${q}, coalesce(b.body, b.transcript, '')),
-                 word_similarity(${q}, coalesce(n.title, ''))
-               )) AS sim
-          FROM notes n
-          JOIN blocks b ON b.note_id = n.id
-         WHERE n.space_id = ${spaceId}
-           AND n.deleted_at IS NULL
-         GROUP BY n.id
-      ) scored
-     WHERE scored.sim >= ${TRIGRAM_THRESHOLD}
-     ORDER BY scored.sim DESC
-     LIMIT ${limit}
-  `);
-  return rowsToRanked(rows);
-}
-
-async function semantic(
-  tx: Tx, spaceId: string, vector: number[], maxDistance: number, limit: number,
-): Promise<Ranked[]> {
-  // pgvector's text input format, passed as a bound parameter -- the numbers
-  // come from the provider, not from anything a user typed.
-  const literal = `[${vector.join(",")}]`;
-  const rows = await tx.execute(sql`
-    SELECT best.id, row_number() OVER (ORDER BY best.distance) AS rank
-      FROM (
-        SELECT DISTINCT ON (n.id)
-               n.id,
-               e.embedding <=> ${literal}::vector AS distance
-          FROM block_embeddings e
-          JOIN blocks b ON b.id = e.block_id
-          JOIN notes  n ON n.id = b.note_id
-         WHERE n.space_id = ${spaceId}
-           AND n.deleted_at IS NULL
-         ORDER BY n.id, distance
-      ) best
-     -- The floor, without which vector search returns its k nearest
-     -- neighbours no matter how far away they are, and every query looks
-     -- like it found something. See Embedder.maxDistance.
-     WHERE best.distance <= ${maxDistance}
-     ORDER BY best.distance
-     LIMIT ${limit}
-  `);
-  return rowsToRanked(rows);
 }
 
 /**
@@ -188,6 +110,8 @@ async function hydrate(
   });
 }
 
+export type SearchOptions = TimeWindow & { limit?: number };
+
 /**
  * Search a space.
  *
@@ -195,10 +119,18 @@ async function hydrate(
  * inside withActor, so RLS is the real boundary and the explicit predicate is
  * belt and braces. That property is why search stayed inside Postgres -- see
  * ADR-023.
+ *
+ * NOTE: this returns ARCHIVED notes, where listNotes does not. Archiving is
+ * "I am done with this", not "hide it from me when I go looking".
  */
 export async function searchNotes(
-  actor: Actor, spaceId: string, query: string, limit = 25,
+  actor: Actor, spaceId: string, query: string, options: SearchOptions | number = {},
 ): Promise<SearchHit[]> {
+  // A number is the old signature. Kept working rather than chased through
+  // every caller in one commit; the object form is what new code should use.
+  const opts: SearchOptions = typeof options === "number" ? { limit: options } : options;
+  const limit = opts.limit ?? 25;
+
   if (!canReachSpace(actor, spaceId)) {
     throw new Forbidden("This connection cannot reach that space");
   }
@@ -225,13 +157,17 @@ export async function searchNotes(
     // Each strategy recalls deeper than the final limit: fusion can only rank
     // what it was given, and a note that is 30th lexically but 2nd semantically
     // is exactly the result hybrid search exists to surface.
+    //
+    // The window goes INTO each strategy for the same reason. Filtering the
+    // fused list afterwards would spend this headroom on rows it then threw
+    // away, and return fewer than `limit` whenever a date was given. ADR-063.
     const recall = limit * 4;
 
     const [lex, fuz, sem] = await Promise.all([
-      lexical(tx, spaceId, trimmed, recall),
-      fuzzy(tx, spaceId, trimmed, recall),
+      lexical(tx, spaceId, trimmed, recall, opts),
+      fuzzy(tx, spaceId, trimmed, recall, opts),
       queryVector
-        ? semantic(tx, spaceId, queryVector.vector, queryVector.maxDistance, recall)
+        ? semantic(tx, spaceId, queryVector.vector, queryVector.maxDistance, recall, opts)
         : Promise.resolve([]),
     ]);
 

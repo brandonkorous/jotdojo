@@ -68,7 +68,24 @@ Roles are two. Resist a third until a paying customer demands it.
                                                  -- pending | ready | failed | deferred
 
       created_at      timestamptz not null default now()
-      unique (note_id, position) deferrable initially deferred
+
+`blocks (note_id, position)` is a plain INDEX, not a unique constraint. This document
+claimed a `unique … deferrable initially deferred` for months and `0000_init.sql` never
+created one — corrected here rather than added, because reading order is derived from
+position now (ADR-065) and a constraint that does not exist is worse than one that never
+existed: it is a rule people write code against.
+
+**The ink layer holds two arrays, not one.** `media_assets.strokes` is
+`{v, canvas, strokes[], texts[]}` — handwriting and typed boxes on the same plane, sharing
+one `strokes_version`, one subscription and one delta protocol (ADR-058, ADR-065). They are
+kept apart inside the document on purpose: the recogniser renders `strokes` only, so typed
+text cannot reach a vision model and come back as a confidence-scored guess about words
+somebody had already typed.
+
+Canvas text gets a companion `blocks` row (`kind='text'`, `artifact_id` → the layer) holding
+the boxes flattened in reading order, so `searchable`, embeddings, `inferTitle` and
+`renderBlock` all work with no new paths. `readBody` filters to `artifact_id IS NULL` so
+that copy never reaches the typing surface.
 
 **The four universal fields are the architecture.** Every modality collapses to them, which is why adding video later is a new recognizer and not a schema change.
 

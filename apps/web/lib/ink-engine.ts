@@ -1,7 +1,7 @@
-import type { InkDelta, Stroke } from "@jotdojo/domain";
+import type { InkDelta, Stroke, TextBox } from "@jotdojo/domain";
 import type { InkTool } from "./canvas-tool";
 import { StrokeCapture } from "./ink-capture";
-import { eraseNear, restyle, without } from "./ink-edit";
+import { eraseNear } from "./ink-edit";
 import { mergePages, newcomers } from "./ink-merge";
 import { ERASE_RADIUS } from "./ink-paint";
 import { InkSurface } from "./ink-surface";
@@ -9,10 +9,13 @@ import { InkInput, type InputHost } from "./ink-input";
 import { InkViewport } from "./ink-viewport";
 import { InkFraming } from "./ink-framing";
 import { StrokeIndex } from "./ink-index";
-import { InkSelection, NO_SELECTION, type SelectionSummary } from "./ink-selection";
+import { type SelectionSummary } from "./ink-selection";
+import type { EngineOptions } from "./ink-engine-options";
+import { SelectionEditor } from "./ink-engine-select";
 import { commitStroke, type Scene } from "./ink-draw";
 import { InkPainter } from "./ink-painter";
 import { DEFAULT_PEN, type InkStyle } from "./ink-style";
+import { InkTextLayer } from "./ink-text-layer";
 
 /**
  * The ink engine: an imperative island React mounts and then leaves alone.
@@ -20,45 +23,21 @@ import { DEFAULT_PEN, type InkStyle } from "./ink-style";
  * the pen, the lasso and the marquee. docs/08-ink.md, ADR-027, ADR-033.
  */
 
-/** Re-exported so callers need not also import canvas-tool.ts. */
+/** Re-exported so callers take both from the engine they already hold. */
 export type Tool = InkTool;
-
-/** Re-exported: callers take the summary from the engine they already hold. */
 export type { SelectionSummary } from "./ink-selection";
 
-export type EngineOptions = {
-  committed: HTMLCanvasElement;
-  live: HTMLCanvasElement;
-  /** Called when strokes are added, so the sync layer can queue them. */
-  onStrokes: (strokes: Stroke[], firstIndex: number) => void;
-  /**
-   * Erase, move, recolour and delete all change the middle of the page, which
-   * the append protocol cannot express. They are sent as a delta naming the
-   * strokes involved -- never as a fresh copy of the whole page, which would
-   * discard whatever another device drew in the meantime. ADR-058.
-   */
-  onDelta: (delta: InkDelta) => void;
-  /** What is selected, so the UI can offer the right things to do with it.
-   *  The kinds matter: a marker recoloured to ink is the grey smear ADR-045
-   *  exists to prevent, so its own palette has to be reachable. */
-  onSelectionChange?: (selection: SelectionSummary) => void;
-  /** The dot grid. Painted through CSS variables inside the frame loop, so it
-   *  moves with the ink rather than a frame behind it. */
-  grid?: HTMLElement;
-  /** Fired ONLY when the zoom changes or the camera leaves or returns to home.
-   *  Panning around out there re-renders nothing. */
-  onView?: (k: number, home: boolean) => void;
-};
+export type { EngineOptions } from "./ink-engine-options";
 
 export class InkEngine implements InputHost {
   readonly surface: InkSurface;
   private readonly live: HTMLCanvasElement;
   private readonly opts: EngineOptions;
-  private readonly selection = new InkSelection();
   private readonly strokeCapture = new StrokeCapture();
   /** The camera. Never in React state -- panning must re-render nothing. */
   readonly view = new InkViewport();
   private readonly index = new StrokeIndex();
+  private readonly editor: SelectionEditor;
 
   private strokes: Stroke[] = [];
   private currentTool: Tool = "pen";
@@ -66,14 +45,37 @@ export class InkEngine implements InputHost {
   private readonly input: InkInput;
   private readonly painter: InkPainter;
   private readonly framing: InkFraming;
+  /** Typed text, when a plane was supplied. Null on the marketing hero, which
+   *  mounts ink alone. */
+  private readonly texts: InkTextLayer | null;
   /** Ids rubbed out during the current eraser sweep. */
   private readonly erased = new Set<string>();
 
   constructor(opts: EngineOptions) {
     this.opts = opts;
     this.surface = new InkSurface(opts.committed, opts.live, this.view);
-    this.painter = new InkPainter(this.surface, this.view, () => this.scene, opts.grid);
+    this.texts = opts.plane
+      ? new InkTextLayer(opts.plane, {
+        // A text box is an object on the page like a stroke is, so it travels
+        // as the same delta -- one version, one subscription. ADR-058, ADR-065.
+        onChange: (boxes) => opts.onDelta({ remove: [], upsert: [], texts: [...boxes] }),
+        onGeometry: () => this.paintOverlay(),
+      })
+      : null;
+    this.painter = new InkPainter(
+      this.surface, this.view, () => this.scene, opts.grid, this.texts ?? undefined,
+    );
     this.framing = new InkFraming(this.view, this.surface, this.painter, opts.onView);
+    this.editor = new SelectionEditor({
+      strokes: () => this.strokes,
+      setStrokes: (next) => { this.strokes = next; },
+      texts: () => this.texts,
+      index: this.index,
+      onDelta: opts.onDelta,
+      onChange: opts.onSelectionChange,
+      repaint: () => this.repaint(),
+      overlay: () => this.paintOverlay(),
+    });
     this.live = opts.live;
 
     // Without this, a two-finger drag scrolls the page mid-stroke.
@@ -84,6 +86,7 @@ export class InkEngine implements InputHost {
   destroy() {
     this.painter.cancel();
     this.input.destroy();
+    this.texts?.destroy();
   }
 
   setTool(tool: Tool) {
@@ -92,6 +95,10 @@ export class InkEngine implements InputHost {
     if (tool !== "select") this.dropSelection();
     this.currentTool = tool;
     this.strokeCapture.setStyle(tool, this.style.color, this.style.width);
+    // Only the text tool lets a box take the pointer. Everything else has to
+    // pass through the plane to the canvas underneath, or half the surface
+    // stops being drawable without showing why. ADR-065.
+    this.texts?.setTool(tool);
   }
 
   /** Colour and width for the CURRENT tool. React owns one of these per tool
@@ -103,11 +110,16 @@ export class InkEngine implements InputHost {
 
   /** Load an existing page, and frame it. Opening a note on an endless
    *  surface must never land on empty paper miles from the writing. */
-  load(strokes: Stroke[]) {
+  load(strokes: Stroke[], texts: TextBox[] = []) {
     this.strokes = strokes.map((s) => ({ ...s, pts: [...s.pts] }));
+    this.texts?.load(texts);
     this.dropSelection();
     this.fitToContent();
   }
+
+  /** Somebody else's text boxes. Like applyRemote for strokes: the camera does
+   *  not move, and the box being typed into is not overwritten. */
+  applyRemoteTexts(texts: TextBox[]) { this.texts?.applyRemote(texts); }
 
   /**
    * Strokes somebody else drew. The camera does not move and the selection is
@@ -128,49 +140,16 @@ export class InkEngine implements InputHost {
     this.repaint();
   }
 
-  fitToContent() { this.framing.fitTo(this.strokes); }
+  fitToContent() { this.framing.fitTo(this.strokes, this.texts?.bounds()); }
 
   resize(cssWidth: number, cssHeight: number) { this.framing.resize(cssWidth, cssHeight); }
 
-  // --------------------------------------------------------- selection ----
-
-  dropSelection() {
-    if (!this.selection.clear()) return;
-    this.opts.onSelectionChange?.(NO_SELECTION);
-    this.paintOverlay();
-  }
-
-  /**
-   * Recolour or resize what the lasso caught.
-   *
-   * The selection survives, so somebody can try three colours without
-   * re-lassoing. The strokes are mutated in place for exactly that reason.
-   *
-   * `publish: false` paints the change and tells nobody. A slider drag is ONE
-   * edit, and every delta leaves as its own request; the release publishes.
-   */
+  // Editing what the lasso caught is `SelectionEditor`: it reaches two arrays
+  // now and had outgrown a class that also owns the frame loop.
+  dropSelection() { this.editor.drop(); }
+  deleteSelection() { this.editor.remove(); }
   restyleSelection(patch: { color?: string; width?: number }, publish = true) {
-    if (this.selection.count === 0) return;
-    if (!restyle(this.selection.selected, patch) && !publish) return;
-    this.index.invalidate(this.selection.selected);
-    this.repaint();
-    this.paintOverlay();
-    this.opts.onSelectionChange?.(this.selection.summary);
-    if (!publish) return;
-    // The strokes themselves, because a recolour changes what they ARE. The
-    // server matches them by id and keeps their place in paint order.
-    this.opts.onDelta({ remove: [], upsert: [...this.selection.selected] });
-  }
-
-  /** Delete what the lasso caught, naming them rather than resending the
-   *  page around them. */
-  deleteSelection() {
-    if (this.selection.count === 0) return;
-    const doomed = [...this.selection.selected];
-    this.strokes = without(this.strokes, new Set(doomed));
-    this.dropSelection();
-    this.repaint();
-    this.opts.onDelta({ remove: doomed.map((s) => s.id), upsert: [] });
+    this.editor.restyle(patch, publish);
   }
 
   // ------------------------------------------------------------- input ----
@@ -180,10 +159,26 @@ export class InkEngine implements InputHost {
   // changes and may never paint.
 
   get tool() { return this.currentTool; }
-  get sel() { return this.selection; }
+  get sel() { return this.editor.sel; }
   get capture() { return this.strokeCapture; }
 
+  /** Whether the text plane took the tap. The canvas draws nothing when it did,
+   *  so a stray stroke never lands under a box somebody is editing. */
+  tapText(x: number, y: number): boolean {
+    const width = this.view.visible(this.surface.width, this.surface.height).w;
+    const took = this.texts?.tapAt(x, y, this.style, width) ?? false;
+    if (took) this.opts.onTextPlaced?.();
+    return took;
+  }
+
+  /** Anything with a caret in it should lose it before the pen touches down. */
+  blurText() { this.texts?.blur(); }
+
   eraseAt(x: number, y: number): boolean {
+    // The eraser does NOT delete text boxes -- whiteboard convention, and the
+    // right one: rubbing at a diagram should not silently swallow the label
+    // beside it. Lasso and Delete are how a box goes. ADR-065.
+    //
     // A hit tolerance, so it is a SCREEN distance. Left in world units the
     // eraser would swallow the page zoomed out and miss everything zoomed in.
     const hit = eraseNear(this.strokes, x, y, ERASE_RADIUS / this.view.k);
@@ -208,34 +203,16 @@ export class InkEngine implements InputHost {
     this.opts.onStrokes([stroke], this.strokes.length - 1);
   }
 
-  dragSelection(x: number, y: number) {
-    if (!this.selection.dragTo(x, y)) return;
-    // Dragging mutates strokes IN PLACE, so the cached boxes are now lies.
-    this.index.invalidate(this.selection.selected);
-    this.repaint();
-    this.paintOverlay();
-  }
+  dragSelection(x: number, y: number) { this.editor.dragTo(x, y); }
 
-  finishSelect() {
-    if (this.selection.dragging) {
-      // Moved strokes are the same strokes with different points, so this is
-      // an upsert by id -- nothing else on the page is touched.
-      if (this.selection.endDrag()) {
-        this.opts.onDelta({ remove: [], upsert: [...this.selection.selected] });
-      }
-      return;
-    }
-    this.selection.settle(this.strokes);
-    this.opts.onSelectionChange?.(this.selection.summary);
-    this.paintOverlay();
-  }
+  finishSelect() { this.editor.finish(); }
 
   // ----------------------------------------------------------- render ----
   // WHEN to paint is `InkPainter`; this is only which paint to ask for.
 
   private get scene(): Scene {
     return {
-      strokes: this.strokes, sel: this.selection, capture: this.strokeCapture,
+      strokes: this.strokes, sel: this.editor.sel, capture: this.strokeCapture,
       index: this.index, k: this.view.k,
     };
   }

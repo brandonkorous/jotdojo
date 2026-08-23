@@ -48,7 +48,7 @@
 .jd-note-lines { display: grid; gap: 0.1rem; font-size: 0.95rem; line-height: 1.75; }
 
 /* Human ink is sumi; agent ink is `agent`. The colour is the fast signal, the
-   "Claude · via MCP" label beside it is the accessible one. docs/10, ADR-011. */
+   "Claude · an agent" label beside it is the accessible one. docs/10, ADR-011. */
 .jd-demo .jd-agent { border-color: var(--color-agent); background: var(--color-base-200); }
 .jd-agent figcaption {
   color: var(--color-agent);

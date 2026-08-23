@@ -133,9 +133,12 @@ Both are `httpOnly`, which means no script on the page can read them.
 
 ## Taking it with you, and deleting it
 
-**Export** is available at any time and gives you a zip of markdown files plus
-the original recordings and images. Markdown because it opens in anything —
-an export you cannot read is not an export.
+**Export** is available at any time from your account page, and gives you a zip
+of markdown files plus the original recordings and images. Markdown because it
+opens in anything — an export you cannot read is not an export. Handwriting
+comes out as SVG, which is the strokes you drew rather than a picture of them.
+You can also save a single note, or just a drawing on one, straight from the
+canvas.
 
 **Deletion means deletion.** Deleting a space removes its stored files, not only
 the rows that point at them. After the 30-day window a deleted note is gone and

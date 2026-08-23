@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 import { publish } from "./events";
+import { writeChange } from "./changes";
 import { withoutActor } from "@jotdojo/db";
 
 /**
@@ -132,9 +133,13 @@ export async function storeTranscript(
  * nothing worth billing, and charging for it would make a bad transcript
  * expensive twice.
  */
-export async function recordRecognition(blockId: string, units: number): Promise<void> {
+export async function recordRecognition(
+  blockId: string, units: number, kind = "ink",
+): Promise<void> {
   await withoutActor(async (tx) => {
-    await tx.execute(sql`SELECT app_record_recognition(${blockId}::uuid, ${units}::integer)`);
+    await tx.execute(sql`
+      SELECT app_record_recognition(${blockId}::uuid, ${units}::integer, ${kind}::text)
+    `);
   });
 }
 
@@ -160,7 +165,19 @@ export async function failTranscript(blockId: string): Promise<void> {
 async function announce(blockId: string, state: string): Promise<void> {
   const where = await withoutActor(async (tx) => {
     const rows = await tx.execute(sql`SELECT * FROM app_block_note(${blockId}::uuid)`);
-    return (rows as unknown as Array<{ note_id: string; space_id: string }>)[0];
+    const found = (rows as unknown as Array<{ note_id: string; space_id: string }>)[0];
+    // Recorded here because this is the one place that already knows which
+    // note and which space a block belongs to. A reading arriving twenty
+    // minutes after somebody wrote a page is the clearest thing the changes
+    // feed has to report, and the worker wrote nothing at all before ADR-063.
+    //
+    // Through a definer function: the worker has no actor, and audit_log's
+    // policy matches nothing without one -- a plain INSERT here would write
+    // zero rows and report success. ADR-057.
+    if (found) {
+      await writeChange(tx, found.space_id, `note.transcript.${state}`, found.note_id, { blockId });
+    }
+    return found;
   });
   if (!where) return;
   publish({

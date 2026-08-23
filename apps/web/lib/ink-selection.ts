@@ -1,5 +1,6 @@
-import type { Point, Stroke } from "@jotdojo/domain";
+import type { Point, Stroke, TextBox } from "@jotdojo/domain";
 import { type Bounds, inBounds, strokeBounds, strokeInPolygon } from "./ink-geometry";
+import { boxInPolygon, boxesBounds, translateBoxes } from "./ink-objects";
 
 /**
  * Lasso selection: the state between "a loop was drawn" and "those strokes
@@ -20,20 +21,30 @@ export type SelectionSummary = {
    *  stroke caught, so the slider opens on the selection rather than on a
    *  default that would jump it the moment it is touched. */
   penWidth: number | null;
+  /** Which objects, by name. Export sends these to the server rather than the
+   *  strokes themselves, so what comes back is the saved page. ADR-058. */
+  ids: string[];
+  /** How many of them are typed text boxes. The bar says "objects" rather than
+   *  "strokes" when a selection holds both, and hides the pen palettes when it
+   *  holds only text. ADR-065. */
+  texts: number;
 };
 
 export const NO_SELECTION: SelectionSummary = {
-  count: 0, pen: false, marker: false, penWidth: null,
+  count: 0, pen: false, marker: false, penWidth: null, ids: [], texts: 0,
 };
 
 export class InkSelection {
   private lasso: Point[] | null = null;
   private picked: Stroke[] = [];
+  /** Text boxes caught by the same loop. A SECOND ARRAY rather than a
+   *  discriminated list, matching how they are stored -- see ink-text.ts. */
+  private boxes: TextBox[] = [];
   private box: Bounds | null = null;
   private dragFrom: { x: number; y: number } | null = null;
   private moved = false;
 
-  get count() { return this.picked.length; }
+  get count() { return this.picked.length + this.boxes.length; }
 
   /**
    * What was caught, not just how much.
@@ -45,13 +56,16 @@ export class InkSelection {
   get summary(): SelectionSummary {
     const pen = this.picked.find((s) => s.tool === "pen");
     return {
-      count: this.picked.length,
+      count: this.count,
       pen: pen !== undefined,
       marker: this.picked.some((s) => s.tool === "highlighter"),
       penWidth: pen?.width ?? null,
+      ids: [...this.picked.map((s) => s.id), ...this.boxes.map((b) => b.id)],
+      texts: this.boxes.length,
     };
   }
   get selected(): readonly Stroke[] { return this.picked; }
+  get selectedTexts(): readonly TextBox[] { return this.boxes; }
   get path(): readonly Point[] | null { return this.lasso; }
   get marquee(): Bounds | null { return this.box; }
   get dragging() { return this.dragFrom !== null; }
@@ -68,12 +82,16 @@ export class InkSelection {
    * Fewer than three points cannot enclose anything, so a stray tap clears the
    * selection rather than selecting the whole page.
    */
-  settle(all: readonly Stroke[]): number {
+  settle(all: readonly Stroke[], texts: readonly TextBox[] = []): number {
     const poly = this.lasso ?? [];
     this.lasso = null;
-    this.picked = poly.length >= 3 ? all.filter((s) => strokeInPolygon(poly, s)) : [];
-    this.box = strokeBounds(this.picked);
-    return this.picked.length;
+    const enclosing = poly.length >= 3;
+    this.picked = enclosing ? all.filter((s) => strokeInPolygon(poly, s)) : [];
+    // The SAME rule for both kinds: whole-object containment, ADR-033. A mixed
+    // selection is only explicable if one standard governs it.
+    this.boxes = enclosing ? texts.filter((t) => boxInPolygon(poly, t)) : [];
+    this.box = mergeBounds(strokeBounds(this.picked), boxesBounds(this.boxes));
+    return this.count;
   }
 
   beginDrag(x: number, y: number) {
@@ -90,6 +108,7 @@ export class InkSelection {
     for (const stroke of this.picked) {
       for (const p of stroke.pts) { p[0] += dx; p[1] += dy; }
     }
+    translateBoxes(this.boxes, dx, dy);
     if (this.box) { this.box.x += dx; this.box.y += dy; }
     this.dragFrom = { x, y };
     this.moved = true;
@@ -107,11 +126,26 @@ export class InkSelection {
 
   /** True if there was anything to clear, so callers can skip a repaint. */
   clear(): boolean {
-    if (this.picked.length === 0 && this.lasso === null) return false;
+    if (this.count === 0 && this.lasso === null) return false;
     this.picked = [];
+    this.boxes = [];
     this.box = null;
     this.lasso = null;
     this.dragFrom = null;
     return true;
   }
+}
+
+/** Two boxes, either of which may be absent. A selection of only strokes and a
+ *  selection of only text both have to produce a marquee. */
+function mergeBounds(a: Bounds | null, b: Bounds | null): Bounds | null {
+  if (!a) return b;
+  if (!b) return a;
+  const x = Math.min(a.x, b.x);
+  const y = Math.min(a.y, b.y);
+  return {
+    x, y,
+    w: Math.max(a.x + a.w, b.x + b.w) - x,
+    h: Math.max(a.y + a.h, b.y + b.h) - y,
+  };
 }

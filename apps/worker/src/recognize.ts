@@ -3,7 +3,8 @@ import {
   claimRecognizeJobs, storeTranscript, failTranscript, finishJob, recordRecognition,
   type RecognizeJob,
 } from "@jotdojo/domain";
-import { toSvg, tiles, bounds } from "@jotdojo/ink-render";
+import { tiles, bounds } from "@jotdojo/ink-render";
+import { toPng } from "@jotdojo/ink-render/raster";
 import { storage } from "@jotdojo/storage";
 import { RecognitionError, type Recognizer, type Page } from "@jotdojo/vision";
 import { TranscriptionError, type Transcriber } from "@jotdojo/speech";
@@ -35,9 +36,9 @@ type Rendered = { pages: Page[]; produced: number; rendered: number };
  * Rasterise strokes for the model.
  *
  * SVG through sharp rather than a canvas: the worker has no DOM, and librsvg
- * is already there. PNG rather than JPEG because handwriting is thin high
- * contrast lines and JPEG ringing around them is exactly the artefact that
- * turns an l into a 1.
+ * is already there. `toPng` is that, shared -- export and the MCP page view
+ * need the identical thing, and a second copy of it would be a second answer
+ * to what a page looks like. ADR-067.
  */
 async function render(job: RecognizeJob): Promise<Rendered> {
   if (job.kind === "ink") {
@@ -53,9 +54,8 @@ async function render(job: RecognizeJob): Promise<Rendered> {
     const kept = all.slice(0, MAX_TILES);
     const pages = await Promise.all(kept.map(async (tile) => ({
       mediaType: "image/png",
-      base64: (await sharp(Buffer.from(toSvg(tile.doc, {
-        mode: "recognition", bounds: tile.rect,
-      }))).png({ compressionLevel: 6 }).toBuffer()).toString("base64"),
+      base64: (await toPng(tile.doc, { mode: "recognition", bounds: tile.rect }))
+        .toString("base64"),
     })));
     return { pages, produced: all.length, rendered: kept.length };
   }

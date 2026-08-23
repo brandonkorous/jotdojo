@@ -31,13 +31,25 @@ The milestone that tells us whether any of this is real.
 - [x] MCP server, streamable HTTP, read tools plus `comment_on_note`
 - [x] Consent screen with per-space grants
 - [x] Semantic search: embeddings, pgvector, hybrid fusion
-- [x] **iOS Shortcuts**: Jot, Snap, share sheet, capture tokens, guided setup
-- [x] Android Web Share Target
+- [x] **iOS Shortcuts**: Jot, Snap, capture tokens, guided setup
+- [x] **iOS share sheet** — a URL is a capture in its own right, and a photo goes up in
+      three steps so the bytes never pass through the API. ADR-064, `share:smoke`.
+- [x] Android Web Share Target — text, title, URL **and files**. The manifest had been
+      advertising `image/*` and `audio/*` since launch and the route ignored them, so a
+      shared screenshot silently became an empty note.
 - [x] Audit log
+- [x] **Export** — `/export/space/<id>` and `/export/note/<id>`, markdown plus originals,
+      linked from the account page. The privacy policy had promised this since launch and it
+      did not exist; ADR-067.
 
 **Every line above is built and covered by a smoke suite over real HTTP or real SQL** —
-`api:smoke` (16 checks), `oauth:http-smoke` (21), `mcp:smoke` (20), `search:smoke` (18) on
-the tenancy of semantic recall, plus `oauth:smoke` and `mcp:check` on the discovery chain.
+`api:smoke` (16 checks), `share:smoke` (22), `oauth:http-smoke` (21), `mcp:smoke` (35),
+`search:smoke` (18) on the tenancy of semantic recall, `export:smoke` and
+`export:http-smoke` on what leaves, `changes:smoke` on when, plus `oauth:smoke` and
+`mcp:check` on the discovery chain.
+
+The share-sheet line spent a while ticked while being untrue; it is ticked again now for
+the ordinary reason.
 
 **What remains is not code. It is the deploy.** The four Dockerfiles and the `infra/k8s`
 manifests exist, but nothing has been applied, and until it is, every origin in the chain
@@ -103,8 +115,18 @@ The first milestone where revenue is possible. Deliberately after the loop is pr
 - [x] Marketing site at the apex with the live-canvas hero (ADR-040, `site:smoke` 44)
 - [x] Usage metering on recognition, deferred not refused (ADR-036, `metering:smoke` 19)
 - [x] Review inbox and revert (ADR-037, `review:smoke` 18)
-- [x] `notes:append` and `notes:edit` scopes with per-space grants (covered by `mcp:smoke`)
+- [x] `notes:append` scope with per-space grants (covered by `mcp:smoke`). `notes:edit` was removed — ADR-070
 - [x] Solo plan, and free reads / paid writes enforced (ADR-042, ADR-043)
+- [x] The tool surface made submittable to the app directories (ADR-069, `mcp:tools`), the
+      edit tool removed (ADR-070), and a **Connect to Claude** button that replaces copying a
+      URL. See [18-app-directories.md](18-app-directories.md)
+
+**Getting listed is the acquisition bet, and it is sequenced OpenAI first.** ChatGPT has no
+install link and no path a non-technical person can use except the directory, and its
+submission needs no organisation. Anthropic's needs a 2-seat Team org on a business email
+(~$40–50/mo) and is **deferred to early September 2026** — the button carries Claude users
+until then. Remaining before either: a populated demo account, three worked prompts, icon,
+tagline, description, categories, support contact, and a plain-language docs page.
 
 **Two gaps found while writing the pricing page, one closed and one open.** The free tier
 could write over MCP — the fence docs/01 calls its most important decision was never

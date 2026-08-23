@@ -1,4 +1,4 @@
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, isNull, sql } from "drizzle-orm";
 import { blocks, noteRevisions, auditLog, type Tx } from "@jotdojo/db";
 import { attribution, type Actor } from "./actor";
 import { publish } from "./events";
@@ -28,7 +28,8 @@ export function inferTitle(body: string): string | null {
 export const previewOf = (body: string) => body.replace(/\s+/g, " ").trim().slice(0, 180);
 
 export async function audit(
-  tx: Tx, actor: Actor, spaceId: string, action: string, targetId?: string, toolName?: string,
+  tx: Tx, actor: Actor, spaceId: string, action: string, targetId?: string,
+  toolName?: string, extra?: Record<string, unknown>,
 ) {
   // actor_type is the PRINCIPAL, which for a capture token is still the person
   // -- they are just coming through a different door. Which door is recorded in
@@ -42,7 +43,12 @@ export async function audit(
     action,
     targetId: targetId ?? null,
     toolName: toolName ?? null,
-    metadata: actor.type === "capture" ? { via: "capture", tokenId: actor.tokenId } : null,
+    // `extra` is how a row points at the thing it is about -- the comment id,
+    // the block that was read. The changes feed joins on it rather than making
+    // a second query per row. ADR-063.
+    metadata: actor.type === "capture"
+      ? { via: "capture", tokenId: actor.tokenId, ...extra }
+      : (extra ?? null),
   });
 }
 
@@ -92,8 +98,16 @@ export async function queueEmbedding(tx: Tx, noteId: string, revision: number) {
 export async function writeTextBlock(
   tx: Tx, note: { id: string; spaceId: string }, body: string,
 ): Promise<void> {
+  // `artifact_id IS NULL` matches readBody's filter, so the two agree BY
+  // CONSTRUCTION rather than by the fact that createNote happens to put the
+  // spine at position 0. One reads what the other writes; they should not
+  // identify the row two different ways. ADR-065.
   const existing = await tx.select({ id: blocks.id }).from(blocks)
-    .where(and(eq(blocks.noteId, note.id), eq(blocks.position, 0))).limit(1);
+    .where(and(
+      eq(blocks.noteId, note.id),
+      eq(blocks.position, 0),
+      isNull(blocks.artifactId),
+    )).limit(1);
 
   if (existing[0]) {
     await tx.update(blocks).set({ body }).where(eq(blocks.id, existing[0].id));
@@ -106,17 +120,31 @@ export async function writeTextBlock(
 }
 
 export async function readBody(tx: Tx, noteId: string): Promise<string> {
-  // TEXT blocks only, and the filter is load-bearing.
+  // THE SPINE ONLY, and both halves of the filter are load-bearing.
   //
-  // `body` is what the editor puts in the textarea and what saveNote writes
-  // back to the block at position 0. Folding an ink transcript in here would
-  // put recognized handwriting into the typing surface, and the next autosave
-  // would write it into the text block as though the person had typed it --
+  // `kind = 'text'` because folding an ink transcript in here would put
+  // recognized handwriting into the typing surface, and the next autosave would
+  // write it into the text block as though the person had typed it --
   // duplicating it, and making a machine reading indistinguishable from their
-  // own words. Agents get the whole note through readBlocks instead.
+  // own words.
+  //
+  // `artifact_id IS NULL` for the same reason, one layer up. Canvas text boxes
+  // get a companion text block so they reach lexical search (ADR-065), and it
+  // is joined to the ink layer by artifact_id. Without this clause their
+  // flattened contents would land in the textarea and the next autosave would
+  // save them into the spine -- the exact duplication the paragraph above
+  // warns about, arriving by a different door. It was a dormant bug from the
+  // day readBody joined ALL text blocks and writeTextBlock only ever wrote
+  // position 0.
+  //
+  // Agents get the whole note through readBlocks instead.
   const rows = await tx.select({ body: blocks.body })
     .from(blocks)
-    .where(and(eq(blocks.noteId, noteId), eq(blocks.kind, "text")))
+    .where(and(
+      eq(blocks.noteId, noteId),
+      eq(blocks.kind, "text"),
+      isNull(blocks.artifactId),
+    ))
     .orderBy(blocks.position);
   return rows.map((r) => r.body ?? "").join("\n\n");
 }

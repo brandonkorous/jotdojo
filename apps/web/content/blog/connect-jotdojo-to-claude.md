@@ -1,14 +1,23 @@
 ---
 title: Connecting jotdojo to Claude, ChatGPT and Claude Code
-description: One URL, an OAuth screen, and a choice of which space the agent may reach. Ten minutes, including reading this.
+description: One button, an OAuth screen, and a choice of which space the agent may reach. Two minutes, or ten if you read the whole thing.
 date: 2026-08-17
 ---
 
-jotdojo's MCP server is remote, so connecting it is the same three steps
-everywhere: paste a URL, sign in, choose what the agent may reach. There is no
-config file and nothing to install.
+jotdojo runs a remote server, so connecting it is the same three steps
+everywhere: point your assistant at jotdojo, sign in, choose what it may reach.
+There is no config file and nothing to install.
 
-The URL is always the same:
+## The short way
+
+On your [account page](/account) there is a **Connect to Claude** button. It opens
+Claude with everything already filled in, so there is nothing to copy. Confirm,
+sign in with Google, pick your spaces, done.
+
+Everything below is the long way, for other assistants and for anyone who wants to
+know what the button does.
+
+## The address
 
 ```
 https://mcp.jotdojo.com/mcp
@@ -18,7 +27,7 @@ https://mcp.jotdojo.com/mcp
 
 1. Open **Settings → Connectors**.
 2. Choose **Add custom connector**.
-3. Paste the URL and confirm.
+3. Paste the address and confirm.
 
 Claude registers itself with our authorization server automatically — that is
 dynamic client registration, RFC 7591, and it is why you never enter a client id
@@ -78,12 +87,11 @@ Writes, on a paid plan and only if you granted the scope:
 | `comment_on_note` | `notes:comment` — the default agent output |
 | `append_to_note` | `notes:append` — additive, so nothing can be lost |
 | `create_note` | `notes:append` |
-| `update_note` | `notes:edit` — off by default, opted into per space |
 
-The ordering is deliberate. An agent's default way of saying something is a
-**comment**, not an edit. Appending is preferred over replacing because appending
-cannot destroy anything. Replacing block content requires a scope you have to
-turn on yourself, per space, having been told what it means.
+**There is no edit tool.** An agent can write a new note, add to the end of one,
+and leave comments. It cannot replace or delete what you wrote, and that is not a
+setting you have to find — there is no tool on the surface that can do it, and no
+scope that grants one.
 
 Every agent-authored block and comment is stored with the client that wrote it
 and the model that produced it, and every revision can be put back. The principle

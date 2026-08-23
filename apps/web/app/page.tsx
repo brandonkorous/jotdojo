@@ -4,7 +4,7 @@ import {
 } from "@jotdojo/domain";
 import { requireActor, currentUser } from "@/lib/session";
 import { Canvas } from "@/components/Canvas";
-import { Notices } from "@/components/Notices";
+import { CanvasStage } from "@/components/CanvasStage";
 
 // The canvas must reflect what was just written, never a cached shell.
 export const dynamic = "force-dynamic";
@@ -31,17 +31,18 @@ export default async function Home() {
 
   return (
     <main>
-      <Canvas
-        noteId={note.id}
-        initialBody={note.body}
-        initialRevision={note.revision}
-        hasInk={hasInk(note)}
-        user={user}
-        toolbarPreference={preference}
-      />
       {/* The landing page is the canvas, so this is where "open the app and
           see what your agent noticed" actually has to happen. docs/12, M5. */}
-      <Notices comments={await listNoteComments(actor, note.id)} />
+      <CanvasStage comments={await listNoteComments(actor, note.id)}>
+        <Canvas
+          noteId={note.id}
+          initialBody={note.body}
+          initialRevision={note.revision}
+          hasInk={hasInk(note)}
+          user={user}
+          toolbarPreference={preference}
+        />
+      </CanvasStage>
     </main>
   );
 }

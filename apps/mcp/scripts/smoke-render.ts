@@ -7,7 +7,10 @@
  * between an agent that is right and one that is confidently wrong, and it is
  * a string.
  */
-import { renderBlock } from "../src/tools";
+// The renderer moved to @jotdojo/domain when export needed it too (ADR-067).
+// The suite stays here: this is about what an AGENT is told, and that is a
+// question about the MCP surface even though the string is built elsewhere.
+import { renderBlock } from "@jotdojo/domain";
 
 let failures = 0;
 const check = (label: string, ok: boolean, detail?: string) => {

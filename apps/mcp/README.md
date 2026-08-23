@@ -25,7 +25,15 @@ redirect URI matching, rotating refresh tokens.
 
 kanninja exposes 42 tools and owns the generic names (`search`, `list_comments`,
 `add_comment`). An agent doing our flow holds both servers. **Every jotdojo tool name
-ends in `_note`, `_notes`, or `_spaces`.** No bare verbs.
+carries one of our nouns** — a note or a space. No bare verbs.
 
     search_notes  get_note  list_notes  list_spaces  list_note_comments
-    create_note   append_to_note  comment_on_note  update_note
+    view_note     changes_notes
+    create_note   append_to_note  comment_on_note
+
+Ten tools, and none of them can lose anything. There is no edit tool and no
+`notes:edit` scope: an agent adds and comments, and cannot replace what a person
+wrote. ADR-070.
+
+Every tool ships `title`, `readOnlyHint` and `destructiveHint`, which is what both
+app directories check mechanically. `pnpm mcp:tools` holds us to it. ADR-069.

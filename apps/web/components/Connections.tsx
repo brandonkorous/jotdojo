@@ -13,14 +13,15 @@ import type { Connection } from "@jotdojo/domain";
  * can read them is one click away and the revoke actually works.
  *
  * So the copy names capabilities in plain language rather than showing OAuth
- * scope strings. "Can edit what you wrote" is a fact about your notes.
- * "notes:edit" is a fact about our database.
+ * scope strings. "Add to the end of notes" is a fact about your notes.
+ * "notes:append" is a fact about our database.
+ *
+ * There is no line for editing because nothing granted here can edit. ADR-070.
  */
 const SCOPE_COPY: Record<string, string> = {
   "notes:read": "Read your notes",
   "notes:comment": "Leave comments",
   "notes:append": "Add to the end of notes",
-  "notes:edit": "Change what you wrote",
 };
 
 const relative = (date: Date | null) => {
@@ -40,9 +41,9 @@ export function Connections({ connections }: { connections: Connection[] }) {
     <section>
       <h2 className="font-head text-xl">Connected agents</h2>
       <p className="mb-4 mt-1 text-sm opacity-60">
-        Anything that reached your notes through MCP. Revoking takes effect
-        immediately — the agent&rsquo;s next request fails, it does not wait for a
-        token to expire.
+        Every assistant you have let in, and what each one can reach. Revoking
+        takes effect immediately — the agent&rsquo;s next request fails, it does not
+        wait for a token to expire.
       </p>
 
       {connections.length === 0 && (
@@ -64,14 +65,9 @@ export function Connections({ connections }: { connections: Connection[] }) {
 
             <ul className="mt-3 flex flex-wrap gap-1.5">
               {c.scopes.map((s) => (
-                <li
-                  key={s}
-                  // Write access is the one worth a second look, so it does not
-                  // sit in the same grey pill as "read".
-                  className={`badge badge-sm ${
-                    s === "notes:edit" ? "badge-warning" : "badge-soft"
-                  }`}
-                >
+                // Nothing granted here is worth a warning colour any more:
+                // none of it can lose anything a person wrote. ADR-070.
+                <li key={s} className="badge badge-sm badge-soft">
                   {SCOPE_COPY[s] ?? s}
                 </li>
               ))}

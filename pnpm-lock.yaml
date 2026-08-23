@@ -51,9 +51,15 @@ importers:
       '@jotdojo/domain':
         specifier: workspace:*
         version: link:../../packages/domain
+      '@jotdojo/ink-render':
+        specifier: workspace:*
+        version: link:../../packages/ink-render
       '@modelcontextprotocol/sdk':
         specifier: ^1.30.0
         version: 1.30.0(zod@3.25.76)
+      sharp:
+        specifier: ^0.33.5
+        version: 0.33.5
       tsx:
         specifier: ^4.19.2
         version: 4.23.12
@@ -103,6 +109,9 @@ importers:
       react-dom:
         specifier: ^19.0.0
         version: 19.2.8(react@19.2.8)
+      sharp:
+        specifier: ^0.33.5
+        version: 0.33.5
     devDependencies:
       '@tailwindcss/postcss':
         specifier: ^4.0.0
@@ -245,10 +254,16 @@ importers:
       '@jotdojo/domain':
         specifier: workspace:*
         version: link:../domain
+      sharp:
+        specifier: ^0.33.5
+        version: 0.33.5
     devDependencies:
       '@types/node':
         specifier: ^22.10.5
         version: 22.20.1
+      tsx:
+        specifier: ^4.19.2
+        version: 4.23.12
       typescript:
         specifier: ^5.7.3
         version: 5.9.3

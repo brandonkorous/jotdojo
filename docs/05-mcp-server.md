@@ -31,17 +31,38 @@ Rule: **every jotdojo tool name ends in `_note`, `_notes`, or `_spaces`.** No ba
 | `list_notes` | Reverse-chronological, for "what did I capture this week" |
 | `list_spaces` | Spaces this token reaches, with granted scopes |
 | `list_note_comments` | Comments on a note, human and agent, threaded |
+| `changes_notes` | What has HAPPENED in a space, newest first. Not the same question as `list_notes` |
+| `view_note` | The handwriting itself, as an image. **The only tool that returns a non-text block** |
 
 ### Write
 
 | Tool | Scope | Purpose |
 |---|---|---|
-| `create_note` | `notes:write` | New note from agent-supplied markdown |
-| `append_to_note` | `notes:append` | Add blocks to the end. Non-destructive by construction, so this is the preferred write |
+| `create_note` | `notes:append` | New note from agent-supplied markdown. Touches nothing that exists |
+| `append_to_note` | `notes:append` | Add blocks to the end. Non-destructive by construction |
 | `comment_on_note` | `notes:comment` | **The default agent output.** Leaves a remark without touching content |
-| `update_note` | `notes:edit` | Replace block content. Explicit per-space grant, off by default |
 
-Nine tools. `update_note` is deliberately the most awkward to reach, and its description says to prefer commenting or appending.
+**Ten tools, and not one of them can lose anything.** `search_notes` and `list_notes` take `since` and `until` rather than each spawning a dated variant — the budget does not allow a tool per filter.
+
+There is no edit tool. `update_note` and the `notes:edit` scope were removed on 2026-08-22: a capability that was off by default, deliberately awkward, and granted by almost nobody was still costing a slot, a scope, a consent-screen row and the surface's only confirmation prompt. **An agent can add to a note and cannot change one**, which is a property of the server rather than a promise about it. ADR-070.
+
+### Descriptions may not rank each other
+
+A tool description says what the tool does and what it is for, and stops. It may not tell a model to prefer one tool over another, however true that is — both directories reject a description that steers, because steering toward a neighbour is indistinguishable from steering anywhere else. Safety is carried by `readOnlyHint` and `destructiveHint`, which enforce rather than ask. ADR-069, and `pnpm mcp:tools` is the guard.
+
+### Why `changes_notes` is worth a slot
+
+`list_notes` says which notes are **recent**. That is a different question from what has **happened**: a page whose handwriting was finally read, or that somebody left a comment on, has changed in a way its position in a list cannot express — and an agent asked "anything new?" had nothing to call.
+
+It reads `audit_log`, which already had the shape and the index, and **excludes `note.read`**. `get_note` writes one of those per call, so reads outnumber everything else put together; a feed containing them is a feed nobody can use. ADR-063.
+
+### Why `view_note` is worth a slot
+
+A transcript carries words and nothing else. An arrow, a box, a crossed-out line, a freehand table, a sketch of a room — recognition returns `[handwritten, nothing legible on it]`, which is true and useless, and an agent that stops there reports a blank page.
+
+We keep the strokes, so we can redraw the page at any size and hand it over. **Nobody holding a photograph of that page can do this**, and nothing else in the budget buys a capability that is ours alone.
+
+It returns a caption alongside the image, and the caption is not decoration. It says the drawing is the record and the transcript is a reading of it, and which way a disagreement goes. An image arriving unframed is one a model describes as though somebody had sent a photograph. ADR-068.
 
 ## Scopes
 
@@ -50,7 +71,6 @@ Nine tools. `update_note` is deliberately the most awkward to reach, and its des
 | `notes:read` | search, get, list | On, included in free tier |
 | `notes:comment` | comment_on_note | On for paid |
 | `notes:append` | append_to_note, create_note | On for paid |
-| `notes:edit` | update_note | **Off.** Per-space opt-in |
 | `capture:write` | the Shortcuts endpoint only | Separate credential, see [09-shortcuts.md](09-shortcuts.md) |
 
 Granted **per client, per space**. The consent screen names the client and lists spaces in plain language. Revocation is one tap and immediate.

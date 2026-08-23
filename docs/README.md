@@ -22,6 +22,7 @@ Everything needed to take jotdojo from empty repo to shipped product. Read in or
 | [15-decision-log.md](15-decision-log.md) | Decisions made, with reasoning |
 | [16-web-presence.md](16-web-presence.md) | Domains, canvas-first shell, anonymous capture, SEO |
 | [17-shared-infrastructure.md](17-shared-infrastructure.md) | **Read before deploying.** We share sparx's cluster and SQL server: what that constrains, and the pipeline that follows |
+| [18-app-directories.md](18-app-directories.md) | Reaching people who never learned the word MCP: Claude and ChatGPT listings |
 
 ## The one-paragraph version
 

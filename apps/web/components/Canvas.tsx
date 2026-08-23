@@ -125,7 +125,7 @@ export function Canvas({
   const { input, block, mark, heading, syncBlock, onKeyDown } = useMarks(onChange);
 
   // The canvas runs edge to edge. The only padding that matters is enough top
-  // room to clear the pill, and enough bottom room to clear the save line.
+  // room to clear the pill, and enough bottom room to clear the selection bar.
   const pad = "px-5 pt-16 pb-10 sm:px-8";
 
   return (
@@ -161,6 +161,7 @@ export function Canvas({
             style={styleFor(inkToolFor(tool), styles)}
             onReady={setInkBlockId}
             onDraw={writing}
+            onTextPlaced={() => setTool("text")}
             live={user !== null}
           />
         </div>
@@ -181,6 +182,7 @@ export function Canvas({
         onMic={() => setMicSignal((n) => n + 1)} />
 
       <ToolOptions
+        onTextBox={() => { setOptionsOpen(false); setInkStarted(true); setTool("textbox"); }}
         tool={tool}
         styles={styles}
         block={block}

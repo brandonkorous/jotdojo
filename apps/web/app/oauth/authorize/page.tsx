@@ -14,8 +14,7 @@ const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v) 
 const SCOPE_LABELS: Record<Scope, string> = {
   "notes:read": "read your notes",
   "notes:comment": "leave comments",
-  "notes:append": "add new notes",
-  "notes:edit": "edit the content of your notes",
+  "notes:append": "add new notes and add to existing ones",
 };
 
 export default async function Authorize({
@@ -120,17 +119,10 @@ export default async function Authorize({
                   name="scope"
                   value={scope}
                   id={`scope-${scope}`}
-                  defaultChecked={scope !== "notes:edit"}
+                  defaultChecked
                   className="checkbox mt-0.5"
                 />
-                <label htmlFor={`scope-${scope}`}>
-                  {SCOPE_LABELS[scope]}
-                  {scope === "notes:edit" && (
-                    <span className="block text-xs opacity-60">
-                      Off by default. Agents normally leave comments instead.
-                    </span>
-                  )}
-                </label>
+                <label htmlFor={`scope-${scope}`}>{SCOPE_LABELS[scope]}</label>
               </li>
             ))}
           </ul>

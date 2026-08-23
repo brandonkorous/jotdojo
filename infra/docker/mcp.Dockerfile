@@ -13,6 +13,14 @@
 # can successfully present. It must be set to the public origin the Caddy block
 # routes -- `https://mcp.jotdojo.com/mcp` -- and it must match character for
 # character. See infra/k8s/config.yaml.
+#
+# THIS IMAGE RENDERS INK, so it carries `sharp` (ADR-062, `view_note`). `sharp`
+# ships prebuilt native binaries per libc, and the musl builds Alpine needs are
+# fetched by its install script -- which pnpm only runs because `sharp` is listed
+# in the root package.json's `pnpm.onlyBuiltDependencies`. If that entry is ever
+# removed the install still SUCCEEDS and the failure surfaces at runtime as
+# "Could not load the sharp module using the linuxmusl-x64 runtime", on the first
+# view_note rather than at build time.
 
 FROM node:22-alpine AS base
 RUN corepack enable
@@ -75,6 +83,8 @@ COPY --from=deps --chown=jotdojo:nodejs /repo/packages/domain/node_modules ./pac
 COPY --chown=jotdojo:nodejs packages/domain ./packages/domain
 COPY --from=deps --chown=jotdojo:nodejs /repo/packages/embeddings/node_modules ./packages/embeddings/node_modules
 COPY --chown=jotdojo:nodejs packages/embeddings ./packages/embeddings
+COPY --from=deps --chown=jotdojo:nodejs /repo/packages/ink-render/node_modules ./packages/ink-render/node_modules
+COPY --chown=jotdojo:nodejs packages/ink-render ./packages/ink-render
 COPY --from=deps --chown=jotdojo:nodejs /repo/packages/storage/node_modules ./packages/storage/node_modules
 COPY --chown=jotdojo:nodejs packages/storage ./packages/storage
 

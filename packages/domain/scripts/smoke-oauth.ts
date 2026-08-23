@@ -102,7 +102,7 @@ check("a garbage token resolves to nothing",
 
 check("agent can read the granted space", (await listNotes(agent!, personal)).length === 1);
 check("agent sees only granted spaces", (await listSpaces(agent!)).length === 1);
-check("agent WITHOUT notes:edit cannot create",
+check("agent WITHOUT notes:append cannot create",
   await refused(() => createNote(agent!, personal, "should be refused")));
 
 // A grant for one space must not reach another the user also belongs to.

@@ -175,7 +175,10 @@ export async function inkLayerAction(noteId: string, canvas: { w: number; h: num
   const block = await ensureInkBlock(actor, noteId, canvas);
   // The version comes back too, because the canvas has to know where the page
   // WAS before it can tell whether a live event is news. ADR-058.
-  return { blockId: block.blockId, strokeCount: block.strokeCount, version: block.version };
+  return {
+    blockId: block.blockId, strokeCount: block.strokeCount,
+    hasText: block.textCount > 0, version: block.version,
+  };
 }
 
 /**

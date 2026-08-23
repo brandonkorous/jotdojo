@@ -3,6 +3,7 @@ import { withActor, comments, notes, mcpClients, users } from "@jotdojo/db";
 import { attribution, canReachSpace, hasScope, type Actor } from "./actor";
 import { Forbidden, NotFound } from "./errors";
 import { assertAgentMayWrite } from "./plans";
+import { audit } from "./note-body";
 
 export type CommentView = {
   id: string;
@@ -46,6 +47,13 @@ export async function commentOnNote(
       body: text,
       ...attribution(actor),
     }).returning())[0]!;
+
+    // The single highest-signal event in a shared space, and it was not
+    // recorded at all until ADR-063. The comment id goes in the metadata so
+    // the feed can say WHAT was said without a query per row.
+    await audit(tx, actor, note.spaceId, "note.comment", noteId, undefined, {
+      commentId: row.id,
+    });
 
     return {
       id: row.id,

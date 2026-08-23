@@ -4,7 +4,7 @@ import {
 } from "@jotdojo/domain";
 import { requireActor, currentUser } from "@/lib/session";
 import { Canvas } from "@/components/Canvas";
-import { Notices } from "@/components/Notices";
+import { CanvasStage } from "@/components/CanvasStage";
 
 export const dynamic = "force-dynamic";
 
@@ -17,17 +17,18 @@ export default async function NotePage({ params }: { params: Promise<{ id: strin
     const note = await getNote(actor, id);
     return (
       <main>
-        <Canvas
-          noteId={note.id}
-          initialBody={note.body}
-          initialRevision={note.revision}
-          hasInk={hasInk(note)}
-          user={user}
-          toolbarPreference={await getToolbarSide(actor)}
-        />
         {/* Outside the Canvas on purpose. The canvas is a writing surface and
             has a size limit for a reason; a remark is a visitor to it. */}
-        <Notices comments={await listNoteComments(actor, note.id)} />
+        <CanvasStage comments={await listNoteComments(actor, note.id)}>
+          <Canvas
+            noteId={note.id}
+            initialBody={note.body}
+            initialRevision={note.revision}
+            hasInk={hasInk(note)}
+            user={user}
+            toolbarPreference={await getToolbarSide(actor)}
+          />
+        </CanvasStage>
       </main>
     );
   } catch (err) {

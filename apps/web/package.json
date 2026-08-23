@@ -12,6 +12,8 @@
     "smoke:oauth-http": "dotenv -e ../../.env -- tsx scripts/smoke-oauth-http.ts",
     "build:verify": "dotenv -e ../../.env -v NEXT_DIST_DIR=.next-verify -- next build",
     "smoke:lasso": "tsx scripts/smoke-lasso.ts",
+    "smoke:objects": "tsx scripts/smoke-objects.ts",
+    "smoke:shapes": "tsx scripts/smoke-shapes.ts",
     "smoke:pen-size": "tsx scripts/smoke-pen-size.ts",
     "smoke:site": "dotenv -e ../../.env -- tsx scripts/smoke-site.ts",
     "smoke:marks": "tsx scripts/smoke-marks.ts",
@@ -19,7 +21,8 @@
     "smoke:viewport": "tsx scripts/smoke-viewport.ts",
     "smoke:gestures": "tsx scripts/smoke-gestures.ts",
     "smoke:merge": "tsx scripts/smoke-merge.ts",
-    "smoke:live-http": "dotenv -e ../../.env -- tsx scripts/smoke-live-http.ts"
+    "smoke:live-http": "dotenv -e ../../.env -- tsx scripts/smoke-live-http.ts",
+    "smoke:export": "dotenv -e ../../.env -- tsx scripts/smoke-export.ts"
   },
   "dependencies": {
     "@auth/core": "^0.41.3",
@@ -32,7 +35,8 @@
     "next": "^15.1.6",
     "next-auth": "^5.0.0-beta.25",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "sharp": "^0.33.5"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.0.0",

@@ -12,7 +12,7 @@ import { listSpaces } from "./spaces";
 
 const sha256 = (v: string) => createHash("sha256").update(v).digest("hex");
 
-export const SCOPES = ["notes:read", "notes:comment", "notes:append", "notes:edit"] as const;
+export const SCOPES = ["notes:read", "notes:comment", "notes:append"] as const;
 export type Scope = (typeof SCOPES)[number];
 
 /** Off by default. An agent gets edit rights only by a deliberate act. ADR-004. */

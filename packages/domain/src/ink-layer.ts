@@ -39,11 +39,16 @@ export async function findInkBlock(actor: Actor, noteId: string): Promise<InkBlo
       spaceId: blocks.spaceId,
       transcript: blocks.transcript,
       transcriptState: blocks.transcriptState,
+      transcriptSource: blocks.transcriptSource,
       confidence: blocks.confidence,
       width: mediaAssets.width,
       height: mediaAssets.height,
       version: mediaAssets.strokesVersion,
       strokeCount: sql<number>`jsonb_array_length(${mediaAssets.strokes} -> 'strokes')`,
+      // Counted here rather than fetched, because the canvas only needs to know
+      // WHETHER to read the page -- and a page with text and no strokes still
+      // has one. ADR-065.
+      textCount: sql<number>`coalesce(jsonb_array_length(${mediaAssets.strokes} -> 'texts'), 0)`,
     })
       .from(blocks)
       .innerJoin(mediaAssets, eq(mediaAssets.id, blocks.artifactId))
@@ -60,10 +65,12 @@ export async function findInkBlock(actor: Actor, noteId: string): Promise<InkBlo
       noteId: row.noteId,
       spaceId: row.spaceId,
       strokeCount: Number(row.strokeCount ?? 0),
+      textCount: Number(row.textCount ?? 0),
       version: Number(row.version ?? 0),
       canvas: { w: row.width ?? 0, h: row.height ?? 0 },
       transcript: row.transcript,
       transcriptState: row.transcriptState,
+      transcriptSource: row.transcriptSource,
       confidence: row.confidence,
     };
   });
