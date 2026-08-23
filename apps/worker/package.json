@@ -15,7 +15,8 @@
     "reread": "dotenv -e ../../.env -- tsx scripts/reread.ts",
     "smoke:reread": "dotenv -e ../../.env -- tsx scripts/smoke-reread.ts",
     "smoke:triage": "dotenv -e ../../.env -- tsx scripts/smoke-triage.ts",
-    "smoke:park": "tsx scripts/smoke-park.ts"
+    "smoke:park": "tsx scripts/smoke-park.ts",
+    "smoke:partial": "dotenv -e ../../.env -- tsx scripts/smoke-partial.ts"
   },
   "dependencies": {
     "@jotdojo/domain": "workspace:*",

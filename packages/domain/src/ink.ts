@@ -2,164 +2,21 @@ import { and, eq, sql } from "drizzle-orm";
 import { withActor, notes, blocks, mediaAssets, type Tx } from "@jotdojo/db";
 import { canReachSpace, hasScope, type Actor } from "./actor";
 import { Forbidden, NotFound, DomainError } from "./errors";
+import { validateStrokes, MAX_STROKES, MAX_BATCH, type Stroke } from "./ink-doc";
 import { assertMember } from "./spaces";
+import { loadNote } from "./ink-block";
 
 /**
- * Ink. docs/08-ink.md.
+ * Writing strokes into an ink block, and what follows from that. docs/08-ink.md.
  *
  * Vectors are the truth and are never flattened to a raster. Strokes are small
  * -- a page of handwriting is tens of kilobytes -- and keeping them means a
  * better recognizer can be run over old notes later, so handwriting from a year
  * ago silently improves. A PNG is a one-way door.
- */
-
-/** [x, y, t, pressure, tiltX, tiltY]. Flat arrays, not objects per point: a
- *  page is thousands of points and the payload difference is large. `t` is
- *  milliseconds from the start of the stroke. */
-export type Point = [number, number, number, number, number, number];
-
-export type Stroke = {
-  tool: "pen" | "highlighter";
-  color: string;
-  width: number;
-  pts: Point[];
-};
-
-export type InkDocument = {
-  v: 1;
-  canvas: { w: number; h: number };
-  strokes: Stroke[];
-};
-
-/** Generous, and far above a real page. A guard against a runaway client, not
- *  a product limit -- if anyone legitimately hits it, raise it. */
-const MAX_STROKES = 20_000;
-const MAX_POINTS_PER_STROKE = 10_000;
-const MAX_BATCH = 200;
-
-const TOOLS = new Set(["pen", "highlighter"]);
-const COLOR = /^#[0-9a-fA-F]{6}$/;
-
-/**
- * Validate strokes at the boundary rather than trusting the client.
  *
- * These land in a jsonb column that a recognizer, a renderer and eventually a
- * VLM prompt all read. A NaN coordinate or a 40MB point array is not a
- * theoretical problem: it is a rendering crash or a bill, arriving from a
- * device we do not control.
+ * What an ink document IS lives in ink-doc.ts; a block's own lifecycle lives in
+ * ink-block.ts. This file is the part that changes what is on the page.
  */
-export function validateStrokes(input: unknown): Stroke[] {
-  if (!Array.isArray(input)) throw new DomainError("strokes must be an array", "bad_strokes", 400);
-  if (input.length > MAX_BATCH) {
-    throw new DomainError(`at most ${MAX_BATCH} strokes per batch`, "bad_strokes", 400);
-  }
-
-  return input.map((raw, i) => {
-    const s = raw as Partial<Stroke>;
-    const where = `stroke ${i}`;
-    if (!s || typeof s !== "object") throw new DomainError(`${where}: not an object`, "bad_strokes", 400);
-    if (!TOOLS.has(String(s.tool))) throw new DomainError(`${where}: unknown tool`, "bad_strokes", 400);
-    if (typeof s.color !== "string" || !COLOR.test(s.color)) {
-      throw new DomainError(`${where}: color must be #rrggbb`, "bad_strokes", 400);
-    }
-    if (typeof s.width !== "number" || !Number.isFinite(s.width) || s.width <= 0 || s.width > 200) {
-      throw new DomainError(`${where}: implausible width`, "bad_strokes", 400);
-    }
-    if (!Array.isArray(s.pts) || s.pts.length === 0) {
-      throw new DomainError(`${where}: no points`, "bad_strokes", 400);
-    }
-    if (s.pts.length > MAX_POINTS_PER_STROKE) {
-      throw new DomainError(`${where}: too many points`, "bad_strokes", 400);
-    }
-    for (const p of s.pts) {
-      if (!Array.isArray(p) || p.length !== 6 || p.some((n) => typeof n !== "number" || !Number.isFinite(n))) {
-        throw new DomainError(`${where}: each point is six finite numbers`, "bad_strokes", 400);
-      }
-    }
-    return { tool: s.tool as Stroke["tool"], color: s.color, width: s.width, pts: s.pts as Point[] };
-  });
-}
-
-export type InkBlock = {
-  blockId: string;
-  artifactId: string;
-  noteId: string;
-  spaceId: string;
-  strokeCount: number;
-  canvas: { w: number; h: number };
-  transcript: string | null;
-  transcriptState: string;
-  confidence: number | null;
-};
-
-/**
- * Start an ink block. Creates the empty artifact the canvas will append into.
- *
- * Created before a single stroke is drawn, on purpose: eager sync needs
- * somewhere to put the first batch two seconds later, and asking for an id at
- * that point would put a network round trip in the middle of someone writing.
- */
-export async function createInkBlock(
-  actor: Actor, noteId: string, canvas: { w: number; h: number },
-): Promise<InkBlock> {
-  if (!hasScope(actor, "notes:write") && !hasScope(actor, "capture:write")) {
-    throw new Forbidden("This connection cannot create notes");
-  }
-  if (!Number.isFinite(canvas.w) || !Number.isFinite(canvas.h)
-      || canvas.w <= 0 || canvas.h <= 0 || canvas.w > 20000 || canvas.h > 20000) {
-    throw new DomainError("implausible canvas size", "bad_canvas", 400);
-  }
-
-  return withActor(actor.userId, async (tx) => {
-    const note = await loadNote(tx, actor, noteId);
-    await assertMember(tx, actor, note.spaceId);
-
-    const doc: InkDocument = { v: 1, canvas, strokes: [] };
-    const asset = (await tx.insert(mediaAssets).values({
-      spaceId: note.spaceId,
-      kind: "ink",
-      strokes: doc,
-      width: canvas.w,
-      height: canvas.h,
-    }).returning())[0]!;
-
-    const next = await nextPosition(tx, noteId);
-    const block = (await tx.insert(blocks).values({
-      noteId,
-      spaceId: note.spaceId,
-      position: next,
-      kind: "ink",
-      artifactId: asset.id,
-      // An empty page has nothing to recognize. The worker moves this to
-      // 'pending' when the first strokes land -- see appendStrokes.
-      transcriptState: "ready",
-    }).returning())[0]!;
-
-    return {
-      blockId: block.id, artifactId: asset.id, noteId, spaceId: note.spaceId,
-      strokeCount: 0, canvas, transcript: null,
-      transcriptState: block.transcriptState, confidence: null,
-    };
-  });
-}
-
-async function loadNote(tx: Tx, actor: Actor, noteId: string) {
-  const rows = await tx.select({ id: notes.id, spaceId: notes.spaceId })
-    .from(notes).where(eq(notes.id, noteId)).limit(1);
-  const note = rows[0];
-  if (!note) throw new NotFound("That note does not exist, or you cannot reach it");
-  if (!canReachSpace(actor, note.spaceId)) {
-    throw new NotFound("That note does not exist, or you cannot reach it");
-  }
-  return note;
-}
-
-async function nextPosition(tx: Tx, noteId: string): Promise<number> {
-  const rows = await tx.execute(
-    sql`SELECT coalesce(max(position), -1) + 1 AS next FROM blocks WHERE note_id = ${noteId}`,
-  );
-  return Number((rows as unknown as Array<{ next: number }>)[0]?.next ?? 0);
-}
 
 /** Recognition waits for a pause rather than firing per batch. */
 const QUIET_PERIOD_SECONDS = 30;
@@ -279,38 +136,6 @@ async function queueRecognition(tx: Tx, blockId: string) {
   `);
 }
 
-/** Read a block's ink, for rendering and for recognition. */
-export async function getInk(actor: Actor, blockId: string): Promise<InkBlock & { document: InkDocument }> {
-  return withActor(actor.userId, async (tx) => {
-    const rows = await tx.execute(sql`
-      SELECT b.id, b.note_id, b.space_id, b.transcript, b.transcript_state, b.confidence,
-             a.id AS artifact_id, a.strokes
-        FROM blocks b
-        JOIN media_assets a ON a.id = b.artifact_id
-       WHERE b.id = ${blockId} AND b.kind = 'ink'
-    `);
-    const row = (rows as unknown as Array<Record<string, unknown>>)[0];
-    if (!row) throw new NotFound("That ink block does not exist, or you cannot reach it");
-    if (!canReachSpace(actor, String(row.space_id))) {
-      throw new NotFound("That ink block does not exist, or you cannot reach it");
-    }
-
-    const document = row.strokes as InkDocument;
-    return {
-      blockId: String(row.id),
-      artifactId: String(row.artifact_id),
-      noteId: String(row.note_id),
-      spaceId: String(row.space_id),
-      strokeCount: document.strokes.length,
-      canvas: document.canvas,
-      transcript: (row.transcript as string | null) ?? null,
-      transcriptState: String(row.transcript_state),
-      confidence: row.confidence === null ? null : Number(row.confidence),
-      document,
-    };
-  });
-}
-
 /**
  * A person correcting what the recognizer read.
  *
@@ -334,6 +159,10 @@ export async function correctTranscript(
       transcript: text.trim(),
       transcriptSource: "user",
       confidence: null,
+      // A person who has looked at the page and typed what it says has settled
+      // the question of completeness too. Leaving a machine's coverage figure
+      // behind would keep flagging their answer as partial. ADR-056.
+      transcriptCoverage: null,
       transcriptState: "ready",
     }).where(eq(blocks.id, blockId));
 

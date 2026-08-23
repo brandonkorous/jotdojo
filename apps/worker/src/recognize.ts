@@ -127,7 +127,9 @@ export async function runRecognitionCycle(
       const source = sourceFor(job.kind, {
         vision: recognizer?.model, speech: transcriber?.model,
       });
-      await storeTranscript(job.blockId, reading.text, source, reading.confidence);
+      await storeTranscript(
+        job.blockId, reading.text, source, reading.confidence, reading.coverage,
+      );
       // Zero units for a surface with nothing on it: no model was called, so
       // there is nothing to charge for.
       if (reading.units > 0) await recordRecognition(job.blockId, reading.units);

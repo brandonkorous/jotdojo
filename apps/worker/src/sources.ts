@@ -9,10 +9,26 @@ import type { ReadKind } from "@jotdojo/domain";
  * a bug -- it would look like every block in the database suddenly needing to
  * be read again, and it would bill accordingly.
  */
+/**
+ * The ink RENDERER generation, which is part of what read the page.
+ *
+ * Ink is the one kind where we build the image the model sees, so the renderer
+ * is as much "how it was read" as the model is. r2 is the geometry rework:
+ * before it, the frame came from a stored canvas written once at creation, so
+ * anything drawn outside it was clipped out of the read silently and
+ * permanently (ADR-053). Every ink block read under r1 was read through that.
+ *
+ * Bumping this makes the whole existing ink corpus visible to `countStale`, so
+ * `reread` can offer to fix it -- opt-in and cost-previewed, as ADR-046
+ * insists. Deliberately NOT applied to image or audio: nothing changed about
+ * how those are read, and marking them stale would bill for identical answers.
+ */
+const INK_RENDERER = "r2";
+
 export function sourceFor(
   kind: ReadKind, models: { vision?: string; speech?: string },
 ): string {
-  if (kind === "ink") return `htr:vlm:${models.vision}`;
+  if (kind === "ink") return `htr:vlm:${models.vision}/${INK_RENDERER}`;
   if (kind === "image") return `caption:vlm:${models.vision}`;
   return `asr:${models.speech}`;
 }

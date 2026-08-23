@@ -106,6 +106,8 @@ export type NoteBlock = {
   transcriptSource: string | null;
   transcriptState: string;
   confidence: number | null;
+  /** How much of the surface was read. NULL = whole or unmeasured. ADR-056. */
+  transcriptCoverage: number | null;
 };
 
 /** Every block, in order. What MCP and the renderer need; not what the editor
@@ -120,6 +122,7 @@ export async function readBlocks(tx: Tx, noteId: string): Promise<NoteBlock[]> {
     transcriptSource: blocks.transcriptSource,
     transcriptState: blocks.transcriptState,
     confidence: blocks.confidence,
+    transcriptCoverage: blocks.transcriptCoverage,
   }).from(blocks).where(eq(blocks.noteId, noteId)).orderBy(blocks.position);
 }
 

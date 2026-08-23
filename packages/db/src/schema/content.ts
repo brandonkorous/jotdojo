@@ -45,6 +45,9 @@ export const blocks = pgTable("blocks", {
   transcript: text("transcript"),
   transcriptSource: text("transcript_source"),
   confidence: real("confidence"),
+  /** How much of the surface was read. NULL = whole or unmeasured; < 1 = the
+   *  caller must say so rather than presenting it as complete. ADR-056. */
+  transcriptCoverage: real("transcript_coverage"),
   transcriptState: text("transcript_state").notNull().default("ready"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   searchable: tsvector("searchable"),

@@ -9,7 +9,8 @@
     "build": "echo ok",
     "typecheck": "tsc --noEmit",
     "smoke:mcp": "dotenv -e ../../.env -- tsx scripts/smoke-mcp.ts",
-    "check:discovery": "dotenv -e ../../.env -- tsx scripts/check-discovery.ts"
+    "check:discovery": "dotenv -e ../../.env -- tsx scripts/check-discovery.ts",
+    "smoke:render": "tsx scripts/smoke-render.ts"
   },
   "dependencies": {
     "@jotdojo/domain": "workspace:*",

@@ -1505,3 +1505,63 @@ the module that is failing to stay that way.
 providers looks idle rather than broken. It costs one parked process holding one timer. The
 warning still prints, so the reason is one `logs` away, and when sparx's Azure OpenAI
 deployment lands the rollout replaces the pod anyway.
+
+### ADR-056 — A partial reading has to say it is partial
+
+**Context.** `MAX_TILES` caps one surface at 32 rendered images, and a whiteboard
+photographed at arm's length can exceed that. ADR-053 shipped the cap and the worker
+logged a warning, but the partial reading was then stored as an ordinary transcript.
+Nothing in the row was false. It was merely incomplete — which is worse, because a bad
+transcript looks wrong and an incomplete one does not. An agent handed a third of a board
+reports it as the whole board, confidently, in the user's own voice, and every summary,
+task and reply downstream inherits that.
+
+**Decision.** `blocks.transcript_coverage real`. NULL means nobody measured; `< 1` means
+partial, and every caller that presents the transcript must say so.
+
+**Two obvious alternatives, both wrong.**
+
+*Not a fifth `transcript_state`.* `0000_init.sql` constrains that CHECK to four values, and
+a partial read genuinely **is** ready: nothing should retry it, the UI should show it,
+search should index it. Only its completeness differs, and completeness is not a state.
+
+*Not a suffix on `transcript_source`.* docs/04 and `sources.ts` both say that string is the
+staleness key, and `app_stale_transcripts` compares it for equality. A partial suffix would
+make every partial block permanently stale against the source we would write now — so every
+re-read pass would queue them all, bill for them all, and store the same suffix again. A
+loop that costs money per lap.
+
+**NULL is not 1, and the difference is load-bearing.** NULL means unmeasured; 1 means
+measured and whole. Every row written before this migration is the former. Backfilling 1
+would assert something no code ever checked, and the renderer says nothing at all for NULL
+rather than claiming completeness it cannot vouch for.
+
+**A partial reading may not name a note.** The first line of the first tile of a board we
+only partly read is a guess at what the board is about, and a wrong title is far stickier
+than a wrong transcript: it is what the note is called in every list, every search result
+and every agent's reply. The title inference in `app_store_transcript` now requires
+`coalesce(p_coverage, 1) >= 1`.
+
+**A person's correction clears it.** Someone who has looked at the page and typed what it
+says has settled completeness as well as accuracy. Leaving a machine's coverage figure
+behind would keep flagging their answer as partial, which is the same insult as
+overwriting it.
+
+**`coverage` is a required argument, not an optional one.** Making it optional would let a
+caller that has not been updated keep writing NULL silently — precisely the invisible
+incompleteness this exists to end. Making it required turned the one stale call site into a
+compile error, which is how it should have been found.
+
+**The ink source gains a renderer generation, `htr:vlm:{model}/r2`.** For ink we build the
+image the model sees, so the renderer is as much "how it was read" as the model is. r1
+framed every page from a canvas written once at creation, so anything drawn outside it was
+clipped out of the read silently and permanently (ADR-053) — every existing ink block was
+read that way. The bump makes that corpus visible to `countStale`, so `reread` can offer to
+fix it: opt-in and cost-previewed, as ADR-046 insists. Deliberately **not** applied to image
+or audio, where nothing changed and a re-read would pay for an identical answer.
+
+**Consequences.** One nullable column, one function signature, one renderer change. The
+existing corpus is not rewritten and nothing is re-read without being asked. `smoke-render`
+asserts the wording an agent actually receives — including that a reading which rounds to
+100% is still marked partial — and `smoke-partial` asserts what lands in the column,
+that a partial reading cannot title a note, and that a correction clears it.

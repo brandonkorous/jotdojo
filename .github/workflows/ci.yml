@@ -140,6 +140,7 @@ jobs:
           pnpm worker:smoke
           pnpm park:smoke
           pnpm recognize:smoke
+          pnpm partial:smoke
           pnpm media:smoke
           pnpm members:smoke
           pnpm metering:smoke
@@ -150,6 +151,7 @@ jobs:
           pnpm viewport:smoke
           pnpm gestures:smoke
           pnpm marks:smoke
+          pnpm render:smoke
           pnpm reread:smoke
           pnpm triage:smoke
 

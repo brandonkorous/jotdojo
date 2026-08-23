@@ -84,6 +84,16 @@ When recognition has not finished, say so — never return an empty string:
 
     > [handwritten, transcription pending]
 
+**And when a reading covers only part of a surface, say that too.** One block is capped at 32 rendered tiles, so a whiteboard photographed at arm's length can exceed what we will read in one pass:
+
+    > [handwritten, confidence 0.71 — PARTIAL, roughly 34% of the surface.
+    > The rest was not read. Do not describe this as the whole page]
+    > agenda: pricing, hiring, the Thornton renewal
+
+This is the failure mode that matters more than a bad transcript, because a bad transcript *looks* wrong and an incomplete one does not. Without the marker an agent reports a third of a board as the whole board, in the user's own voice, and everything downstream inherits it. A `null` coverage means nobody measured — which is true of every block read before this shipped — and is never presented as a claim that the reading was complete.
+
+Confidence and coverage answer different questions. Confidence is *how sure are you about the words you read*; coverage is *how much did you look at*. A reading can be confident and badly incomplete, and that combination is the one most likely to mislead.
+
 ## Composing with kanninja
 
 The intended flow needs **no integration code on our side**:

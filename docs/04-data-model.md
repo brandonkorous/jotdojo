@@ -61,6 +61,9 @@ Roles are two. Resist a third until a paying customer demands it.
                                                  -- htr:myscript | asr:azure
                                                  -- ocr:azure | caption:vlm
       confidence      real                       -- 0..1, null for user-authored
+      transcript_coverage real                   -- how much of the surface was read
+                                                 -- null = whole, or nobody measured
+                                                 -- < 1 = partial, and callers must say so
       transcript_state text not null default 'ready'
                                                  -- pending | ready | failed | deferred
 

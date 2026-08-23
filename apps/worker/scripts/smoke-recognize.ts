@@ -205,7 +205,7 @@ check("...and stays at no confidence", kept.confidence === null);
 // The window that a claim-time check alone would leave open: a person corrects
 // the transcript WHILE a job for that block is already in flight. storeTranscript
 // has to refuse too, or the model silently overwrites what they typed to fix it.
-await storeTranscript(ink.blockId, "the model raced and won", "htr:vlm:fake", 0.99);
+await storeTranscript(ink.blockId, "the model raced and won", "htr:vlm:fake", 0.99, 1);
 const raced = await getInk(actor, ink.blockId);
 check("a transcript arriving AFTER a correction is refused at the store",
   raced.transcript === "check with Dana about the MARGINS, twice",

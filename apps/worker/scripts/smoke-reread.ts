@@ -181,8 +181,26 @@ check("with no providers configured, nothing is offered",
 check("vision covers ink and photos",
   plannedKinds({ vision: "m" }).join() === "ink,image");
 check("speech covers audio", plannedKinds({ speech: "m" }).join() === "audio");
+// Pinned exactly, because this string IS the staleness key. Changing it
+// re-reads a corpus and bills for it, so it must never move by accident --
+// this assertion failing is the intended way to find out that it did.
 check("the source format is the one the recogniser writes",
-  NOW === "htr:vlm:fake-recognizer-v1", NOW);
+  NOW === "htr:vlm:fake-recognizer-v1/r2", NOW);
+
+// The renderer generation is half of "how it was read", and for ink it is the
+// half we build. r1 framed every page from a canvas written once at creation,
+// so anything drawn outside it was clipped out of the read silently (ADR-053).
+check("ink carries a renderer generation", NOW.endsWith("/r2"), NOW);
+check("a page read under the old renderer is stale against the new one",
+  sourceFor("ink", { vision: "fake-recognizer-v1" })
+    !== "htr:vlm:fake-recognizer-v1");
+
+// Only ink. Nothing changed about how a photo or a recording is read, and
+// marking those stale would pay a model to return the same answer.
+check("photos did not get a generation",
+  sourceFor("image", { vision: "m" }) === "caption:vlm:m");
+check("recordings did not get a generation",
+  sourceFor("audio", { speech: "m" }) === "asr:m");
 
 await drainAll();
 console.log(failures === 0

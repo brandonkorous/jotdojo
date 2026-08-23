@@ -13,6 +13,8 @@ export * from "./embedjobs";
 export * from "./rereading";
 export * from "./triage";
 export * from "./triage-settings";
+export * from "./ink-doc";
+export * from "./ink-block";
 export * from "./ink";
 export * from "./ink-layer";
 export * from "./media";

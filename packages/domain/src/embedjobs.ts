@@ -76,7 +76,7 @@ export type RecognizeJob = {
   spaceId: string;
   kind: "ink" | "image" | "audio";
   /** ink only */
-  document: import("./ink").InkDocument | null;
+  document: import("./ink-doc").InkDocument | null;
   /** image and audio only */
   blobUrl: string | null;
   mimeType: string | null;
@@ -94,20 +94,30 @@ export async function claimRecognizeJobs(
       blockId: String(r.block_id),
       spaceId: String(r.space_id),
       kind: String(r.kind) as RecognizeJob["kind"],
-      document: (r.strokes as import("./ink").InkDocument | null) ?? null,
+      document: (r.strokes as import("./ink-doc").InkDocument | null) ?? null,
       blobUrl: (r.blob_url as string | null) ?? null,
       mimeType: (r.mime_type as string | null) ?? null,
     }));
   });
 }
 
+/**
+ * Store a reading.
+ *
+ * `coverage` is how much of the surface was actually read: 1 for the whole of
+ * it, below 1 when tiles were dropped. Required rather than optional, because
+ * a caller that forgets it is a partial reading presented as complete, and
+ * that is exactly the failure ADR-056 exists to make impossible.
+ */
 export async function storeTranscript(
-  blockId: string, transcript: string, source: string, confidence: number,
+  blockId: string, transcript: string, source: string,
+  confidence: number, coverage: number,
 ): Promise<void> {
   await withoutActor(async (tx) => {
     await tx.execute(sql`
       SELECT app_store_transcript(
-        ${blockId}::uuid, ${transcript}::text, ${source}::text, ${confidence}::real
+        ${blockId}::uuid, ${transcript}::text, ${source}::text,
+        ${confidence}::real, ${coverage}::real
       )
     `);
   });

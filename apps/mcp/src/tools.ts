@@ -35,9 +35,12 @@ const asText = (value: unknown) => ({
  * reports that a note is blank when in fact it is covered in writing nobody
  * has read yet.
  */
-function renderBlock(b: {
+/** Exported for smoke-render.ts. What an agent is told about a block is worth
+ *  asserting directly, without standing a server up to read it back. */
+export function renderBlock(b: {
   kind: string; body: string | null; transcript: string | null;
   transcriptSource: string | null; transcriptState: string; confidence: number | null;
+  transcriptCoverage?: number | null;
 }): string {
   if (b.kind === "text") return b.body ?? "";
 
@@ -61,7 +64,24 @@ function renderBlock(b: {
     ? `${label}, transcribed by the author`
     : `${label}, confidence ${(b.confidence ?? 0).toFixed(2)}`;
 
-  return `> [${provenance}]\n${b.transcript}`;
+  return `> [${provenance}${partOf(b.transcriptCoverage)}]\n${b.transcript}`;
+}
+
+/**
+ * Say when a reading covers only part of its surface. ADR-056.
+ *
+ * Silence here is the worst failure this renderer can produce -- worse than a
+ * bad transcript, because a bad transcript looks wrong and this does not. An
+ * agent handed a third of a whiteboard with no marker reports it as the whole
+ * board, in the user's voice, and everything downstream inherits that.
+ *
+ * NULL means nobody measured, which is every block read before this shipped.
+ * Claiming those are whole would be inventing a fact.
+ */
+function partOf(coverage: number | null | undefined): string {
+  if (coverage === null || coverage === undefined || coverage >= 1) return "";
+  return ` — PARTIAL, roughly ${Math.round(coverage * 100)}% of the surface.`
+    + " The rest was not read. Do not describe this as the whole page";
 }
 
 function renderNote(note: {

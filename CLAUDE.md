@@ -36,4 +36,7 @@ These predate the rule and must be split the next time they are edited for any o
 reason. Do not batch-refactor them for their own sake.
 
     packages/domain/src/oauth.ts    564
-    packages/domain/src/ink.ts      408
+
+`packages/domain/src/ink.ts` came off this list on 2026-08-22. It was edited for another
+reason, so it was split as the rule requires: `ink-doc.ts` is what an ink document IS,
+`ink-block.ts` is a block's lifecycle, and `ink.ts` is writing strokes into one.

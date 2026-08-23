@@ -1,7 +1,7 @@
 import { and, asc, eq, sql } from "drizzle-orm";
 import { withActor, blocks, mediaAssets } from "@jotdojo/db";
 import { canReachSpace, type Actor } from "./actor";
-import { createInkBlock, type InkBlock } from "./ink";
+import { createInkBlock, type InkBlock } from "./ink-block";
 
 /**
  * The ink layer of a note: the one that already exists, or a new one. ADR-047.
