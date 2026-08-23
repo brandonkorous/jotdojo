@@ -111,15 +111,25 @@ for (const name of ["users", "spaces", "space_members", "notes", "blocks"]) {
 }
 
 /**
- * NO table written by a SECURITY DEFINER function may be FORCE.
+ * NO table a SECURITY DEFINER function TOUCHES may be FORCE.
  *
  * Derived from the catalogue rather than a hand-kept list, because the first
  * version of this fix WAS a hand-kept list of three tables and there were
  * sixteen. A definer function runs as the table owner and FORCE is precisely
  * the flag that strips the owner's exemption, so the two are simply
  * incompatible -- and the failure is silent wherever the table's policy is
- * keyed on app_actor_id(): no actor, no matching rows, zero rows updated,
+ * keyed on app_actor_id(): no actor, no matching rows, zero rows affected,
  * no error. ADR-057.
+ *
+ * TOUCHES, NOT WRITES, and the widening cost months of production recognition.
+ * This matched `insert into|update|delete from <table>` for two migrations,
+ * which meant a definer function that merely SELECTS a FORCE table was
+ * invisible to it. `app_claim_recognize_jobs` JOINS media_assets to ask whether
+ * a block still has anything on it; the join matched nothing, so every page
+ * looked erased, every job was completed as "nothing to read", and not one line
+ * anywhere said so. ADR-071.
+ *
+ * A read is not the lesser case. It is the one that fails quietly.
  */
 const offenders = await withoutActor(async (tx) => tx.execute(sql`
   SELECT DISTINCT c.relname
@@ -127,14 +137,18 @@ const offenders = await withoutActor(async (tx) => tx.execute(sql`
     JOIN pg_namespace n ON n.oid = c.relnamespace
     JOIN pg_proc p ON p.prosecdef
                   AND p.pronamespace = n.oid
-                  AND p.prosrc ~* ('(insert\\s+into|update|delete\\s+from)\\s+' || c.relname || '\\M')
+                  -- ANY reference: the bare table name anywhere in the body.
+                  -- Deliberately broad. A false positive costs a comment saying
+                  -- why a table is exempt; a false negative costs a feature that
+                  -- reports success while doing nothing at all.
+                  AND p.prosrc ~* ('\\m' || c.relname || '\\M')
    WHERE n.nspname = 'public'
      AND c.relkind = 'r'
      AND c.relforcerowsecurity
    ORDER BY c.relname
 `)) as unknown as Array<{ relname: string }>;
 
-check("no table written by a SECURITY DEFINER function is FORCE",
+check("no table a SECURITY DEFINER function TOUCHES is FORCE",
   offenders.length === 0,
   offenders.map((r) => r.relname).join(", "));
 
