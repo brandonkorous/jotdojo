@@ -16,6 +16,9 @@ import { brand } from "@/lib/brand";
  */
 export function Wordmark({ className = "" }: { className?: string }) {
   return (
+    // next/image cannot optimise an SVG -- it passes the file through
+    // untouched -- so it would buy nothing here but a loader.
+    // eslint-disable-next-line @next/next/no-img-element
     <img
       src="/brand/wordmark.svg"
       alt={brand.name}

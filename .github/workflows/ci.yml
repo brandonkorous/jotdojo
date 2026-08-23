@@ -121,6 +121,12 @@ jobs:
       - name: Typecheck
         run: pnpm typecheck
 
+      # Held at zero warnings, not zero errors: `next/core-web-vitals` reports
+      # most of what it knows as a warning, so a lint gate that tolerates them
+      # is a gate that passes everything. ADR-087.
+      - name: Lint
+        run: pnpm lint
+
       # Six packages carry the same refusal and none of them can share a module
       # to hold it -- they are leaves on purpose. This asserts the six copies
       # still agree. ADR-052.

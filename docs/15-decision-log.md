@@ -3531,3 +3531,57 @@ role name.
 
 **A rename is cheap exactly once, and it is cheap because nothing is bound to
 the old name yet. That is a fact about the calendar, not about the code.**
+
+### ADR-087 — The linter was a script that had never run
+
+**Context.** `apps/web/package.json` carried `"lint": "next lint"` from the day
+the app was scaffolded, and `turbo.json` declared a `lint` task. Neither had
+ever linted anything. No ESLint was installed in the repository, and no config
+existed for `next lint` to read — so it fell through to its interactive setup
+prompt, which asks the caller to choose between Strict and Base.
+
+That question can only be answered by a person at a terminal. Anything else —
+CI, a hook, an agent — gets a prompt written to a dead stdout and exit 1. The
+failure looked like a lint failure and was not one; there was nothing to fail.
+
+It survived because **CI never ran it.** `ci.yml` runs typecheck, the guard
+checks, thirty-odd smoke suites and a real web build, and no lint step at all.
+A broken script that nothing invokes reports nothing.
+
+**Decision.** Install ESLint properly and put it in CI, where the absence was.
+
+`eslint@9` with `eslint-config-next@15`, pinned to majors rather than taken
+latest: `eslint@10` and `eslint-config-next@16` install cleanly and then fail,
+because the plugins that config pulls in — `import`, `jsx-a11y`, `react` —
+declare no peer support for ESLint 10, and this app is on Next 15.5.
+
+Flat config in `apps/web/eslint.config.mjs`. `next lint` is gone in Next 16
+anyway, so the deprecated wrapper was never worth adopting.
+
+**Consequences.** The first honest run found five things, and each was decided
+rather than swept:
+
+- **`no-page-custom-font`** is off. It is a Pages Router rule — its own message
+  names `pages/_document.js` — and it fires on the font link in the App Router
+  root layout, which every page already shares. The fault it warns about cannot
+  occur there.
+- **`no-img-element`** stays on, with two annotated exemptions. The wordmark is
+  an SVG and `next/image` passes SVGs through untouched; the avatar is 24px on
+  the provider's own CDN and would cost a `remotePatterns` entry per provider to
+  save nothing. A future `<img>` of a real photograph is still caught, which a
+  blanket `off` would not do.
+- **`import/no-anonymous-default-export`** was answered by naming the two
+  exports, in `postcss.config.mjs` and the ESLint config itself. A suppression
+  would have been longer than the fix.
+
+The gate is `--max-warnings=0`, in the script so local and CI agree.
+`next/core-web-vitals` reports most of what it knows as a warning, so a gate
+that tolerates warnings passes everything and means nothing. The tree is at zero
+today, which is the only moment that bar is free to set.
+
+Only `apps/web` is linted. The other twelve packages have no `lint` script and
+did not gain one here — they are typechecked, and inventing a house style for
+them is a separate decision from repairing one that was already claimed.
+
+**A script in `package.json` is a claim that something is checked. This one was
+that claim and nothing behind it, for as long as the app has existed.**

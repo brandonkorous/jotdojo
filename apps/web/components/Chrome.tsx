@@ -127,7 +127,10 @@ export function Chrome({
         <RemarksButton />
 
         <a href="/account" aria-label="Account" className="jd-tool overflow-hidden">
+          {/* A 24px avatar on the provider's own CDN. next/image would need a
+              remotePatterns entry per provider to save nothing measurable. */}
           {user?.image
+            // eslint-disable-next-line @next/next/no-img-element
             ? <img src={user.image} alt="" className="h-6 w-6 rounded-full" />
             : <span aria-hidden className="text-xs font-medium">{initial(user)}</span>}
         </a>
