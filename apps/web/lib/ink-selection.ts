@@ -1,6 +1,8 @@
 import type { Point, Stroke, TextBox } from "@jotdojo/domain";
 import { type Bounds, inBounds, strokeBounds, strokeInPolygon } from "./ink-geometry";
-import { boxInPolygon, boxesBounds, translateBoxes } from "./ink-objects";
+import { boxAt, boxInPolygon, boxesBounds, translateBoxes } from "./ink-objects";
+import { topmostAt } from "./ink-edit";
+import { classify, type ShapeKind } from "./ink-shapes";
 
 /**
  * Lasso selection: the state between "a loop was drawn" and "those strokes
@@ -28,10 +30,18 @@ export type SelectionSummary = {
    *  "strokes" when a selection holds both, and hides the pen palettes when it
    *  holds only text. ADR-065. */
   texts: number;
+  /**
+   * What one selected stroke could be tidied into, when the classifier is sure.
+   *
+   * Null for everything else, and null is the common answer: the same
+   * confidence floor hold-to-snap uses, so the menu only offers to make a
+   * circle out of something that already looks like one. ADR-066, ADR-084.
+   */
+  shape: ShapeKind | null;
 };
 
 export const NO_SELECTION: SelectionSummary = {
-  count: 0, pen: false, marker: false, penWidth: null, ids: [], texts: 0,
+  count: 0, pen: false, marker: false, penWidth: null, ids: [], texts: 0, shape: null,
 };
 
 export class InkSelection {
@@ -62,6 +72,12 @@ export class InkSelection {
       penWidth: pen?.width ?? null,
       ids: [...this.picked.map((s) => s.id), ...this.boxes.map((b) => b.id)],
       texts: this.boxes.length,
+      // Only ever asked of ONE stroke: "tidy these six squiggles" is not a
+      // thing anybody means, and classifying a whole selection to find out
+      // would cost a pass over every point for an offer nobody wanted.
+      shape: this.picked.length === 1 && this.boxes.length === 0
+        ? classify(this.picked[0]!.pts)?.kind ?? null
+        : null,
     };
   }
   get selected(): readonly Stroke[] { return this.picked; }
@@ -90,6 +106,31 @@ export class InkSelection {
     // The SAME rule for both kinds: whole-object containment, ADR-033. A mixed
     // selection is only explicable if one standard governs it.
     this.boxes = enclosing ? texts.filter((t) => boxInPolygon(poly, t)) : [];
+    this.box = mergeBounds(strokeBounds(this.picked), boxesBounds(this.boxes));
+    return this.count;
+  }
+
+  /**
+   * One object, by tapping it. ADR-084.
+   *
+   * A lasso is the right instrument for "these things" and a poor one for "that
+   * thing": drawing a closed loop round a single card to change its colour is
+   * more gesture than the change is worth, and on a phone it is most of a
+   * second. So a tap picks one, and everything a selection can already do --
+   * recolour, drag, delete, export -- works on it with no new machinery.
+   *
+   * Boxes before strokes, matching what is drawn: the object plane sits above
+   * both canvases, so a card overlapping a squiggle is the thing you can see.
+   */
+  pick(
+    all: readonly Stroke[], texts: readonly TextBox[],
+    x: number, y: number, radius: number,
+  ): number {
+    this.lasso = null;
+    const box = boxAt(texts, x, y);
+    const stroke = box ? null : topmostAt(all, x, y, radius);
+    this.picked = stroke ? [stroke] : [];
+    this.boxes = box ? [box] : [];
     this.box = mergeBounds(strokeBounds(this.picked), boxesBounds(this.boxes));
     return this.count;
   }

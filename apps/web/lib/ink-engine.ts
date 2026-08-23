@@ -1,22 +1,23 @@
 import type { InkDelta, Stroke, TextBox } from "@jotdojo/domain";
 import type { InkTool } from "./canvas-tool";
 import { StrokeCapture } from "./ink-capture";
-import { eraseNear } from "./ink-edit";
 import type { Bounds } from "./ink-geometry";
 import { mergePages, newcomers } from "./ink-merge";
-import { ERASE_RADIUS } from "./ink-paint";
 import { InkSurface } from "./ink-surface";
 import { InkInput, type InputHost } from "./ink-input";
 import { InkViewport } from "./ink-viewport";
 import { InkFraming } from "./ink-framing";
 import { StrokeIndex } from "./ink-index";
+import { ERASE_RADIUS } from "./ink-paint";
 import { type SelectionSummary } from "./ink-selection";
 import type { EngineOptions } from "./ink-engine-options";
 import { SelectionEditor } from "./ink-engine-select";
+import { Eraser } from "./ink-engine-erase";
 import { commitStroke, type Scene } from "./ink-draw";
 import { InkPainter } from "./ink-painter";
 import { DEFAULT_PEN, type InkStyle } from "./ink-style";
 import { InkTextLayer } from "./ink-text-layer";
+import { clientRect, worldAt } from "./ink-screen";
 
 /**
  * The ink engine: an imperative island React mounts and then leaves alone.
@@ -27,7 +28,6 @@ import { InkTextLayer } from "./ink-text-layer";
 /** Re-exported so callers take both from the engine they already hold. */
 export type Tool = InkTool;
 export type { SelectionSummary } from "./ink-selection";
-
 export type { EngineOptions } from "./ink-engine-options";
 
 export class InkEngine implements InputHost {
@@ -50,8 +50,7 @@ export class InkEngine implements InputHost {
   /** Typed text, when a plane was supplied. Null on the marketing hero, which
    *  mounts ink alone. */
   private readonly texts: InkTextLayer | null;
-  /** Ids rubbed out during the current eraser sweep. */
-  private readonly erased = new Set<string>();
+  private readonly eraser: Eraser;
 
   constructor(opts: EngineOptions) {
     this.opts = opts;
@@ -77,6 +76,13 @@ export class InkEngine implements InputHost {
       onChange: opts.onSelectionChange,
       repaint: () => this.repaint(),
       overlay: () => this.paintOverlay(),
+    });
+    this.eraser = new Eraser({
+      strokes: () => this.strokes,
+      setStrokes: (next) => { this.strokes = next; },
+      zoom: () => this.view.k,
+      onDelta: opts.onDelta,
+      repaint: () => this.repaint(),
     });
     this.live = opts.live;
 
@@ -146,15 +152,12 @@ export class InkEngine implements InputHost {
 
   resize(cssWidth: number, cssHeight: number) { this.framing.resize(cssWidth, cssHeight); }
 
-  // Editing what the lasso caught is `SelectionEditor`: it reaches two arrays
-  // now and had outgrown a class that also owns the frame loop.
   dropSelection() { this.editor.drop(); }
-  deleteSelection() { this.editor.remove(); }
-  /** Colour the cards a selection holds, or take their colour away. ADR-079. */
-  recolourCards(fill: string | null) { this.editor.recolourCards(fill); }
-  restyleSelection(patch: { color?: string; width?: number }, publish = true) {
-    this.editor.restyle(patch, publish);
-  }
+
+  /** Editing what was caught is `SelectionEditor`, exposed rather than relayed:
+   *  eight one-line wrappers only restated what it already says, and every new
+   *  action added a ninth. ADR-084. */
+  get selection() { return this.editor; }
 
   // ------------------------------------------------------------- input ----
   //
@@ -185,31 +188,38 @@ export class InkEngine implements InputHost {
     this.opts.onTextPlaced?.();
   }
 
+  /** One object, by tapping it. Same screen-space reach as the eraser, so what
+   *  you can rub out you can also pick up. ADR-084. */
+  tapSelect(x: number, y: number) {
+    this.editor.pickAt(x, y, ERASE_RADIUS / this.view.k, this.texts?.all ?? []);
+  }
+
+  /** The same, from CLIENT coordinates: React has a MouseEvent, not a document
+   *  point. `textAtClient` is its sibling for the menu's "put a note here". */
+  selectAtClient(clientX: number, clientY: number) {
+    const p = worldAt(this.surface, this.view, clientX, clientY);
+    this.tapSelect(p.x, p.y);
+  }
+
+  textAtClient(clientX: number, clientY: number) {
+    const p = worldAt(this.surface, this.view, clientX, clientY);
+    this.tapText(p.x, p.y);
+  }
+
+  /** Where the selection is ON SCREEN, so the menu can point at the thing it
+   *  acts on rather than at the thumb that summoned it. CanvasMenu says why.
+   *  Null when nothing is selected. ADR-084. */
+  marqueeRect(): DOMRect | null {
+    const b = this.editor.sel.marquee;
+    return b ? clientRect(this.surface, this.view, b) : null;
+  }
+
   /** Anything with a caret in it should lose it before the pen touches down. */
   blurText() { this.texts?.blur(); }
 
-  eraseAt(x: number, y: number): boolean {
-    // The eraser does NOT delete text boxes -- whiteboard convention, and the
-    // right one: rubbing at a diagram should not silently swallow the label
-    // beside it. Lasso and Delete are how a box goes. ADR-065.
-    //
-    // A hit tolerance, so it is a SCREEN distance. Left in world units the
-    // eraser would swallow the page zoomed out and miss everything zoomed in.
-    const hit = eraseNear(this.strokes, x, y, ERASE_RADIUS / this.view.k);
-    if (!hit) return false;
-    this.strokes = hit.kept;
-    // Accumulated across the whole sweep, so dragging the eraser over a
-    // sentence is one delta rather than one per pointer sample.
-    for (const stroke of hit.removed) this.erased.add(stroke.id);
-    this.repaint();
-    return true;
-  }
+  eraseAt(x: number, y: number): boolean { return this.eraser.at(x, y); }
 
-  endErase(erased: boolean) {
-    if (!erased || this.erased.size === 0) return;
-    this.opts.onDelta({ remove: [...this.erased], upsert: [] });
-    this.erased.clear();
-  }
+  endErase(erased: boolean) { this.eraser.end(erased); }
 
   commit(stroke: Stroke) {
     this.strokes.push(stroke);

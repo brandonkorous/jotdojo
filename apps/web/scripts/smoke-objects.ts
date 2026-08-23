@@ -12,6 +12,8 @@ import { boxAt, boxBounds, boxesBounds, boxInPolygon, drawnBox, isEmpty, newBox,
   from "../lib/ink-objects";
 import { MIN_SIZE } from "../lib/ink-plane";
 import { TextDrag } from "../lib/ink-text-drag";
+import { InkSelection } from "../lib/ink-selection";
+import type { Stroke } from "@jotdojo/domain";
 
 let failures = 0;
 const check = (label: string, ok: boolean, detail?: string) => {
@@ -173,6 +175,62 @@ console.log("\ndrawing a box out, without costing the tap");
     drawnBox({ x: 0, y: 0, w: 200, h: 150 }, { size: 16, color: "#111418" }).h === 150);
   check("...and a tapped one stores none",
     newBox(0, 0, { size: 16, color: "#111418" }, 200).h === undefined);
+}
+
+console.log("\npicking one thing up, without drawing a loop round it");
+{
+  const sel = new InkSelection();
+  const boxes = [box({ id: "under", x: 0, y: 0 }), box({ id: "over", x: 0, y: 0 })];
+
+  // THE REASON THIS EXISTS. Changing one card's colour used to mean drawing a
+  // closed loop round it, which is most of a second on a phone. ADR-084.
+  check("a tap picks the one box under it", sel.pick([], boxes, 10, 10, 10) === 1);
+  check("...the topmost, matching what is drawn",
+    sel.selectedTexts[0]?.id === "over");
+  check("...and it gets a marquee, so the bar and the menu have something to point at",
+    sel.marquee !== null);
+
+  check("a tap on bare canvas picks nothing", sel.pick([], boxes, 900, 900, 10) === 0);
+  check("...which is also how a selection is dropped", sel.marquee === null);
+
+  // Boxes win over strokes at the same point, because the object plane is
+  // painted above both canvases -- the card is the thing you can see.
+  const stroke: Stroke = {
+    id: "s", tool: "pen", color: "#111418", width: 3,
+    pts: [[10, 10, 0, 0.5, 0, 0], [20, 20, 0, 0.5, 0, 0]],
+  };
+  sel.pick([stroke], boxes, 10, 10, 10);
+  check("a card over a squiggle takes the tap",
+    sel.selectedTexts.length === 1 && sel.selected.length === 0);
+  check("...and the squiggle alone is picked when no card is there",
+    sel.pick([stroke], [], 10, 10, 10) === 1 && sel.selected[0]?.id === "s");
+}
+
+console.log("\nthe menu only offers to tidy what it can name");
+{
+  const sel = new InkSelection();
+  const circle: Stroke = {
+    id: "c", tool: "pen", color: "#111418", width: 3,
+    pts: Array.from({ length: 40 }, (_, i) => {
+      const a = (i / 39) * Math.PI * 2;
+      return [100 + Math.cos(a) * 60, 100 + Math.sin(a) * 60, 0, 0.5, 0, 0] as Point;
+    }),
+  };
+  sel.pick([circle], [], 160, 100, 12);
+  check("a round thing is offered as a circle", sel.summary.shape === "circle");
+
+  // Tuned toward silence, and the same floor hold-to-snap uses: an offer to
+  // tidy something that was not going to be a shape is worse than no offer.
+  const squiggle: Stroke = {
+    ...circle, id: "sq",
+    pts: Array.from({ length: 40 }, (_, i) =>
+      [i * 7, 100 + Math.sin(i) * 40 + (i % 3) * 18, 0, 0.5, 0, 0] as Point),
+  };
+  sel.pick([squiggle], [], 0, 100, 12);
+  check("a deliberate squiggle is offered nothing", sel.summary.shape === null);
+
+  sel.pick([], [box({ id: "t" })], 110, 110, 12);
+  check("a note is never offered a shape", sel.summary.shape === null);
 }
 
 console.log(failures === 0 ? "\nobjects: all good\n" : `\nobjects: ${failures} failed\n`);

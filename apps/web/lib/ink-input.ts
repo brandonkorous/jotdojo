@@ -43,6 +43,8 @@ export type InputHost = {
   previewText(rect: Bounds | null): void;
   /** Commit a box at exactly the rectangle somebody drew. ADR-078. */
   drawText(rect: Bounds): void;
+  /** Select the one object under a tap, rather than a loop round it. ADR-084. */
+  tapSelect(x: number, y: number): void;
   /** Let go of whatever has the caret. A pen coming down should not leave one
    *  blinking behind it. */
   blurText(): void;
@@ -64,6 +66,8 @@ export class InkInput {
   private erasedThisDrag = false;
   private readonly hold = new HoldToSnap();
   private readonly textDrag = new TextDrag();
+  /** Where a select gesture began, or null when it began inside a marquee. */
+  private selectFrom: Point | null = null;
   private readonly unbind: () => void;
   private readonly gestures: ViewGestures;
 
@@ -95,7 +99,7 @@ export class InkInput {
     this.activePointer = null;
     const host = this.host;
     if (host.tool === "eraser") host.endErase(this.erasedThisDrag);
-    else if (host.tool === "select") host.dropSelection();
+    else if (host.tool === "select") { this.selectFrom = null; host.dropSelection(); }
     // A pinch that starts mid-drag abandons the box. No half-drawn rectangle
     // is left on the overlay, and nothing is placed -- an interrupted gesture
     // is not a smaller version of the gesture.
@@ -119,6 +123,11 @@ export class InkInput {
   private get writingWithPen() { return this.penDown && this.penPointer; }
 
   private down = (e: PointerEvent) => {
+    // A secondary button is asking for the menu, not for the tool. Two things
+    // go wrong without this and only one of them is visible: a right-click
+    // starts a lasso, and `preventDefault` below suppresses the `contextmenu`
+    // event that follows, so the menu never opens at all. ADR-084.
+    if (e.button !== 0 && e.button !== -1) return;
     if (!this.writingWithPen && this.gestures.down(e)) return void e.preventDefault();
     if (!this.palm.accepts(e)) return;
     e.preventDefault();
@@ -149,6 +158,9 @@ export class InkInput {
       // otherwise a selection could never be dragged, only redrawn.
       if (host.sel.covers(p[0], p[1])) return void host.sel.beginDrag(p[0], p[1]);
       host.dropSelection();
+      // Remembered so `up` can tell a tap from a loop. Both start identically
+      // and there is no way to know which it was until the pointer lifts.
+      this.selectFrom = p;
       host.sel.beginLasso(p);
       return void host.scheduleLive();
     }
@@ -200,7 +212,17 @@ export class InkInput {
 
     const host = this.host;
     if (host.tool === "eraser") return void host.endErase(this.erasedThisDrag);
-    if (host.tool === "select") return void host.finishSelect();
+
+    if (host.tool === "select") {
+      const from = this.selectFrom;
+      this.selectFrom = null;
+      // A loop that never went anywhere is a tap, and a tap means "that one".
+      // Null when the press began inside a marquee, which is a drag ending.
+      if (from && near(from, this.pointAt(e), host.view.k)) {
+        return void host.tapSelect(from[0], from[1]);
+      }
+      return void host.finishSelect();
+    }
 
     if (host.tool === "textbox") {
       host.previewText(null);
@@ -218,3 +240,11 @@ export class InkInput {
     if (this.host.eraseAt(p[0], p[1])) this.erasedThisDrag = true;
   }
 }
+
+/** Close enough to be a tap rather than a loop, in SCREEN pixels. Smaller than
+ *  the text-box threshold: this only has to survive an unsteady hand, not tell
+ *  two deliberate gestures apart. ADR-084. */
+const TAP_SLOP = 6;
+
+const near = (a: Point, b: Point, k: number) =>
+  Math.hypot(b[0] - a[0], b[1] - a[1]) * k <= TAP_SLOP;

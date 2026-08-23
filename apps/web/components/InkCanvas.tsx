@@ -11,6 +11,7 @@ import { downloadSelection } from "@/lib/export-client";
 import type { InkStyle } from "@/lib/ink-style";
 import { useInkEngine } from "@/lib/use-ink-engine";
 import { SelectionBar } from "./SelectionBar";
+import { CanvasMenu } from "./CanvasMenu";
 import { ZoomChip } from "./ZoomChip";
 
 /**
@@ -127,7 +128,7 @@ export function InkCanvas({
       if (el instanceof HTMLElement
         && (el.isContentEditable || el.tagName === "INPUT" || el.tagName === "TEXTAREA")) return;
       e.preventDefault();
-      engineRef.current?.deleteSelection();
+      engineRef.current?.selection.remove();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -161,34 +162,50 @@ export function InkCanvas({
     };
   }, []);
 
+  const engine = () => engineRef.current;
+
   return (
-    <div ref={shellRef} className="jd-ink-shell">
-      <div ref={gridRef} className="jd-ink-grid" aria-hidden />
-      {/* Between the grid and the canvases in the DOM, and BELOW the live
-          canvas in z-order, so a highlighter drawn over a typed line reads the
-          way it does on paper. */}
-      <div ref={planeRef} className="jd-object-plane" />
-      <canvas ref={committedRef} className="jd-ink-layer" aria-hidden />
-      <canvas
-        ref={liveRef}
-        className="jd-ink-layer jd-ink-live"
-        role="img"
-        aria-label="Handwriting canvas"
-      />
-      <SelectionBar
-        selection={selected}
-        onColor={(color) => engineRef.current?.restyleSelection({ color })}
-        onWidth={(width) => engineRef.current?.restyleSelection({ width }, false)}
-        onCommitWidth={(width) => engineRef.current?.restyleSelection({ width })}
-        onCard={(fill) => engineRef.current?.recolourCards(fill)}
-        onDelete={() => engineRef.current?.deleteSelection()}
-        onExport={() => void downloadSelection(noteId, selected.ids)}
-      />
-      <ZoomChip
-        zoom={view.k}
-        home={view.home}
-        onFit={() => engineRef.current?.fitToContent()}
-      />
-    </div>
+    <CanvasMenu
+      selection={selected}
+      actions={{
+        onOpenAt: (x, y) => engine()?.selectAtClient(x, y),
+        anchorRect: () => engine()?.marqueeRect() ?? null,
+        onCard: (fill) => engine()?.selection.recolourCards(fill),
+        onResize: (bigger) => engine()?.selection.resize(bigger),
+        onTidy: () => engine()?.selection.tidyShape(),
+        onExport: () => void downloadSelection(noteId, selected.ids),
+        onDelete: () => engine()?.selection.remove(),
+        onTextBoxHere: (x, y) => engine()?.textAtClient(x, y),
+      }}
+    >
+      <div ref={shellRef} className="jd-ink-shell">
+        <div ref={gridRef} className="jd-ink-grid" aria-hidden />
+        {/* Between the grid and the canvases in the DOM, and BELOW the live
+            canvas in z-order, so a highlighter drawn over a typed line reads the
+            way it does on paper. */}
+        <div ref={planeRef} className="jd-object-plane" />
+        <canvas ref={committedRef} className="jd-ink-layer" aria-hidden />
+        <canvas
+          ref={liveRef}
+          className="jd-ink-layer jd-ink-live"
+          role="img"
+          aria-label="Handwriting canvas"
+        />
+        <SelectionBar
+          selection={selected}
+          onColor={(color) => engine()?.selection.restyle({ color })}
+          onWidth={(width) => engine()?.selection.restyle({ width }, false)}
+          onCommitWidth={(width) => engine()?.selection.restyle({ width })}
+          onCard={(fill) => engine()?.selection.recolourCards(fill)}
+          onDelete={() => engine()?.selection.remove()}
+          onExport={() => void downloadSelection(noteId, selected.ids)}
+        />
+        <ZoomChip
+          zoom={view.k}
+          home={view.home}
+          onFit={() => engine()?.fitToContent()}
+        />
+      </div>
+    </CanvasMenu>
   );
 }

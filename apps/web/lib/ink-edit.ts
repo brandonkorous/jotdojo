@@ -30,6 +30,24 @@ export function eraseNear(
   return removed.length === 0 ? null : { kept, removed };
 }
 
+/**
+ * The topmost stroke under a point, or null. ADR-084.
+ *
+ * Last match wins, because strokes are painted in array order and the one a
+ * person can see is the one drawn most recently. `eraseNear` deliberately takes
+ * everything within reach -- rubbing out is a sweep -- while picking one thing
+ * up has to choose, and choosing the buried stroke is never right.
+ */
+export function topmostAt(
+  strokes: readonly Stroke[], x: number, y: number, radius = ERASE_RADIUS,
+): Stroke | null {
+  for (let i = strokes.length - 1; i >= 0; i--) {
+    const stroke = strokes[i]!;
+    if (stroke.pts.some((p) => dist2(p[0], p[1], x, y) <= radius ** 2)) return stroke;
+  }
+  return null;
+}
+
 /** Remove an exact set, by identity. Used by lasso delete. ADR-033. */
 export function without(strokes: readonly Stroke[], doomed: ReadonlySet<Stroke>): Stroke[] {
   return strokes.filter((s) => !doomed.has(s));

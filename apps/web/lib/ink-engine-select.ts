@@ -3,6 +3,8 @@ import { restyle, without } from "./ink-edit";
 import { InkSelection, NO_SELECTION, type SelectionSummary } from "./ink-selection";
 import type { StrokeIndex } from "./ink-index";
 import type { InkTextLayer } from "./ink-text-layer";
+import { MIN_SIZE } from "./ink-plane";
+import { classify, snap } from "./ink-shapes";
 
 /**
  * What a selection can be turned into. ADR-033, ADR-045, ADR-065.
@@ -29,6 +31,15 @@ export type SelectionContext = {
   repaint: () => void;
   overlay: () => void;
 };
+
+/** One step of bigger or smaller, geometric so repeats feel even. */
+const STEP = 1.25;
+const MIN_WIDTH = 0.5;
+const MAX_WIDTH = 64;
+/** Above this a note stops being a note and becomes a poster. */
+const MAX_TEXT = 160;
+
+const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 
 export class SelectionEditor {
   readonly sel = new InkSelection();
@@ -68,6 +79,19 @@ export class SelectionEditor {
   }
 
   /**
+   * Pick up the one object under a tap. ADR-084.
+   *
+   * A tap on bare canvas selects nothing, which is also how a selection is
+   * dropped -- so tapping away is the undo for tapping something, and neither
+   * needed teaching.
+   */
+  pickAt(x: number, y: number, radius: number, texts: readonly TextBox[]) {
+    this.sel.pick(this.ctx.strokes(), texts, x, y, radius);
+    this.ctx.onChange?.(this.sel.summary);
+    this.ctx.overlay();
+  }
+
+  /**
    * Turn what the lasso caught into cards, or back into plain notes. ADR-079.
    *
    * The sibling of `restyle` and deliberately a SEPARATE method rather than
@@ -94,6 +118,73 @@ export class SelectionEditor {
     this.ctx.overlay();
     this.ctx.onChange?.(this.sel.summary);
     this.ctx.onDelta({ remove: [], upsert: [], texts: [...this.ctx.texts()?.all ?? []] });
+  }
+
+  /**
+   * Bigger or smaller, one step. ADR-084.
+   *
+   * Steps rather than a slider, because a menu is a poor host for a drag and
+   * the selection bar already owns the continuous control. Geometric, so three
+   * presses of "bigger" feel like three of the same size rather than three
+   * diminishing ones.
+   *
+   * Both kinds at once: a stroke's width and a note's text size are the same
+   * question asked of two things, and a mixed selection would otherwise need a
+   * rule for which half to ignore.
+   */
+  resize(bigger: boolean) {
+    if (this.sel.count === 0) return;
+    const f = bigger ? STEP : 1 / STEP;
+
+    for (const stroke of this.sel.selected as Stroke[]) {
+      stroke.width = clamp(stroke.width * f, MIN_WIDTH, MAX_WIDTH);
+    }
+    for (const box of this.sel.selectedTexts as TextBox[]) {
+      // Floored at MIN_SIZE, and not for tidiness: iOS Safari zooms the page
+      // when a field's COMPUTED font-size is under 16px. The plane already
+      // clamps what it renders, so a smaller stored size would make the export
+      // disagree with the screen rather than make anything smaller.
+      box.size = clamp(box.size * f, MIN_SIZE, MAX_TEXT);
+    }
+
+    this.ctx.index.invalidate(this.sel.selected);
+    this.ctx.texts()?.refresh();
+    this.after();
+  }
+
+  /**
+   * Make the rough thing the shape it was going for. ADR-066, ADR-084.
+   *
+   * Hold-to-snap only offers in the moment: keep the pen down a beat and the
+   * circle becomes one, lift and you keep exactly what you drew. That is the
+   * right default and it is a one-time offer, which is a strange property for
+   * something a person may only notice they wanted afterwards.
+   *
+   * This is the same classifier and the same snap, asked for deliberately
+   * instead of guessed at. Nothing here lowers the confidence floor -- if the
+   * classifier will not name the shape, the menu does not offer to tidy it.
+   */
+  tidyShape() {
+    const stroke = this.sel.selected[0];
+    if (!stroke || this.sel.count !== 1) return;
+    const guess = classify(stroke.pts);
+    if (!guess) return;
+    stroke.pts = snap(stroke.pts, guess.kind);
+    this.ctx.index.invalidate(this.sel.selected);
+    this.after();
+  }
+
+  /** Repaint, resend, and keep the selection so a second step lands on the
+   *  same thing. Shared by the two edits above. */
+  private after() {
+    this.ctx.repaint();
+    this.ctx.overlay();
+    this.ctx.onChange?.(this.sel.summary);
+    const texts = this.ctx.texts();
+    this.ctx.onDelta({
+      remove: [], upsert: [...this.sel.selected],
+      ...(texts ? { texts: [...texts.all] } : {}),
+    });
   }
 
   /** Delete what the lasso caught, naming them rather than resending the page

@@ -179,3 +179,28 @@
   box-shadow: 0 0 0 1px color-mix(in oklch, currentColor 25%, transparent);
   border-radius: 2px;
 }
+
+/* The canvas menu. ADR-084.
+   `display: contents` so the trigger wraps the shell without becoming a box of
+   its own -- the engine measures that shell, and an extra layout box between
+   it and the page would move the ink. */
+.jd-menu-target {
+  display: contents;
+}
+
+/* A hold on the canvas is OUR gesture, so iOS must not also offer its callout.
+   Deliberately not on `.jd-text-box`: inside a note a hold is the system's
+   text-selection gesture and that is the right one to keep. */
+.jd-ink-layer,
+.jd-ink-grid {
+  -webkit-touch-callout: none;
+}
+
+/* The card swatches inside the menu, which is a column of rows rather than the
+   toolbar's single line. */
+.jd-menu-swatches {
+  display: flex;
+  align-items: center;
+  gap: 0.125rem;
+  padding: 0.25rem 0.5rem;
+}

@@ -3107,3 +3107,270 @@ canvas file.
 - Additive in jsonb, so **no migration**, and a box with no fill is exactly what it was.
 - Recognition still never sees any of it — `toSvg` draws text only when asked, and the
   suite asserts a card cannot reach the model either.
+
+---
+
+### ADR-080 — The pages have pictures in them now
+
+**2026-08-23.** `10-design-system.md` gained a rule saying every marketing page carries a
+real image. This is that rule being paid for rather than asserted.
+
+#### The Open Graph card
+
+`opengraph-image.png` is built from `scripts/og/opengraph.html` — a typeset page, captured
+once at 1200×630 in a real browser and committed.
+
+A browser rather than sharp, and this is the interesting part: the card is **typeset**.
+Nunito for the headline, Caveat for the jot. Rasterising text through librsvg needs those
+fonts installed on whichever machine ran the build, which is the exact failure mode the
+old icon generator had — a missing font produced a blank tile and nobody noticed. A
+browser has the webfonts because it fetched them. The HTML is the source, the PNG is the
+artifact, and neither depends on the machine.
+
+The card is warm paper with the dot grid, the wordmark, the hook, and a jot taped to a
+board: a line drawing, handwriting, and a violet heart.
+
+#### Pictures on the page
+
+`components/site/Ink.tsx` holds drawings rather than an illustration library: `currentColor`
+strokes, no text, so nothing in them depends on a font either. design.md §16 asks for
+simple black ink lines, and **fewer objects drawn properly beats four drawn badly** — the
+first attempt crammed a bookshelf, an armchair, a lamp and a mug into 340×150 and none of
+them read.
+
+The lake story's note is a real jot now: taped down, tilted, drawn on, handwritten in
+Caveat, with a violet ring round the line the writer came back to. Caveat is loaded because
+it is finally used — design.md §10 says sparingly, and one jot is where that budget goes.
+
+#### The conversation is a conversation
+
+The reply used to be a second bordered card beside the first, which is not what asking an
+agent something looks like. It is Silica's `chat` component now — `chat-end` for the
+person, `chat-start` with `chat-bubble-agent` for Claude.
+
+`chat-bubble-agent` works because `agent` is registered in the plugin's `colors:` list
+(ADR-011), so the same colour role the app uses for machine-authored content generates a
+bubble variant for free.
+
+**Silica's default bubble is `base-200`, and this band is `base-200`** — the person's
+message rendered with no visible bubble at all. It takes paper and a hairline; the agent's
+carries its own colour and needs neither.
+
+#### Consequences
+
+- `site-story.css` and `site-lists.css` split out at the 250-line limit, both by
+  responsibility: the story is the one band with drawings and handwriting in it, and the
+  lists are furniture that sits inside any band.
+- `--font-hand` is a token now. It was missing for a while and the rule read
+  `font-family: Caveat, var(--font-hand), cursive` — **an unresolvable `var()` invalidates
+  the whole declaration**, so the handwriting silently fell back to the UI sans. The rule
+  carries its own fallback now: `var(--font-hand, Caveat)`.
+
+**Three edits in this session reported success while changing nothing.** A formatter had
+rewritten `globals.css` to single quotes and `layout.tsx` to four-space indent between the
+read and the write, so string replacements matched nothing — and the scripts printed their
+success line unconditionally. Every write in this ADR's work asserts its own result before
+printing. Verify the file, not the intent.
+
+---
+
+### ADR-081 — A background box is not the document
+
+**2026-08-23.** `globals.css` had carried this since the first canvas commit:
+
+    html, body { height: 100%; overscroll-behavior: none; }
+
+`height: 100%` on `body` resolves against `html`, which resolves against the viewport. So
+the body's **background box** was exactly one viewport tall while its content ran on for
+thousands of pixels. Everything below the fold painted against the `html` canvas instead.
+
+For a year that was invisible, because `body` had no background of its own and a
+background-less body propagates nothing. The moment the theme put `bg-base-300` on it, a
+hard horizontal seam appeared one screen down every long page — cutting straight through
+whatever section happened to be there.
+
+#### Why it looked like something else
+
+It reads as a section bleeding into its neighbour, because the seam lands mid-content and
+has nothing to do with any section boundary. It is worth saying what it is not: the hero
+is `background: transparent`, and so is every `.jd-band` that has not asked for a colour.
+The seam was at 1028px because the viewport was 1028px, and for no other reason.
+
+#### The fix
+
+    html { height: 100%; }
+    body { min-height: 100%; overscroll-behavior: none; }
+
+The canvas never needed the original: `.jd-canvas-shell` is `100dvh` outright and the ink
+layer sizes from that rather than from this chain, so nothing that made the rule worth
+having is lost.
+
+**A rule that is wrong but unobservable is still wrong.** This one waited a year for
+somebody to give the body a colour.
+
+### ADR-082 — The close is charcoal, and quiet text is a colour rather than a hole
+
+**Status.** Accepted, 2026-08-23.
+
+**Context.** A design review of the rebranded landing page found two things
+wrong with its surfaces and one thing wrong with its rhythm.
+
+The last band on the page was a full-bleed mint field with a charcoal button on
+it. At that area mint stops behaving like an accent. It reads as a second brand
+arriving in the final screen — the review's words were that it "feels like a
+different brand suddenly took over" — and it forced the one button we most want
+pressed to be the one colour that could not be mint.
+
+Separately, several strings on the page were held back with `opacity`: a price
+cadence at 0.65, a post date at 0.6, the footer's legal row at 0.75, a plan
+bullet at 0.4. ADR-076 already removed twenty-six of these from things a person
+must read, but the metadata kept theirs on the reasoning that metadata is
+secondary. Alpha is the wrong instrument for that. It does not produce a
+quieter ink; it produces the same ink half-applied, and on a page whose whole
+material argument is "paper", half-applied ink reads as a page that has not
+finished loading.
+
+The rhythm complaint was simply length: the page had more vertical space than
+it had content, and three sections in the middle were stretched.
+
+**Decision.** The close runs on charcoal — the same `jd-band-ink` ground as the
+band about handing your notes to an agent — and mint becomes the button. Mint is
+now the CTA colour in all three places a CTA appears: the bar, the hero and the
+close. `.jd-band-mint` is deleted rather than left unused.
+
+Secondary text gets `--ink-2`, a real flat colour declared on `.jd-site` and
+redeclared lighter inside `.jd-band-ink`. No text on the marketing site is set
+in alpha. The one survivor is the hero input's `::placeholder`, which is not
+text somebody is reading.
+
+Band padding drops from `clamp(2.5rem, 5.5vw, 4.5rem)` to
+`clamp(2rem, 4.2vw, 3.5rem)`, the lede's trailing gap from 2.5rem to 1.75rem,
+and the small type in cards, modes, examples and the never-list comes up from
+0.95rem to 1rem against a base that is now 1.0625rem rather than the browser's
+16px.
+
+**Consequences.** Two charcoal bands now sit on the home page with four
+sections between them, which bookends rather than repeats. The blog teasers came
+off the home page in the same pass: the review read them as documentation at the
+door, and `/blog` builds its own list, so `PostList` was deleted rather than
+left orphaned. The footer keeps every internal link to them.
+
+`--ink-2` is defined on `.jd-site` and so is unavailable to the app's chrome.
+That is deliberate — the app is a canvas with a different contrast problem — but
+it means a component used on both surfaces cannot reach for it.
+
+### ADR-083 — The capture glyphs are marker-drawn, and that means a Kit
+
+**Status.** Accepted, 2026-08-23. Blocked on a Font Awesome Kit.
+
+**Context.** The four capture cards — Write, Type, Speak, Snap — carried Lucide
+glyphs: even-weight outlines on a uniform grid. A design review called them
+generic, and it was right in a specific way. Every other surface on this page
+argues that the product is marker on paper: the underline sags, the note is
+taped down, the canvas is dotted. Four icons drawn by a ruler contradict all of
+it in the one place a reader looks before reading anything.
+
+Font Awesome's Whiteboard family is the face that agrees with the rest — drawn
+with a marker, with the wobble that implies. We have a Pro account.
+
+The obstacle is distribution. Whiteboard is not in the npm Pro package: the
+`icon-families.json` shipped with `@fortawesome/fontawesome-pro@7.3.1` declares
+`classic`, `duotone`, `sharp` and `sharp-duotone` and nothing else, and there
+is no `@fortawesome/whiteboard-svg-icons` on the registry. Font Awesome 7's new
+expressive families are distributed only through a Kit, as
+`@awesome.me/kit-<code>`.
+
+**Decision.** The glyph choice moves behind `components/site/ModeIcon.tsx`,
+which owns the tile, the sizing and a four-entry map from a capture mode to its
+glyph. Callers pass `write | type | speak | snap` and know nothing else.
+Adopting Whiteboard is then one import and one map, with no change to
+`CaptureModes`, to the markup, or to `.jd-mode-ico`.
+
+Lucide holds the slot until the Kit exists. It is the honest placeholder: it is
+what is already installed, and it is visibly not the answer.
+
+**Consequences.** `.npmrc` will need `@awesome.me:registry` beside the
+`@fortawesome` line it already has, and `FONTAWESOME_NPM_TOKEN` must be present
+in CI as well as on a laptop — the same variable the other WizeWorks repos use.
+Until then this is the one piece of the rebrand whose finish is waiting on an
+account setting rather than on code.
+
+A Kit is also a subsetting decision. It should be a package-manager Kit rather
+than a CDN Kit: the CDN kind injects a script from `kit.fontawesome.com`, which
+would put a third-party request on a marketing page that currently makes none.
+
+### ADR-084 — A tap picks one thing up, and a menu says what can be done to it
+
+**2026-08-23.** Tapping an object with the Select tool selects just it, and right-click
+(hold, on a phone) opens a menu anchored to what it acts on.
+
+#### The lasso was the only way in, and it is the wrong instrument for one thing
+
+ADR-033 gave the canvas a lasso, which is exactly right for *these things* and poor for
+*that thing*. Changing one card's colour meant drawing a closed loop round it. Verifying
+ADR-079 in a browser is what surfaced it: a straight drag cannot enclose anything, so
+there was no way to reach the card palette at all without a deliberate curve.
+
+A tap picks the topmost object and everything a selection already does — recolour, drag,
+resize, delete, export — works on it with no new machinery. **Boxes before strokes**,
+matching the paint order ADR-078 corrected: a card overlapping a squiggle is the thing
+you can see.
+
+A tap on bare canvas selects nothing, which is also how a selection is dropped, so
+tapping away is the undo for tapping something and neither needed teaching.
+
+#### The menu is anchored to the OBJECT, not the pointer
+
+The obvious thing is to open at the touch point. On a phone that is under the thumb that
+summoned it. The selection already knows its rectangle on the glass, so the menu points
+at the thing it acts on; it falls back to the pointer only when nothing was hit.
+
+**Not a bottom sheet**, which is the other obvious shape.
+[toolbar-side.ts](../apps/web/lib/toolbar-side.ts) records why the bottom bar was
+removed: a software keyboard covers the bottom of a phone exactly when somebody is
+typing, which on this surface is most of the time.
+
+Base UI's ContextMenu carries the touch long-press (500ms, with a move threshold),
+roving focus, typeahead and dismissal. Its `anchor` accepts a virtual element, which is
+how a popup points at a spot on a canvas that has no DOM node of its own.
+
+#### What is in it, and the one that earns its place
+
+Any object gets **bigger / smaller / save as an image / delete**. A note also gets the
+five card colours. Bare canvas gets **put a note here**, and nothing else.
+
+The best of them is **"Make this a circle"**. ADR-066 offers to tidy a rough shape only
+*in the moment* — hold the pen a beat — and lifting keeps exactly what you drew. That is
+the right default and a strange thing to make a one-time offer, because wanting it is
+something a person often notices afterwards. The menu asks the same classifier
+deliberately instead of guessing, at the same confidence floor, and names the shape it
+would make. Most strokes never see the line at all.
+
+**"Fit everything on screen" was in it and came out.** The zoom chip already does it and
+is always visible; the menu was offering a second door to a room nobody had trouble
+finding. A menu that pads itself out is a menu people stop reading.
+
+#### Two bugs the first right-click found
+
+`InkInput.down` never looked at `e.button`, so a right-click **started a lasso** — and
+worse, its `preventDefault()` suppressed the `contextmenu` event that follows, so the
+menu could not open at all. One guard fixes both. The visible half was the selection
+vanishing; the invisible half was the whole feature.
+
+#### Consequences
+
+- `ink-engine.ts` reached its limit twice and split by responsibility both times:
+  `ink-screen.ts` is the seam between document and client coordinates — traffic the menu
+  made go both ways for the first time — and `ink-engine-erase.ts` is rubbing out, which
+  earns its own file by holding state across a sweep.
+- The engine stopped relaying the selection. Eight one-line wrappers only restated what
+  `SelectionEditor` already says and every new action added a ninth, so React holds the
+  editor directly.
+- Resizing steps geometrically and reaches both kinds at once — a stroke's width and a
+  note's text size are the same question asked of two things. Text is floored at
+  `MIN_SIZE`: below 16px iOS zooms the page on focus, and the plane already clamps what
+  it renders, so a smaller stored size would only make the export disagree with the
+  screen.
+- `-webkit-touch-callout: none` on the canvas layers and deliberately **not** on
+  `.jd-text-box`: inside a note a hold is the system's text-selection gesture, which is
+  the right one to keep.
