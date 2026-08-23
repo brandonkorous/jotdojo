@@ -31,6 +31,15 @@ export class InkViewport implements ViewSnapshot {
   y = 0;
   k = 1;
 
+  /**
+   * Where `fitTo` last put the camera, which is what "back" means.
+   *
+   * Measured against this rather than against the origin, because opening a
+   * note FRAMES its ink -- so the origin is not where anybody started, and a
+   * "return" chip that appeared the instant a page loaded would be noise.
+   */
+  private home = { x: 0, y: 0, k: 1 };
+
   toWorldX(sx: number) { return (sx - this.x) / this.k; }
   toWorldY(sy: number) { return (sy - this.y) / this.k; }
 
@@ -81,12 +90,18 @@ export class InkViewport implements ViewSnapshot {
       this.x = 0;
       this.y = 0;
       this.k = 1;
-      return;
+      return this.settle();
     }
     const k = Math.min(1, (cssW - FIT_PAD * 2) / box.w, (cssH - FIT_PAD * 2) / box.h);
     this.k = clampZoom(k);
     this.x = cssW / 2 - (box.x + box.w / 2) * this.k;
     this.y = cssH / 2 - (box.y + box.h / 2) * this.k;
+    this.settle();
+  }
+
+  /** Adopt the current camera as the one to come back to. */
+  private settle() {
+    this.home = { x: this.x, y: this.y, k: this.k };
   }
 
   /**
@@ -98,10 +113,19 @@ export class InkViewport implements ViewSnapshot {
    */
   keepCentre(oldW: number, oldH: number, newW: number, newH: number) {
     if (oldW <= 0 || oldH <= 0) return;
-    this.x += (newW - oldW) / 2;
-    this.y += (newH - oldH) / 2;
+    const dx = (newW - oldW) / 2;
+    const dy = (newH - oldH) / 2;
+    this.x += dx;
+    this.y += dy;
+    // The anchor moves with the camera, or the iOS keyboard opening would look
+    // like the reader had panned away from their own page.
+    this.home.x += dx;
+    this.home.y += dy;
   }
 
-  /** Nothing moved and nothing scaled: the state a fresh page opens in. */
-  get atHome() { return this.k === 1 && this.x === 0 && this.y === 0; }
+  /** Sitting exactly where the page was last framed -- so there is nowhere to
+   *  go back to, and nothing to offer. A fresh page's home is `0, 0, 1`. */
+  get atHome() {
+    return this.k === this.home.k && this.x === this.home.x && this.y === this.home.y;
+  }
 }

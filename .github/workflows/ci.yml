@@ -147,6 +147,7 @@ jobs:
           pnpm anon:smoke
           pnpm lasso:smoke
           pnpm viewport:smoke
+          pnpm gestures:smoke
           pnpm marks:smoke
           pnpm reread:smoke
           pnpm triage:smoke

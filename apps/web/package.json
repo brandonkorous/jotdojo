@@ -15,7 +15,8 @@
     "smoke:site": "dotenv -e ../../.env -- tsx scripts/smoke-site.ts",
     "smoke:marks": "tsx scripts/smoke-marks.ts",
     "smoke:billing-http": "dotenv -e ../../.env -- tsx scripts/smoke-billing-http.ts",
-    "smoke:viewport": "tsx scripts/smoke-viewport.ts"
+    "smoke:viewport": "tsx scripts/smoke-viewport.ts",
+    "smoke:gestures": "tsx scripts/smoke-gestures.ts"
   },
   "dependencies": {
     "@auth/core": "^0.41.3",

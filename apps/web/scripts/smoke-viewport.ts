@@ -1,11 +1,11 @@
 /**
- * The camera, the dot grid and the gesture state machine. ADR-053.
+ * The camera and the dot grid. ADR-054. The gestures that drive them are in
+ * smoke-gestures.ts, because arithmetic and a state machine fail differently.
  *
- * There is no browser or DOM harness in this repo, and these three are exactly
- * the code that fails quietly: a viewport that drifts a pixel per pinch, a
- * grid that jumps a whole cell at the origin, a gesture that hands the finger
- * left over from a pinch a stroke it never started. All three are pure
- * arithmetic and a small state machine, so all three can be checked here.
+ * There is no browser or DOM harness in this repo, and this is exactly the
+ * code that fails quietly: a viewport that drifts a pixel per pinch, a grid
+ * that jumps a whole cell at the origin, a fit that frames the wrong thing.
+ * All of it is pure, so all of it can be checked here.
  *
  * What this CANNOT check is whether any of it feels right under a thumb. That
  * needs a real phone.
@@ -14,7 +14,6 @@ import { InkViewport, MAX_ZOOM, MIN_ZOOM } from "../lib/ink-viewport";
 import {
   GRID_WORLD, MAX_SCREEN, MIN_SCREEN, gridStep, gridVars, wrap,
 } from "../lib/ink-grid";
-import { ViewGestures, wheelPixels, wheelZoom } from "../lib/ink-gestures";
 
 let failures = 0;
 const check = (label: string, ok: boolean, detail?: string) => {
@@ -156,67 +155,30 @@ console.log("\nthe grid phase survives panning past the origin");
     near(g.x, g.step - 1), `${g.x} of ${g.step}`);
 }
 
-console.log("\nwheel deltas are read in the unit the browser reported");
+console.log("\nhome is where the page was framed, not the origin");
 {
-  check("pixels pass through",
-    wheelPixels({ deltaX: 3, deltaY: -9, deltaMode: 0 }).dy === -9);
-  check("lines are scaled",
-    wheelPixels({ deltaX: 0, deltaY: 3, deltaMode: 1 }).dy === 48);
-  check("pages are scaled",
-    wheelPixels({ deltaX: 0, deltaY: 1, deltaMode: 2 }).dy === 800);
+  // A note with ink opens framed ON that ink, so the camera is nowhere near
+  // 0,0 -- and a way-back chip that appeared the instant a page loaded would
+  // be pure noise. Home has to mean the framing.
+  const v = new InkViewport();
+  v.fitTo({ x: 900, y: 700, w: 200, h: 150 }, 800, 600);
+  check("framing a page counts as home", v.atHome, `${v.x}, ${v.y}, ${v.k}`);
+  check("even though the camera is far from the origin", v.x !== 0 && v.y !== 0);
 
-  // One notched detent is 100+ deltaY. Unclamped that is exp(120/320) per
-  // notch compounding on a trackpad's stream of them.
-  check("a single detent cannot zoom more than 1.25x", wheelZoom(-1000) <= 1.25);
-  check("or shrink more than 0.8x", wheelZoom(1000) >= 0.8);
-  check("no scroll is no zoom", wheelZoom(0) === 1);
-}
+  v.panBy(-120, 0);
+  check("panning away is no longer home", !v.atHome);
+  v.panBy(120, 0);
+  check("and panning back is home again", v.atHome);
 
-console.log("\ntwo fingers take the canvas; one finger keeps drawing");
-{
-  const el = {
-    addEventListener() {}, removeEventListener() {},
-  } as unknown as HTMLElement;
+  v.zoomAbout(400, 300, 2);
+  check("zooming is not home either", !v.atHome);
 
-  let aborts = 0;
-  const view = new InkViewport();
-  const gestures = new ViewGestures(el, {
-    view,
-    rect: () => ({ left: 0, top: 0 }),
-    abortInput: () => { aborts++; },
-    onView: () => {},
-  });
-
-  const touch = (id: number, x: number, y: number) =>
-    ({ pointerType: "touch", pointerId: id, clientX: x, clientY: y }) as PointerEvent;
-  const pen = (x: number, y: number) =>
-    ({ pointerType: "pen", pointerId: 9, clientX: x, clientY: y }) as PointerEvent;
-
-  check("one finger is not consumed", gestures.down(touch(1, 100, 100)) === false);
-  check("and neither is its movement", gestures.move(touch(1, 110, 100)) === false);
-  check("a pen is never consumed", gestures.down(pen(50, 50)) === false);
-
-  check("the second finger claims the gesture", gestures.down(touch(2, 300, 100)) === true);
-  check("and aborts the stroke already in progress", aborts === 1);
-
-  // Both fingers 100px down, spread untouched. Fingers report one at a time,
-  // so the page really does zoom a little on the first of these and back on
-  // the second -- what has to hold is where it ends up.
-  gestures.move(touch(1, 110, 200));
-  gestures.move(touch(2, 300, 200));
-  check("the pinch panned the page", near(view.y, 100), `${view.y}`);
-  check("with no zoom, because the spread came back", near(view.k, 1));
-  check("and no sideways drift", near(view.x, 0), `${view.x}`);
-
-  // The whole point of `claimed`: the survivor of a pinch must not suddenly
-  // start drawing a line from wherever the fingers happened to end up.
-  check("lifting one finger stays claimed", gestures.up(touch(2, 300, 200)) === true);
-  check("the survivor still cannot draw", gestures.move(touch(1, 150, 250)) === true);
-  check("lifting the last finger releases", gestures.up(touch(1, 150, 250)) === true);
-  check("and then one finger draws again", gestures.down(touch(1, 100, 100)) === false);
-  check("with no second abort", aborts === 1);
-
-  gestures.destroy();
+  // The iOS keyboard fires the ResizeObserver constantly. If the anchor did
+  // not move with the camera, every keystroke would flash the chip.
+  const r = new InkViewport();
+  r.fitTo({ x: 50, y: 50, w: 300, h: 200 }, 800, 600);
+  r.keepCentre(800, 600, 800, 380);
+  check("a resize does not fake a pan", r.atHome, `${r.x}, ${r.y}`);
 }
 
 console.log(failures === 0 ? "\nviewport: all good\n" : `\nviewport: ${failures} failed\n`);
