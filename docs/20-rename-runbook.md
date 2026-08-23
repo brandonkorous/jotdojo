@@ -70,6 +70,45 @@ the product name appears in the password before assuming a rename is safe.
 Vault. A renamed role with an old connection string is an app that cannot log
 in, and the failure is immediate.
 
+### The three vault keys, by name
+
+`release.yml` reads Key Vault by key name and turns underscores into hyphens,
+and its **required** list names `JOTACULAR_APP_PASSWORD`. That is a key which
+has to be *created*: the vault holds `JOTDOJO-APP-PASSWORD`, so the deploy asks
+for a name nothing answers to and stops.
+
+    ##[error]Missing required secrets in kv-jotdojo-prod-cus: JOTACULAR-APP-PASSWORD
+
+The gate sits in front of the migration, so a deploy attempted before this
+window fails harmlessly — the images build, the namespace and ConfigMap apply,
+and nothing rolls. That is also why creating this one key *alone* makes the next
+run worse rather than better: it opens the gate, `0034` renames the role, and
+the pods then start against a `DATABASE-URL` that still says `jotdojo_app`.
+
+The three move together or not at all:
+
+| Key | Change |
+| --- | --- |
+| `JOTACULAR-APP-PASSWORD` | new — copy the value of `JOTDOJO-APP-PASSWORD` |
+| `DATABASE-URL` | `jotdojo_app` → `jotacular_app` |
+| `DATABASE-ADMIN-URL` | `jotdojo_owner` → `jotacular_owner`, after the superuser rename above |
+
+**Copy the password across, never retype it.** Reading one secret straight into
+the other keeps the value out of a terminal and out of a shell history:
+
+    az keyvault secret set --vault-name kv-jotdojo-prod-cus \
+      --name JOTACULAR-APP-PASSWORD \
+      --value "$(az keyvault secret show --vault-name kv-jotdojo-prod-cus \
+                   --name JOTDOJO-APP-PASSWORD --query value -o tsv)"
+
+A copy is also what disarms the trap above. The value crosses unchanged, so it
+cannot be caught by a sweep rewriting the product name — the danger is only ever
+in a human retyping it.
+
+The *database* name inside both URLs changes in §5, not here.
+`JOTDOJO-OWNER-PASSWORD` is read by no workflow, so nothing automated breaks if
+its name stays stale.
+
 ## 5. Postgres — the database
 
     ALTER DATABASE jotdojo RENAME TO jotacular;
