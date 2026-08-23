@@ -3508,9 +3508,16 @@ thirteen packages, the k8s namespace with its config and secret names, image
 names, the `JOTDOJO_FAKE_PROVIDERS_OK` guard, the local database, the compose
 container, and every line of prose in `docs/`.
 
-`isMarketingHost` accepts **both** apexes for the overlap. Without that branch
-the old domain would serve the app tree at its apex the moment `SITE_URL`
-flipped, which ADR-010 says can never happen.
+The overlap is handled at the **edge**, not in application code. `jotdojo.com`
+301s to `jotacular.com` at Cloudflare and never reaches the cluster, so
+`isMarketingHost` knows one apex and `hosts.ts` grew no branch to delete later.
+
+That is the better place for it. A redirect passes link equity where a second
+accepted apex only splits it, and the conditional would have outlived the
+condition -- code that exists for an overlap has no one to tell it the overlap
+ended. **The redirect must preserve the path**: a root-only rule leaves every
+indexed `/blog/...` URL on a 404 instead of its new home, and the blog is the
+distribution (`16-web-presence.md`).
 
 **Consequences.** Three things did not move, each for a stated reason:
 

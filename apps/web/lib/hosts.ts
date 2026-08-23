@@ -21,16 +21,6 @@ const hostOf = (url: string | undefined): string | null => {
  *  apex", which ADR-010 says can never happen. */
 export const siteOrigin = (): string => process.env.SITE_URL ?? "https://jotacular.com";
 
-/**
- * The apex we came FROM. ADR-086.
- *
- * It keeps answering as the marketing site for as long as it resolves, because
- * the alternative is that jotdojo.com serves the APP tree at its apex -- which
- * ADR-010 says can never happen. Delete this, and the branch in
- * `isMarketingHost`, once the old domain stops resolving.
- */
-const FORMER_SITE_HOST = "jotdojo.com";
-
 export const appOrigin = (): string => process.env.APP_URL ?? "https://app.jotacular.com";
 
 /**
@@ -44,11 +34,8 @@ export function isMarketingHost(host: string | null | undefined): boolean {
   const site = hostOf(siteOrigin());
   if (!host || !site) return false;
   const seen = host.toLowerCase();
-  return apexOrWww(seen, site) || apexOrWww(seen, FORMER_SITE_HOST);
+  return seen === site || seen === `www.${site}`;
 }
-
-const apexOrWww = (seen: string, apex: string): boolean =>
-  seen === apex || seen === `www.${apex}`;
 
 /**
  * The host a request arrived at, as the outside world addressed it.

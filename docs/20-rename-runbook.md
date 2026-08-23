@@ -26,9 +26,17 @@ Until this lands, `SITE_URL` must keep its old value — see step 2.
 `infra/k8s/01-config.yaml` already carries the new hostnames. Deploying it
 before step 1 points the app at a domain that does not resolve.
 
-`isMarketingHost` accepts **both** apexes (`hosts.ts`), so the old domain keeps
-serving the marketing site rather than the app tree, which ADR-010 forbids.
-Remove `FORMER_SITE_HOST` when jotdojo.com stops resolving.
+The overlap is handled at the **edge**, not in application code: jotdojo.com
+301s to jotacular.com at Cloudflare and never reaches the cluster, so
+`isMarketingHost` only knows one apex. That is the better place for it — a
+redirect passes link equity, and a branch in `hosts.ts` would only have served
+the old name forever.
+
+**The redirect must preserve the path.** A root-only rule leaves every indexed
+`/blog/...` URL returning 404 rather than pointing at its new home, and the blog
+is the distribution (`16-web-presence.md`). In Cloudflare that is a wildcard
+Redirect Rule — `jotdojo.com/*` to `https://jotacular.com/${1}`, 301 — not a
+single-URL redirect.
 
 ## 3. Email
 
