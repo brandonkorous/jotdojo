@@ -51,6 +51,7 @@ export function Canvas({
   // everything already drawn -- the strokes would still be in the database,
   // attached to a block nothing renders.
   const [inkStarted, setInkStarted] = useState(hasInk);
+  const [optionsOpen, setOptionsOpen] = useState(false);
   const [inkBlockId, setInkBlockId] = useState<string | null>(null);
   // A counter rather than a boolean: tapping the camera twice in a row has
   // to reopen the picker, and a flag that is already true does nothing.
@@ -61,8 +62,16 @@ export function Canvas({
   const [styles, setStyles] = useState<InkStyles>(DEFAULT_STYLES);
 
 
+  /**
+   * Picking a tool does not open its options; tapping it again does.
+   *
+   * The pill sits in the band across the top of the page, which on a phone is
+   * where the next line was going to go. Reaching for the pen is not a request
+   * to see the palette -- reaching for the pen you are already holding is.
+   */
   const chooseTool = (next: CanvasTool) => {
     if (isInk(next)) setInkStarted(true);
+    setOptionsOpen(next === tool ? !optionsOpen : false);
     setTool(next);
   };
 
@@ -167,7 +176,10 @@ export function Canvas({
           autoFocus={!isInk(tool)}
           readOnly={isInk(tool)}
           className="jd-canvas-input font-sans"
-          placeholder="Start jotting."
+          // A prompt to start, and only that. Once there is ink on the page it
+          // is showing through somebody's handwriting to tell them to begin
+          // something they have visibly already begun.
+          placeholder={inkStarted ? "" : "Start jotting."}
           aria-label="Note"
           spellCheck
           value={body}
@@ -210,6 +222,8 @@ export function Canvas({
         tool={tool}
         styles={styles}
         block={block}
+        open={optionsOpen}
+        onClose={() => setOptionsOpen(false)}
         onStyle={setStyle}
         onMark={mark}
         onBlock={heading}

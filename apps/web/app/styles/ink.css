@@ -65,14 +65,6 @@
 .jd-ink-zoom:hover,
 .jd-ink-zoom:focus-visible { opacity: 1; }
 
-/* Dismissing the options pill is a phone affordance only. `display: none`
-   rather than visually-hidden, so a desktop screen reader is not offered a
-   control for a problem a desktop does not have. */
-.jd-options-dismiss { display: none; }
-@media (pointer: coarse) {
-  .jd-options-dismiss { display: inline-flex; }
-  span.jd-options-dismiss { display: inline-block; }
-}
 
 .jd-ink-layer {
   position: absolute;

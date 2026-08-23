@@ -18,6 +18,18 @@ const LOW_CONFIDENCE = 0.6;
 const POLL_MS = 4000;
 const POLL_CEILING_MS = 30_000;
 
+/**
+ * How long "reading your handwriting" is still true for.
+ *
+ * Past this the claim is a lie -- and the shape of the lie matters. Nothing is
+ * wrong with the page: the ink is stored, and it is stored as strokes, so a
+ * reader arriving next week reads it just as well. What is not happening is a
+ * reading, either because the queue is long or because recognition is not
+ * switched on for this space, and the UI cannot tell which. So it stops
+ * claiming an action is in progress and says the part it knows.
+ */
+const PATIENCE_MS = 90_000;
+
 type Ink = Awaited<ReturnType<typeof getInkAction>>;
 
 export function InkTranscript({ blockId }: { blockId: string | null }) {
@@ -25,6 +37,8 @@ export function InkTranscript({ blockId }: { blockId: string | null }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState("");
   const [saving, setSaving] = useState(false);
+  /** Set once the wait stops being a wait, so the card can stop promising. */
+  const [waited, setWaited] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const poll = useCallback(async (delay: number) => {
@@ -46,8 +60,15 @@ export function InkTranscript({ blockId }: { blockId: string | null }) {
 
   useEffect(() => {
     if (!blockId) return;
+    setWaited(false);
     void poll(POLL_MS);
-    return () => { if (timer.current) clearTimeout(timer.current); };
+    // Polling continues -- a reading that arrives late should still appear.
+    // Only the wording gives up, because only the wording was making a promise.
+    const patience = setTimeout(() => setWaited(true), PATIENCE_MS);
+    return () => {
+      if (timer.current) clearTimeout(timer.current);
+      clearTimeout(patience);
+    };
   }, [blockId, poll]);
 
   if (!blockId || !ink || ink.strokeCount === 0) return null;
@@ -69,7 +90,11 @@ export function InkTranscript({ blockId }: { blockId: string | null }) {
   return (
     <div className="jd-chrome glass jd-transcript">
       {ink.transcriptState === "pending" && (
-        <p className="jd-transcript-note">Reading your handwriting&hellip;</p>
+        <p className="jd-transcript-note">
+          {waited
+            ? "Your ink is saved. Nothing has read it back yet."
+            : "Reading your handwriting…"}
+        </p>
       )}
 
       {ink.transcriptState === "failed" && (

@@ -30,6 +30,7 @@ export function HeroCanvas({ children }: { children: React.ReactNode }) {
   const [inkStarted, setInkStarted] = useState(false);
   const showInk = inkStarted || hasInk;
   const [touched, setTouched] = useState(false);
+  const [optionsOpen, setOptionsOpen] = useState(false);
   const [styles, setStyles] = useState<InkStyles>(DEFAULT_STYLES);
 
   const { input, block, mark, heading, syncBlock, onKeyDown } = useMarks(onChange);
@@ -42,8 +43,11 @@ export function HeroCanvas({ children }: { children: React.ReactNode }) {
     which: "pen" | "highlighter", patch: { color?: string; width?: number },
   ) => setStyles((all) => ({ ...all, [which]: { ...all[which], ...patch } }));
 
+  // Tapping the tool you already hold opens its options; picking a new one
+  // does not. Same rule as the app -- the hero must not teach a different one.
   const choose = (next: CanvasTool) => {
     setTouched(true);
+    setOptionsOpen(next === tool ? !optionsOpen : false);
     setTool(next);
     if (isInk(next)) {
       setInkStarted(true);
@@ -66,7 +70,7 @@ export function HeroCanvas({ children }: { children: React.ReactNode }) {
       <textarea
         ref={input}
         className="jd-canvas-input jd-hero-input font-sans"
-        placeholder={PLACEHOLDER}
+        placeholder={showInk ? "" : PLACEHOLDER}
         aria-label="Try jotdojo"
         spellCheck
         readOnly={isInk(tool)}
@@ -99,6 +103,8 @@ export function HeroCanvas({ children }: { children: React.ReactNode }) {
         tool={tool}
         styles={styles}
         block={block}
+        open={optionsOpen}
+        onClose={() => setOptionsOpen(false)}
         onStyle={setStyle}
         onMark={mark}
         onBlock={heading}

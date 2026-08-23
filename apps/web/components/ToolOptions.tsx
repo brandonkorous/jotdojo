@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { Bold, Italic, Underline, X } from "lucide-react";
 import type { CanvasTool } from "@/lib/canvas-tool";
 import type { Block, Mark } from "@/lib/markdown-marks";
@@ -19,9 +18,10 @@ import {
  * settings, and everything you can do to a selection belongs ON the selection,
  * where the strokes are.
  *
- * On a phone it can be dismissed, and on a phone only. A desktop has room to
- * spare; a phone does not, and a permanent band across the top of the page
- * sits exactly where the next line of handwriting was going to go.
+ * It is CLOSED until asked for. Picking up a pen is not a request to see the
+ * palette -- tapping the pen you are already holding is. Left open by default
+ * it occupies the band across the top of the page where the next line of
+ * handwriting was going to go, which on a phone is most of the page.
  */
 
 const BLOCKS: { id: Block; label: string; hint: string }[] = [
@@ -37,23 +37,22 @@ const MARKS: { id: Mark; label: string; Icon: typeof Bold; key: string }[] = [
 ];
 
 export function ToolOptions({
-  tool, styles, block, onStyle, onMark, onBlock,
+  tool, styles, block, open, onClose, onStyle, onMark, onBlock,
 }: {
   tool: CanvasTool;
   styles: InkStyles;
   /** The heading level the caret is in, so the three read as one setting. */
   block?: Block;
+  /** Closed until asked for. Picking a pen is not a request to see the palette
+   *  -- tapping the pen you are already holding is. */
+  open: boolean;
+  onClose: () => void;
   onStyle: (tool: "pen" | "highlighter", patch: { color?: string; width?: number }) => void;
   onMark?: (mark: Mark) => void;
   onBlock?: (block: Block) => void;
 }) {
-  // Which tool's options were waved away, rather than a plain boolean: picking
-  // a different tool then brings the pill back with no effect to reset it,
-  // and the rail is right there, so it is never lost.
-  const [dismissed, setDismissed] = useState<CanvasTool | null>(null);
-
   if (tool === "eraser" || tool === "select") return null;
-  if (dismissed === tool) return null;
+  if (!open) return null;
 
   return (
     <div className="jd-chrome glass jd-tool-options top-16 left-1/2 z-20 flex -translate-x-1/2 items-center gap-1 rounded-full p-1">
@@ -134,13 +133,13 @@ export function ToolOptions({
         />
       )}
 
-      <span aria-hidden className="jd-rail-sep-v jd-options-dismiss" />
+      <span aria-hidden className="jd-rail-sep-v" />
       <button
         type="button"
-        className="jd-tool jd-options-dismiss"
-        title="Hide these options"
+        className="jd-tool"
+        title="Done"
         aria-label="Hide these options"
-        onClick={() => setDismissed(tool)}
+        onClick={onClose}
       >
         <X aria-hidden strokeWidth={1.75} />
       </button>
