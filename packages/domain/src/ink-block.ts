@@ -3,7 +3,7 @@ import { withActor, notes, blocks, mediaAssets, type Tx } from "@jotdojo/db";
 import { canReachSpace, hasScope, type Actor } from "./actor";
 import { Forbidden, NotFound, DomainError } from "./errors";
 import { assertMember } from "./spaces";
-import type { InkDocument } from "./ink-doc";
+import type { InkDocument, Stroke } from "./ink-doc";
 
 /**
  * An ink block: bringing one into existence, finding it, and reading it back.
@@ -20,6 +20,9 @@ export type InkBlock = {
   noteId: string;
   spaceId: string;
   strokeCount: number;
+  /** Moves on every write to the page, append included. What a follower
+   *  compares against to decide whether it is behind. ADR-058. */
+  version: number;
   canvas: { w: number; h: number };
   transcript: string | null;
   transcriptState: string;
@@ -71,7 +74,7 @@ export async function createInkBlock(
 
     return {
       blockId: block.id, artifactId: asset.id, noteId, spaceId: note.spaceId,
-      strokeCount: 0, canvas, transcript: null,
+      strokeCount: 0, version: 0, canvas, transcript: null,
       transcriptState: block.transcriptState, confidence: null,
     };
   });
@@ -101,7 +104,7 @@ export async function getInk(actor: Actor, blockId: string): Promise<InkBlock & 
   return withActor(actor.userId, async (tx) => {
     const rows = await tx.execute(sql`
       SELECT b.id, b.note_id, b.space_id, b.transcript, b.transcript_state, b.confidence,
-             a.id AS artifact_id, a.strokes
+             a.id AS artifact_id, a.strokes, a.strokes_version
         FROM blocks b
         JOIN media_assets a ON a.id = b.artifact_id
        WHERE b.id = ${blockId} AND b.kind = 'ink'
@@ -119,6 +122,7 @@ export async function getInk(actor: Actor, blockId: string): Promise<InkBlock & 
       noteId: String(row.note_id),
       spaceId: String(row.space_id),
       strokeCount: document.strokes.length,
+      version: Number(row.strokes_version ?? 0),
       canvas: document.canvas,
       transcript: (row.transcript as string | null) ?? null,
       transcriptState: String(row.transcript_state),
@@ -128,3 +132,44 @@ export async function getInk(actor: Actor, blockId: string): Promise<InkBlock & 
   });
 }
 
+
+/**
+ * The strokes from `from` onward, and nothing before it.
+ *
+ * What a device does when the live stream says the page grew. Sending the whole
+ * page instead would work and would be wrong: somebody writing for ten minutes
+ * generates three hundred of these, and the point of an append-only log is that
+ * catching up costs what was added rather than what exists.
+ */
+export async function strokesSince(
+  actor: Actor, blockId: string, from: number,
+): Promise<{ strokes: Stroke[]; strokeCount: number; version: number }> {
+  const start = Number.isInteger(from) && from > 0 ? from : 0;
+
+  return withActor(actor.userId, async (tx) => {
+    const rows = await tx.execute(sql`
+      SELECT b.space_id, a.strokes_version AS version,
+             jsonb_array_length(a.strokes -> 'strokes') AS count,
+             coalesce(
+               (SELECT jsonb_agg(s ORDER BY ord)
+                  FROM jsonb_array_elements(a.strokes -> 'strokes')
+                       WITH ORDINALITY AS t(s, ord)
+                 WHERE ord > ${start}),
+               '[]'::jsonb) AS tail
+        FROM blocks b
+        JOIN media_assets a ON a.id = b.artifact_id
+       WHERE b.id = ${blockId} AND b.kind = 'ink'
+    `);
+    const row = (rows as unknown as Array<Record<string, unknown>>)[0];
+    if (!row) throw new NotFound("That ink block does not exist, or you cannot reach it");
+    if (!canReachSpace(actor, String(row.space_id))) {
+      throw new NotFound("That ink block does not exist, or you cannot reach it");
+    }
+
+    return {
+      strokes: (row.tail as Stroke[] | null) ?? [],
+      strokeCount: Number(row.count ?? 0),
+      version: Number(row.version ?? 0),
+    };
+  });
+}

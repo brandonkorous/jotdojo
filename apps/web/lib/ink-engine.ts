@@ -1,17 +1,17 @@
-import type { Stroke } from "@jotdojo/domain";
+import type { InkDelta, Stroke } from "@jotdojo/domain";
 import type { InkTool } from "./canvas-tool";
 import { StrokeCapture } from "./ink-capture";
 import { eraseNear, restyle, without } from "./ink-edit";
+import { mergePages, newcomers } from "./ink-merge";
 import { ERASE_RADIUS } from "./ink-paint";
 import { InkSurface } from "./ink-surface";
 import { InkInput, type InputHost } from "./ink-input";
 import { InkViewport } from "./ink-viewport";
-import { strokesBounds } from "@jotdojo/ink-render";
+import { InkFraming } from "./ink-framing";
 import { StrokeIndex } from "./ink-index";
 import { InkSelection, NO_SELECTION, type SelectionSummary } from "./ink-selection";
-import { commitStroke, drawAll, drawFrame, type Scene } from "./ink-draw";
-import { FrameLoop, type Dirty } from "./ink-frame";
-import { paintGrid } from "./ink-grid";
+import { commitStroke, type Scene } from "./ink-draw";
+import { InkPainter } from "./ink-painter";
 import { DEFAULT_PEN, type InkStyle } from "./ink-style";
 
 /**
@@ -31,9 +31,13 @@ export type EngineOptions = {
   live: HTMLCanvasElement;
   /** Called when strokes are added, so the sync layer can queue them. */
   onStrokes: (strokes: Stroke[], firstIndex: number) => void;
-  /** Erase, move and delete all change the middle of the page, and the append
-   *  protocol cannot express that -- so the whole document is resent. */
-  onReplace: (strokes: Stroke[]) => void;
+  /**
+   * Erase, move, recolour and delete all change the middle of the page, which
+   * the append protocol cannot express. They are sent as a delta naming the
+   * strokes involved -- never as a fresh copy of the whole page, which would
+   * discard whatever another device drew in the meantime. ADR-058.
+   */
+  onDelta: (delta: InkDelta) => void;
   /** What is selected, so the UI can offer the right things to do with it.
    *  The kinds matter: a marker recoloured to ink is the grey smear ADR-045
    *  exists to prevent, so its own palette has to be reachable. */
@@ -60,13 +64,16 @@ export class InkEngine implements InputHost {
   private currentTool: Tool = "pen";
   private style: InkStyle = DEFAULT_PEN;
   private readonly input: InkInput;
-  private readonly frame = new FrameLoop((d) => this.paint(d));
-  /** The last camera React was told about, so it hears nothing on a pan. */
-  private reported = { k: 1, home: true };
+  private readonly painter: InkPainter;
+  private readonly framing: InkFraming;
+  /** Ids rubbed out during the current eraser sweep. */
+  private readonly erased = new Set<string>();
 
   constructor(opts: EngineOptions) {
     this.opts = opts;
     this.surface = new InkSurface(opts.committed, opts.live, this.view);
+    this.painter = new InkPainter(this.surface, this.view, () => this.scene, opts.grid);
+    this.framing = new InkFraming(this.view, this.surface, this.painter, opts.onView);
     this.live = opts.live;
 
     // Without this, a two-finger drag scrolls the page mid-stroke.
@@ -75,7 +82,7 @@ export class InkEngine implements InputHost {
   }
 
   destroy() {
-    this.frame.cancel();
+    this.painter.cancel();
     this.input.destroy();
   }
 
@@ -102,27 +109,28 @@ export class InkEngine implements InputHost {
     this.fitToContent();
   }
 
-  /** Frame the ink. An empty page lands on exactly where it always did. */
-  fitToContent() {
-    this.view.fitTo(strokesBounds(this.strokes), this.surface.width, this.surface.height);
-    this.tellView();
-    this.repaintNow();
+  /**
+   * Strokes somebody else drew. The camera does not move and the selection is
+   * not touched -- writing here must not scroll out from under somebody
+   * because a laptop in the next room caught up. ADR-058.
+   */
+  applyRemote(incoming: Stroke[]) {
+    if (newcomers(this.strokes, incoming).length === 0) return;
+    this.strokes = mergePages(this.strokes, incoming);
+    this.repaint();
   }
 
-  /**
-   * Resizing clears both canvases, so the repaint is not optional.
-   *
-   * The view is ANCHORED, not re-fitted: this fires when the iOS keyboard opens
-   * and when a tablet rotates, and re-framing there would teleport the page out
-   * from under somebody mid-sentence.
-   */
-  resize(cssWidth: number, cssHeight: number) {
-    const was = { w: this.surface.width, h: this.surface.height };
-    this.surface.resize(cssWidth, cssHeight);
-    this.view.keepCentre(was.w, was.h, cssWidth, cssHeight);
-    this.tellView();
-    this.repaintNow();
+  /** Adopt the server's page, keeping what is still queued here. The selection
+   *  goes, because the strokes it pointed at may not have survived. */
+  reconcile(server: Stroke[], pending: readonly Stroke[]) {
+    this.strokes = mergePages(server, pending);
+    this.dropSelection();
+    this.repaint();
   }
+
+  fitToContent() { this.framing.fitTo(this.strokes); }
+
+  resize(cssWidth: number, cssHeight: number) { this.framing.resize(cssWidth, cssHeight); }
 
   // --------------------------------------------------------- selection ----
 
@@ -144,16 +152,20 @@ export class InkEngine implements InputHost {
     this.index.invalidate(this.selection.selected);
     this.repaint();
     this.paintOverlay();
-    this.opts.onReplace(this.strokes);
+    // The strokes themselves, because a recolour changes what they ARE. The
+    // server matches them by id and keeps their place in paint order.
+    this.opts.onDelta({ remove: [], upsert: [...this.selection.selected] });
   }
 
-  /** Delete what the lasso caught. The page is resent, as with erase. */
+  /** Delete what the lasso caught, naming them rather than resending the
+   *  page around them. */
   deleteSelection() {
     if (this.selection.count === 0) return;
-    this.strokes = without(this.strokes, new Set(this.selection.selected));
+    const doomed = [...this.selection.selected];
+    this.strokes = without(this.strokes, new Set(doomed));
     this.dropSelection();
     this.repaint();
-    this.opts.onReplace(this.strokes);
+    this.opts.onDelta({ remove: doomed.map((s) => s.id), upsert: [] });
   }
 
   // ------------------------------------------------------------- input ----
@@ -169,15 +181,20 @@ export class InkEngine implements InputHost {
   eraseAt(x: number, y: number): boolean {
     // A hit tolerance, so it is a SCREEN distance. Left in world units the
     // eraser would swallow the page zoomed out and miss everything zoomed in.
-    const kept = eraseNear(this.strokes, x, y, ERASE_RADIUS / this.view.k);
-    if (!kept) return false;
-    this.strokes = kept;
+    const hit = eraseNear(this.strokes, x, y, ERASE_RADIUS / this.view.k);
+    if (!hit) return false;
+    this.strokes = hit.kept;
+    // Accumulated across the whole sweep, so dragging the eraser over a
+    // sentence is one delta rather than one per pointer sample.
+    for (const stroke of hit.removed) this.erased.add(stroke.id);
     this.repaint();
     return true;
   }
 
   endErase(erased: boolean) {
-    if (erased) this.opts.onReplace(this.strokes);
+    if (!erased || this.erased.size === 0) return;
+    this.opts.onDelta({ remove: [...this.erased], upsert: [] });
+    this.erased.clear();
   }
 
   commit(stroke: Stroke) {
@@ -196,7 +213,11 @@ export class InkEngine implements InputHost {
 
   finishSelect() {
     if (this.selection.dragging) {
-      if (this.selection.endDrag()) this.opts.onReplace(this.strokes);
+      // Moved strokes are the same strokes with different points, so this is
+      // an upsert by id -- nothing else on the page is touched.
+      if (this.selection.endDrag()) {
+        this.opts.onDelta({ remove: [], upsert: [...this.selection.selected] });
+      }
       return;
     }
     this.selection.settle(this.strokes);
@@ -205,6 +226,7 @@ export class InkEngine implements InputHost {
   }
 
   // ----------------------------------------------------------- render ----
+  // WHEN to paint is `InkPainter`; this is only which paint to ask for.
 
   private get scene(): Scene {
     return {
@@ -213,32 +235,10 @@ export class InkEngine implements InputHost {
     };
   }
 
-  /** The camera moved: everything on screen is now somewhere else. */
-  onView() {
-    this.frame.mark("page", "overlay", "grid");
-    this.tellView();
-  }
+  /** The camera moved under the pointer: framing decides what that costs. */
+  onView() { this.framing.moved(); }
 
-  /** React hears about the camera only when something it renders changed --
-   *  the zoom readout, or whether there is anywhere to go back to. */
-  private tellView() {
-    const home = this.view.atHome;
-    if (this.view.k === this.reported.k && home === this.reported.home) return;
-    this.reported = { k: this.view.k, home };
-    this.opts.onView?.(this.view.k, home);
-  }
-
-  scheduleLive() { this.frame.mark("live", "overlay"); }
-  private paintOverlay() { this.frame.mark("overlay"); }
-  private repaint() { this.frame.mark("page"); }
-
-  private paint(dirty: ReadonlySet<Dirty>) {
-    if (dirty.has("grid") && this.opts.grid) paintGrid(this.opts.grid, this.view);
-    drawFrame(this.surface, dirty, this.scene);
-  }
-
-  private repaintNow() {
-    if (this.opts.grid) paintGrid(this.opts.grid, this.view);
-    drawAll(this.surface, this.scene);
-  }
+  scheduleLive() { this.painter.live(); }
+  private paintOverlay() { this.painter.overlay(); }
+  private repaint() { this.painter.page(); }
 }

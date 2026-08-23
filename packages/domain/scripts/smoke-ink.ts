@@ -9,7 +9,7 @@
 import {
   upsertUserFromGoogle, asUser, createNote, defaultSpaceId,
   createInkBlock, ensureInkBlock, findInkBlock, hasInk, getNote, appendStrokes, getInk, correctTranscript,
-  type Stroke,
+  type Stroke, type StrokeInput,
 } from "../src/index";
 
 let failures = 0;
@@ -28,7 +28,7 @@ async function refused(label: string, code: string, fn: () => Promise<unknown>) 
   check(label, got === code, `expected code "${code}", got "${got}"`);
 }
 
-const strokeAt = (n: number): Stroke => ({
+const strokeAt = (n: number): StrokeInput => ({
   tool: "pen",
   color: "#1A1817",
   width: 2,

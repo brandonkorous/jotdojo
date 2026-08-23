@@ -40,3 +40,19 @@ reason. Do not batch-refactor them for their own sake.
 `packages/domain/src/ink.ts` came off this list on 2026-08-22. It was edited for another
 reason, so it was split as the rule requires: `ink-doc.ts` is what an ink document IS,
 `ink-block.ts` is a block's lifecycle, and `ink.ts` is writing strokes into one.
+
+Later the same day, live updates (ADR-058) edited it again and it split again, along with
+the two client files that had reached the limit beside it:
+
+    ink.ts            appending strokes -- the path that runs while somebody writes
+    ink-delta.ts      changing the middle of a page, by naming strokes
+    ink-page.ts       taking hold of a page and putting it back
+    ink-recognition.ts   what a changed page owes a recognizer
+
+    ink-engine.ts     what is on the surface
+    ink-painter.ts    when it gets painted
+    ink-framing.ts    where the camera points
+    ink-merge.ts      reconciling this page with the server's
+
+Both times the split was by responsibility. Both times the file was already being edited
+for something else, which is the only time the rule asks for it.

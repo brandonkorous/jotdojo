@@ -12,6 +12,7 @@ export * from "./schema/_columns";
 export * from "./schema/identity";
 export * from "./schema/content";
 export * from "./schema/pipeline";
+export * from "./schema/presence";
 export * from "./schema/capture";
 export * from "./schema/agents";
 export * from "./schema/invites";

@@ -1,25 +1,23 @@
-import { and, eq, sql } from "drizzle-orm";
-import { withActor, notes, blocks, mediaAssets, type Tx } from "@jotdojo/db";
+import { withActor, type Tx } from "@jotdojo/db";
 import { canReachSpace, hasScope, type Actor } from "./actor";
 import { Forbidden, NotFound, DomainError } from "./errors";
 import { validateStrokes, MAX_STROKES, MAX_BATCH, type Stroke } from "./ink-doc";
-import { assertMember } from "./spaces";
-import { loadNote } from "./ink-block";
+import { markPageChanged, announceInk } from "./ink-recognition";
+import { lockReachable, appendToPage, bumpPage, pageIds } from "./ink-page";
 
 /**
- * Writing strokes into an ink block, and what follows from that. docs/08-ink.md.
+ * Writing strokes into an ink block. docs/08-ink.md.
  *
  * Vectors are the truth and are never flattened to a raster. Strokes are small
  * -- a page of handwriting is tens of kilobytes -- and keeping them means a
  * better recognizer can be run over old notes later, so handwriting from a year
  * ago silently improves. A PNG is a one-way door.
  *
- * What an ink document IS lives in ink-doc.ts; a block's own lifecycle lives in
- * ink-block.ts. This file is the part that changes what is on the page.
+ * What an ink document IS lives in ink-doc.ts; a block's lifecycle lives in
+ * ink-block.ts; changing the middle of a page lives in ink-delta.ts, and
+ * recognition in ink-recognition.ts. This file is the append path -- the one
+ * that runs every two seconds while somebody is actually writing.
  */
-
-/** Recognition waits for a pause rather than firing per batch. */
-const QUIET_PERIOD_SECONDS = 30;
 
 /**
  * Append a batch of strokes to an ink block.
@@ -33,164 +31,101 @@ const QUIET_PERIOD_SECONDS = 30;
  * thing idempotent without a request id:
  *
  *   seq === count   append it
- *   seq <  count    already have it -- a retry after a response was lost. No-op.
  *   seq >  count    a batch went missing. Refuse, and tell the client where we
  *                   actually are so it can resend from there.
+ *   seq <  count    the page has moved on. See below.
  *
- * The last case is the one worth being strict about. Accepting it would leave a
- * hole in the middle of someone's handwriting that nothing would ever report.
+ * The middle case is worth being strict about: accepting it would leave a hole
+ * in the middle of someone's handwriting that nothing would ever report.
+ *
+ * The last case used to mean one thing -- a retry whose response was lost --
+ * and with a single writer that was true. It is not true of two devices, where
+ * a batch can be behind the page simply because somebody else drew first, and
+ * dismissing it as a retry would discard real strokes with a success code.
+ * ADR-058. So a batch that names its strokes is deduplicated BY ID and the rest
+ * are kept, and only a batch with no ids of its own is still assumed to be a
+ * retry -- which is the only safe guess when a stroke cannot be recognised.
  */
 export async function appendStrokes(
   actor: Actor, blockId: string, seq: number, rawStrokes: unknown,
-): Promise<{ strokeCount: number; accepted: number }> {
+): Promise<{ strokeCount: number; accepted: number; version: number }> {
   if (!hasScope(actor, "notes:write") && !hasScope(actor, "capture:write")) {
     throw new Forbidden("This connection cannot write notes");
   }
   if (!Number.isInteger(seq) || seq < 0) {
     throw new DomainError("seq must be a non-negative integer", "bad_seq", 400);
   }
+  // Whether the CLIENT chose the ids, checked before validation mints any.
+  // Only a batch that named itself can be deduplicated by name.
+  const identified = Array.isArray(rawStrokes) && rawStrokes.length > 0
+    && rawStrokes.every((s) => typeof (s as { id?: unknown })?.id === "string");
   const strokes = validateStrokes(rawStrokes);
 
-  return withActor(actor.userId, async (tx) => {
-    // FOR UPDATE, because this is a read-modify-write on a jsonb document and
-    // two tabs drawing on one page is a thing people do.
-    const rows = await tx.execute(sql`
-      SELECT b.id AS block_id, b.space_id, b.note_id, a.id AS artifact_id,
-             jsonb_array_length(a.strokes -> 'strokes') AS count
-        FROM blocks b
-        JOIN media_assets a ON a.id = b.artifact_id
-       WHERE b.id = ${blockId} AND b.kind = 'ink'
-         FOR UPDATE OF a
-    `);
-    const row = (rows as unknown as Array<Record<string, unknown>>)[0];
-    if (!row) throw new NotFound("That ink block does not exist, or you cannot reach it");
+  const page = await withActor(actor.userId, async (tx) => {
+    // Locked, because this is a read-modify-write on a jsonb document and two
+    // tabs drawing on one page is a thing people do.
+    const row = await lockReachable(tx, actor, blockId, (id) => canReachSpace(actor, id));
 
-    const spaceId = String(row.space_id);
-    if (!canReachSpace(actor, spaceId)) {
-      throw new NotFound("That ink block does not exist, or you cannot reach it");
-    }
-
-    const count = Number(row.count ?? 0);
-
-    if (seq < count) {
-      // A retry whose original response never arrived. The strokes are already
-      // here; saying "fine" is both true and what lets the client move on.
-      return { strokeCount: count, accepted: 0 };
-    }
-    if (seq > count) {
+    if (seq > row.count) {
       throw new DomainError(
-        `strokes ${count}..${seq - 1} were never received; resend from ${count}`,
+        `strokes ${row.count}..${seq - 1} were never received; resend from ${row.count}`,
         "stroke_gap", 409,
       );
     }
-    if (count + strokes.length > MAX_STROKES) {
+
+    const fresh = seq < row.count ? await unseen(tx, row.artifactId, strokes, identified) : strokes;
+    if (fresh.length === 0) {
+      // Everything in this batch is already on the page. Saying "fine" is both
+      // true and what lets the client move on.
+      return { ...row, accepted: 0 };
+    }
+    if (row.count + fresh.length > MAX_STROKES) {
       throw new DomainError("this page has too many strokes", "page_full", 400);
     }
 
-    await tx.execute(sql`
-      UPDATE media_assets
-         SET strokes = jsonb_set(strokes, '{strokes}',
-                                 (strokes -> 'strokes') || ${JSON.stringify(strokes)}::jsonb)
-       WHERE id = ${String(row.artifact_id)}
-    `);
-
-    await queueRecognition(tx, blockId);
-    await tx.update(blocks)
-      .set({ transcriptState: "pending" })
-      .where(and(eq(blocks.id, blockId), eq(blocks.transcriptState, "ready")));
-
-    await tx.update(notes).set({ updatedAt: new Date() }).where(eq(notes.id, String(row.note_id)));
-
-    return { strokeCount: count + strokes.length, accepted: strokes.length };
+    const version = await appendToPage(tx, row.artifactId, fresh);
+    await markPageChanged(tx, { blockId, noteId: row.noteId }, true);
+    return { ...row, count: row.count + fresh.length, version, accepted: fresh.length };
   });
+
+  // Nothing to announce for a replayed batch: every device already has it, and
+  // an event whose counter has not moved is one every receiver would discard.
+  if (page.accepted > 0) announceInk(page, blockId, page.count, page.version);
+
+  return { strokeCount: page.count, accepted: page.accepted, version: page.version };
 }
 
 /**
- * Queue recognition for a quiet period from now, pushing any existing job out.
+ * The strokes in a batch the page does not already have.
  *
- * Recognition is a VLM call over the whole page, so firing one per two-second
- * batch would mean forty calls for a page someone spent two minutes writing --
- * thirty-nine of them reading an unfinished drawing, and all forty billed. The
- * job instead settles thirty seconds after the last stroke lands.
- *
- * Same coalescing shape as queueEmbedding in notes.ts, with one difference:
- * this moves `available_at` forward on every append rather than leaving the
- * first job's time alone.
+ * An unidentified batch is taken at its word as a retry and dropped whole:
+ * without ids there is no way to tell a resend from a second device, and
+ * appending a possible duplicate would draw somebody's word twice with no way
+ * back. With ids there is no guessing to do.
  */
-async function queueRecognition(tx: Tx, blockId: string) {
-  const updated = await tx.execute(sql`
-    UPDATE outbox
-       SET available_at = now() + make_interval(secs => ${QUIET_PERIOD_SECONDS})
-     WHERE topic = 'block.recognize'
-       AND completed_at IS NULL
-       AND payload ->> 'blockId' = ${blockId}
-    RETURNING id
-  `);
-
-  if ((updated as unknown as unknown[]).length > 0) return;
-
-  await tx.execute(sql`
-    INSERT INTO outbox (topic, payload, available_at)
-    VALUES ('block.recognize', jsonb_build_object('blockId', ${blockId}::text),
-            now() + make_interval(secs => ${QUIET_PERIOD_SECONDS}))
-  `);
-}
-
-/**
- * A person correcting what the recognizer read.
- *
- * Sets transcript_source to 'user' and confidence to null, and that block is
- * never re-recognized again. A correction is the one input we treat as ground
- * truth -- overwriting it later with a "better" model would be the single most
- * infuriating thing this product could do.
- */
-export async function correctTranscript(
-  actor: Actor, blockId: string, text: string,
-): Promise<void> {
-  if (actor.type !== "user") throw new Forbidden("Only a person can correct a transcript");
-
-  await withActor(actor.userId, async (tx) => {
-    const rows = await tx.select({ spaceId: blocks.spaceId }).from(blocks)
-      .where(eq(blocks.id, blockId)).limit(1);
-    if (!rows[0]) throw new NotFound();
-    await assertMember(tx, actor, rows[0].spaceId);
-
-    await tx.update(blocks).set({
-      transcript: text.trim(),
-      transcriptSource: "user",
-      confidence: null,
-      // A person who has looked at the page and typed what it says has settled
-      // the question of completeness too. Leaving a machine's coverage figure
-      // behind would keep flagging their answer as partial. ADR-056.
-      transcriptCoverage: null,
-      transcriptState: "ready",
-    }).where(eq(blocks.id, blockId));
-
-    // Any queued recognition for this block is now wrong by definition.
-    await tx.execute(sql`
-      UPDATE outbox SET completed_at = now()
-       WHERE topic = 'block.recognize' AND completed_at IS NULL
-         AND payload ->> 'blockId' = ${blockId}
-    `);
-  });
+async function unseen(
+  tx: Tx, artifactId: string, strokes: Stroke[], identified: boolean,
+): Promise<Stroke[]> {
+  if (!identified) return [];
+  const known = await pageIds(tx, artifactId);
+  return strokes.filter((s) => !known.has(s.id));
 }
 
 /**
  * Replace the whole page.
  *
- * Erase is stroke-wise, so erasing removes items from the middle of the array
- * and the append protocol -- which only ever adds to the end -- cannot express
- * it. Rather than invent a delete-by-index that would race with in-flight
- * appends, the client sends the page it now believes in and that becomes the
- * truth.
+ * The blunt instrument, and now the rare one: applyInkDelta in ink-delta.ts is
+ * what erase, move and recolour use, because naming strokes by id lets those
+ * survive a second device drawing at the same time. This remains correct for
+ * the one edit that genuinely IS the whole page -- clearing it -- and for a
+ * client that has no ids to name.
  *
- * This is a bigger payload and a bigger hammer, and it is correct precisely
- * because erasing is rare compared with drawing. Do not reach for it on the
- * append path.
+ * Do not reach for it on the append path, and do not reach for it for a partial
+ * edit: it overwrites concurrent work by construction.
  */
 export async function replaceStrokes(
   actor: Actor, blockId: string, rawStrokes: unknown,
-): Promise<{ strokeCount: number }> {
+): Promise<{ strokeCount: number; version: number }> {
   if (!hasScope(actor, "notes:write") && !hasScope(actor, "capture:write")) {
     throw new Forbidden("This connection cannot write notes");
   }
@@ -203,35 +138,18 @@ export async function replaceStrokes(
     strokes.push(...validateStrokes(all.slice(i, i + MAX_BATCH)));
   }
 
-  return withActor(actor.userId, async (tx) => {
-    const rows = await tx.execute(sql`
-      SELECT b.space_id, b.note_id, a.id AS artifact_id
-        FROM blocks b
-        JOIN media_assets a ON a.id = b.artifact_id
-       WHERE b.id = ${blockId} AND b.kind = 'ink'
-         FOR UPDATE OF a
-    `);
-    const row = (rows as unknown as Array<Record<string, unknown>>)[0];
-    if (!row) throw new NotFound("That ink block does not exist, or you cannot reach it");
-    if (!canReachSpace(actor, String(row.space_id))) {
-      throw new NotFound("That ink block does not exist, or you cannot reach it");
-    }
+  const page = await withActor(actor.userId, async (tx) => {
+    // The count, not the document: this overwrites the page, so reading what
+    // was there would be pulling a page of handwriting across the wire only to
+    // discard it.
+    const row = await lockReachable(tx, actor, blockId, (id) => canReachSpace(actor, id));
 
-    await tx.execute(sql`
-      UPDATE media_assets
-         SET strokes = jsonb_set(strokes, '{strokes}', ${JSON.stringify(strokes)}::jsonb)
-       WHERE id = ${String(row.artifact_id)}
-    `);
-
+    const version = await bumpPage(tx, row.artifactId, strokes);
     // What is on the page changed, so whatever was read off it is now stale.
-    // An empty page has nothing to recognize and should not queue a VLM call.
-    if (strokes.length > 0) {
-      await queueRecognition(tx, blockId);
-      await tx.update(blocks).set({ transcriptState: "pending" })
-        .where(and(eq(blocks.id, blockId), eq(blocks.transcriptState, "ready")));
-    }
-    await tx.update(notes).set({ updatedAt: new Date() }).where(eq(notes.id, String(row.note_id)));
-
-    return { strokeCount: strokes.length };
+    await markPageChanged(tx, { blockId, noteId: row.noteId }, strokes.length > 0);
+    return { ...row, version };
   });
+
+  announceInk(page, blockId, strokes.length, page.version);
+  return { strokeCount: strokes.length, version: page.version };
 }

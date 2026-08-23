@@ -1,0 +1,57 @@
+/* Who else is in this note. ADR-058.
+ *
+ * Top-left, opposite the tool rail and above the writing surface: it has to be
+ * visible without being reached for, because its whole job is to be noticed
+ * BEFORE somebody types into a paragraph another person is already in. It is
+ * not rendered at all when nobody else is here, which is nearly always. */
+.jd-presence {
+  position: absolute;
+  top: 0.75rem;
+  left: 0.9rem;
+  z-index: 16;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.3rem 0.7rem 0.3rem 0.35rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  pointer-events: none;
+}
+
+.jd-presence-faces { display: flex; }
+
+/* Overlapped, so four people take the room of two. */
+.jd-presence-face + .jd-presence-face { margin-left: -0.35rem; }
+
+.jd-presence-face {
+  width: 1.35rem;
+  height: 1.35rem;
+  border-radius: 9999px;
+  display: grid;
+  place-items: center;
+  font-size: 0.625rem;
+  font-weight: 600;
+  background-color: color-mix(in oklch, var(--color-base-content) 14%, transparent);
+  background-size: cover;
+  background-position: center;
+  outline: 2px solid var(--color-base-100);
+}
+
+/* Your own other window is stated, not announced: it explains why the page
+ * moved. Somebody else being here is the thing worth looking at. */
+.jd-presence-face[data-self='true'] { opacity: 0.55; }
+
+/* Writing right now. A ring rather than a pulse -- something blinking in the
+ * corner of the eye is the last thing a page for writing on needs. */
+.jd-presence-face[data-writing='true'] {
+  outline-color: var(--color-primary);
+  outline-width: 2px;
+}
+
+.jd-presence-says { opacity: 0.7; white-space: nowrap; }
+
+@media (max-width: 30rem) {
+  /* On a phone the band across the top is where the next line goes. Keep the
+   * faces, drop the sentence. */
+  .jd-presence-says { display: none; }
+}

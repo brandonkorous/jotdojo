@@ -17,7 +17,8 @@
     "smoke:members": "dotenv -e ../../.env -- tsx scripts/smoke-members.ts",
     "smoke:review": "dotenv -e ../../.env -- tsx scripts/smoke-review.ts",
     "smoke:billing": "dotenv -e ../../.env -- tsx scripts/smoke-billing.ts",
-    "smoke:anon": "dotenv -e ../../.env -- tsx scripts/smoke-anon.ts"
+    "smoke:anon": "dotenv -e ../../.env -- tsx scripts/smoke-anon.ts",
+    "smoke:live": "dotenv -e ../../.env -- tsx scripts/smoke-live.ts"
   },
   "dependencies": {
     "@jotdojo/db": "workspace:*",

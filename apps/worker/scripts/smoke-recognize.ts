@@ -28,7 +28,12 @@ const check = (label: string, ok: boolean, detail?: string) => {
   if (!ok) failures++;
 };
 
+/** Counted rather than random, so a failing run names the same stroke twice. */
+let strokeNo = 0;
+const nextId = () => `stroke-${++strokeNo}`;
+
 const scrawl = (row: number): Stroke => ({
+  id: nextId(),
   tool: "pen",
   color: "#1A1817",
   width: 2,
@@ -118,7 +123,7 @@ const divider: InkDocument = {
   v: 1,
   canvas: { w: 1024, h: 4000 },
   strokes: [{
-    tool: "pen", color: "#1A1817", width: 2,
+    id: "divider", tool: "pen", color: "#1A1817", width: 2,
     pts: [[500, 0, 0, 0.5, 0, 0], [500, 4000, 100, 0.5, 0, 0]],
   }],
 };

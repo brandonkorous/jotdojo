@@ -78,6 +78,44 @@ Safari evicts script-writable storage under pressure and after disuse. Therefore
 - Never let a completed drawing exist only in IndexedDB.
 - Losing a hand-drawn page is unforgivable in a way that losing a typed paragraph is not — the user cannot retype it from memory.
 
+### Every stroke has an id, and edits name strokes rather than pages
+
+Appending is the easy half: `seq` is the index a batch claims to start at, so a replay is a
+no-op and a gap is refused loudly rather than leaving a hole nothing would report.
+
+The hard half is everything that changes the *middle* of a page — erase, move, recolour,
+delete. Those used to resend the whole page, and **that was a data-loss bug the moment a
+second device existed**: rub a word out on a tablet, and every stroke the laptop drew while
+the request was in flight is gone, silently, with the erase reported as a success.
+
+So a stroke carries an `id` and those edits are sent as a **delta** — `remove: id[]`,
+`upsert: Stroke[]`. A delta is commutative with drawing: removing A and appending B are
+independent facts about a page, and either order gives the same page. Nothing to guard,
+nothing to refuse, no retry. Where two devices touch the same stroke, removal wins — they
+disagree about whether it should exist, and the one who wanted it can draw it again.
+
+`media_assets.strokes_version` moves on every write. It is not a lock; it is how a device
+tells "the page grew, fetch the tail" from "the middle changed, read it whole". A count
+cannot say that on its own, because a delta that removes two and adds two leaves it
+unmoved. ADR-058.
+
+The id is **optional on the wire**. The canvas chooses its own, because it has to erase
+strokes it has not finished uploading; the Shortcuts endpoint and MCP do not, and the
+server mints one for them. Only a client that intends to edit a stroke later needs to name
+it.
+
+### Two devices, one page
+
+A page open in two places stays in step over the live channel (ADR-058). The event says how
+far the page has got and nothing more; the canvas then asks for the tail, or re-reads the
+whole page when a delta made its indexes meaningless. A full re-read **merges the upload
+queue back in** rather than adopting the server's page outright — the obvious
+implementation throws away strokes drawn in the last two seconds.
+
+Nothing about a remote arrival moves the camera or clears the selection. Somebody writing
+here must not have the page scroll out from under them because a laptop in the next room
+caught up.
+
 ## Recognition, in three tiers
 
 Ship in this order.

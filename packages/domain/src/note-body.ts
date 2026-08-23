@@ -1,6 +1,7 @@
 import { and, eq, sql } from "drizzle-orm";
 import { blocks, noteRevisions, auditLog, type Tx } from "@jotdojo/db";
 import { attribution, type Actor } from "./actor";
+import { publish } from "./events";
 
 /**
  * What a note's text IS, and how it stays findable.
@@ -81,6 +82,29 @@ export async function queueEmbedding(tx: Tx, noteId: string, revision: number) {
   `);
 }
 
+/**
+ * Put the body in the note's text block, making it if this is the first.
+ *
+ * M0 is one text block per note, at position 0. Both write paths did this
+ * identically, and a rule two callers implement separately is one that
+ * eventually differs between them.
+ */
+export async function writeTextBlock(
+  tx: Tx, note: { id: string; spaceId: string }, body: string,
+): Promise<void> {
+  const existing = await tx.select({ id: blocks.id }).from(blocks)
+    .where(and(eq(blocks.noteId, note.id), eq(blocks.position, 0))).limit(1);
+
+  if (existing[0]) {
+    await tx.update(blocks).set({ body }).where(eq(blocks.id, existing[0].id));
+    return;
+  }
+  await tx.insert(blocks).values({
+    noteId: note.id, spaceId: note.spaceId, position: 0, kind: "text", body,
+    transcriptState: "ready",
+  });
+}
+
 export async function readBody(tx: Tx, noteId: string): Promise<string> {
   // TEXT blocks only, and the filter is load-bearing.
   //
@@ -137,5 +161,19 @@ export async function writeRevision(
     snapshot: { blocks: [{ kind: "text", body }] },
     summary,
     ...attribution(actor),
+  });
+}
+
+/**
+ * Tell any other open copy of this note that the body moved on.
+ *
+ * Both write paths say exactly this, so they say it in one place: a device with
+ * nothing unsaved adopts the new revision, and one mid-sentence keeps its
+ * sentence. The revision is the same one the conflict check runs on. ADR-058.
+ */
+export function announceSaved(note: { id: string; spaceId: string; revision: number }) {
+  publish({
+    kind: "note", spaceId: note.spaceId, noteId: note.id, revision: note.revision,
+    at: Date.now(),
   });
 }

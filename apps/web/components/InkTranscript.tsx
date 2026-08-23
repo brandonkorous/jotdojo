@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { getInkAction, correctTranscriptAction } from "@/app/actions";
+import { useLiveNote } from "@/lib/use-live";
 
 /**
  * What the machine read, and the way to disagree with it.
@@ -14,8 +15,14 @@ import { getInkAction, correctTranscriptAction } from "@/app/actions";
  */
 const LOW_CONFIDENCE = 0.6;
 
-/** Recognition settles 30s after the last stroke, then a worker picks it up. */
-const POLL_MS = 4000;
+/**
+ * The fallback, not the mechanism. ADR-058.
+ *
+ * A reading arriving is pushed down the live stream the moment the worker
+ * stores it, so this exists only for a browser whose stream never connected.
+ * It used to be four seconds because it was the only way to find out.
+ */
+const POLL_MS = 15_000;
 const POLL_CEILING_MS = 30_000;
 
 /**
@@ -32,7 +39,10 @@ const PATIENCE_MS = 90_000;
 
 type Ink = Awaited<ReturnType<typeof getInkAction>>;
 
-export function InkTranscript({ blockId }: { blockId: string | null }) {
+export function InkTranscript(
+  { noteId, blockId, live = false }:
+  { noteId: string; blockId: string | null; live?: boolean },
+) {
   const [ink, setInk] = useState<Ink | null>(null);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState("");
@@ -43,6 +53,10 @@ export function InkTranscript({ blockId }: { blockId: string | null }) {
 
   const poll = useCallback(async (delay: number) => {
     if (!blockId) return;
+    // Cancel whatever was already scheduled. There are now three callers -- the
+    // mount, a live event and a reconnect -- and without this each would start
+    // its own chain, only the last of which the cleanup can ever stop.
+    if (timer.current) { clearTimeout(timer.current); timer.current = null; }
     try {
       const next = await getInkAction(blockId);
       setInk(next);
@@ -57,6 +71,12 @@ export function InkTranscript({ blockId }: { blockId: string | null }) {
       timer.current = setTimeout(() => poll(Math.min(delay * 2, POLL_CEILING_MS)), delay);
     }
   }, [blockId]);
+
+  /** The worker finished reading this page. No wait, no poll interval. */
+  useLiveNote(live && blockId ? noteId : null, {
+    onBlock: (event) => { if (event.blockId === blockId) void poll(POLL_MS); },
+    onResync: () => { void poll(POLL_MS); },
+  });
 
   useEffect(() => {
     if (!blockId) return;

@@ -154,6 +154,10 @@ jobs:
           pnpm render:smoke
           pnpm reread:smoke
           pnpm triage:smoke
+          # Two devices on one page: the delta that survives a concurrent draw,
+          # the batch behind the page that is not a retry, and presence. ADR-058.
+          pnpm live:smoke
+          pnpm merge:smoke
 
       # The HTTP suites are the ones that have caught real bugs, because they
       # exercise the wire format rather than the function signature. They need
@@ -212,6 +216,10 @@ jobs:
           pnpm oauth:http-smoke
           pnpm billing:http-smoke
           pnpm site:smoke
+          # The only suite that proves NOTIFY crosses a process boundary, that
+          # the SSE framing is right, and that nothing buffers the stream. An
+          # in-process test passes all three even if none of them work. ADR-058.
+          pnpm live:http-smoke
           pnpm mcp:check
 
       # Server logs are the only way to tell a refusal from a crash once a suite

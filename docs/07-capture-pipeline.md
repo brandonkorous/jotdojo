@@ -16,7 +16,7 @@ One pipeline, many recognizers. This is the design that makes "add video in 2027
             recognizer(kind) -> transcript + confidence
             embed(transcript) -> pgvector
             maybe infer note title
-            mark ready, push SSE to any open client
+            mark ready, push down the live channel to any open client (ADR-058)
 
 **The synchronous half never calls a model.** Not for transcription, not for titling, not for embedding, not for anything. If a model is in the capture path, the capture contract in [02-product-spec.md](02-product-spec.md) is broken.
 

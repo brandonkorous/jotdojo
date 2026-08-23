@@ -6,6 +6,7 @@ import { Forbidden, NotFound, RevisionConflict } from "./errors";
 import { assertMember } from "./spaces";
 import {
   inferTitle, previewOf, audit, queueEmbedding, readBody, readBlocks, writeRevision,
+  announceSaved, writeTextBlock,
   type NoteBlock,
 } from "./note-body";
 export { readBlocks, type NoteBlock } from "./note-body";
@@ -86,6 +87,30 @@ export async function getNote(actor: Actor, noteId: string): Promise<NoteDetail>
 }
 
 /**
+ * Just the typed body, for a device catching up on somebody else's save.
+ *
+ * Deliberately does NOT write an audit row, where getNote does. This is a
+ * device that already has the note open -- its read was audited when it opened
+ * it -- coming back for the version it was just told about. Auditing every one
+ * would put a row in the log per keystroke-debounce of whoever is typing on the
+ * other device, and bury the reads that mean something. ADR-058.
+ */
+export async function noteBody(
+  actor: Actor, noteId: string,
+): Promise<{ body: string; revision: number; title: string | null }> {
+  return withActor(actor.userId, async (tx) => {
+    const rows = await tx.select({
+      revision: notes.revision, title: notes.title, spaceId: notes.spaceId,
+    }).from(notes).where(and(eq(notes.id, noteId), isNull(notes.deletedAt))).limit(1);
+    const note = rows[0];
+    if (!note || !canReachSpace(actor, note.spaceId)) {
+      throw new NotFound("That note does not exist, or you cannot reach it");
+    }
+    return { body: await readBody(tx, noteId), revision: note.revision, title: note.title };
+  });
+}
+
+/**
  * Save the body of a note.
  *
  * Optimistic concurrency on `revision`. On conflict we throw rather than merge:
@@ -97,7 +122,7 @@ export async function saveNote(
 ): Promise<NoteDetail> {
   if (!hasScope(actor, "notes:edit")) throw new Forbidden("This connection cannot edit notes");
 
-  return withActor(actor.userId, async (tx) => {
+  const saved = await withActor(actor.userId, async (tx) => {
     const rows = await tx.select().from(notes)
       .where(and(eq(notes.id, noteId), isNull(notes.deletedAt))).limit(1);
     const note = rows[0];
@@ -115,18 +140,7 @@ export async function saveNote(
       .set({ revision: nextRevision, title, updatedAt: new Date() })
       .where(eq(notes.id, noteId));
 
-    // M0 is one text block per note; upsert position 0.
-    const existing = await tx.select({ id: blocks.id }).from(blocks)
-      .where(and(eq(blocks.noteId, noteId), eq(blocks.position, 0))).limit(1);
-
-    if (existing[0]) {
-      await tx.update(blocks).set({ body }).where(eq(blocks.id, existing[0].id));
-    } else {
-      await tx.insert(blocks).values({
-        noteId, spaceId: note.spaceId, position: 0, kind: "text", body,
-        transcriptState: "ready",
-      });
-    }
+    await writeTextBlock(tx, note, body);
 
     await writeRevision(
       tx, actor, { ...note, revision: nextRevision }, body,
@@ -141,6 +155,9 @@ export async function saveNote(
       pinned: note.pinned, updatedAt: new Date(), revision: nextRevision, body,
     };
   });
+
+  announceSaved(saved);
+  return saved;
 }
 
 /**
@@ -164,7 +181,7 @@ export async function appendToNote(
 
 ${addition}` : addition;
 
-  return withActor(actor.userId, async (tx) => {
+  const appended = await withActor(actor.userId, async (tx) => {
     const rows = await tx.select().from(notes).where(eq(notes.id, noteId)).limit(1);
     const note = rows[0];
     if (!note) throw new NotFound();
@@ -175,16 +192,7 @@ ${addition}` : addition;
       .set({ revision: nextRevision, updatedAt: new Date() })
       .where(eq(notes.id, noteId));
 
-    const existing = await tx.select({ id: blocks.id }).from(blocks)
-      .where(and(eq(blocks.noteId, noteId), eq(blocks.position, 0))).limit(1);
-    if (existing[0]) {
-      await tx.update(blocks).set({ body: merged }).where(eq(blocks.id, existing[0].id));
-    } else {
-      await tx.insert(blocks).values({
-        noteId, spaceId: note.spaceId, position: 0, kind: "text", body: merged,
-        transcriptState: "ready",
-      });
-    }
+    await writeTextBlock(tx, note, merged);
 
     await writeRevision(tx, actor, { ...note, revision: nextRevision }, merged,
       actor.type === "agent" ? "appended by agent" : "appended");
@@ -197,4 +205,9 @@ ${addition}` : addition;
       updatedAt: new Date(), revision: nextRevision, body: merged,
     };
   });
+
+  // The commonest live update that is not a person: an agent adding to a note
+  // somebody has open. Watching it arrive is the whole demo.
+  announceSaved(appended);
+  return appended;
 }

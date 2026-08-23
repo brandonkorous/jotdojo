@@ -87,7 +87,7 @@ Start with one small node pool and a burstable Postgres tier. Scale when there i
       -> drain outbox
       -> recognizer by modality -> transcript
       -> embed transcript -> pgvector
-      -> mark block ready, notify client via SSE
+      -> mark block ready, notify any open client over the live channel (ADR-058)
 
 The response to the client never waits on the worker. See [07-capture-pipeline.md](07-capture-pipeline.md).
 
@@ -108,7 +108,31 @@ Concretely:
 - Optimistic concurrency on a per-note `revision` integer. `If-Match` semantics; on conflict, duplicate the losing version and flag it rather than merging or discarding.
 - Upload eagerly and incrementally — stroke batches, audio chunks, keystroke debounce. Never hold a completed artifact only in local storage.
 - Request `navigator.storage.persist()` for what cache we do keep, and treat a denial as normal.
-- **No CRDTs in v1.** Yjs or Loro can come later if real-time multi-device concurrent editing becomes a demonstrated need. It is a large complexity tax and deferring it costs nothing today.
+- **No CRDTs in v1.** Yjs or Loro can come later if concurrent editing of the *same paragraph* becomes a demonstrated need. It is a large complexity tax, and ADR-058 got live multi-device updates without paying it.
+
+## Live updates
+
+Open on two devices and each sees the other change. Strokes, typed text, and readings
+coming back from the worker. ADR-058, and it is one page of rules:
+
+- **A live event is a POINTER** — which note, which block, how far along it now is — and
+  never content. Receivers read the row themselves, through the same RLS as any other
+  read, so the stream cannot leak a note to somebody who lost access between the write
+  and the delivery.
+- **The stream is a hint, not a source of truth.** Postgres `LISTEN/NOTIFY` down to the
+  web pods, SSE from there to the browser. Neither is durable, and neither needs to be: a
+  duplicate event costs a wasted read and a lost one costs a delay. **Anything that must
+  happen goes in the outbox instead.**
+- **Erase, move and recolour are DELTAS naming strokes by id**, not fresh copies of the
+  page. That is what lets one device rub something out while another draws, and it is why
+  a stroke has an `id` at all.
+- **Typed text follows when clean.** A device with nothing unsaved adopts what another
+  wrote; one mid-sentence keeps its sentence and the revision conflict still applies.
+- **Presence** says who is here and who is writing — the honest substitute for a merge
+  algorithm, since you can see the collision coming.
+
+sparx solves this with NATS JetStream and socket.io. ADR-058 says why jotDOJO does not,
+and what would change that.
 
 ## Multi-tenancy
 

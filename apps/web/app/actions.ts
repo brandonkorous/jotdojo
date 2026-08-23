@@ -7,7 +7,7 @@ import {
   createNote, saveNote, listNotes, searchNotes, defaultSpaceId, setToolbarSide,
   createCaptureToken, listCaptureTokens, revokeCaptureToken, listSpaces,
   listConnections, revokeConnection, setTriage, listNoteComments, resolveComment,
-  ensureInkBlock, appendStrokes, replaceStrokes, getInk, correctTranscript,
+  ensureInkBlock, appendStrokes, getInk, correctTranscript,
   assertAnonRoom, assertAnonInkRoom, AnonLimit, ANON_MAX_CHARS,
   startCheckout, billingPortal,
   RevisionConflict, type NoteSummary, type CaptureTokenSummary,
@@ -162,7 +162,7 @@ export async function resolveCommentAction(commentId: string): Promise<void> {
 // docs/08-ink.md
 
 export type AppendResult =
-  | { ok: true; strokeCount: number }
+  | { ok: true; strokeCount: number; version: number }
   // The client is ahead of the server. It has to resend from `serverCount`,
   // and it can only do that if we say where we actually are.
   | { ok: false; reason: "gap"; serverCount: number }
@@ -173,7 +173,9 @@ export type AppendResult =
 export async function inkLayerAction(noteId: string, canvas: { w: number; h: number }) {
   const { actor } = await captureActor();
   const block = await ensureInkBlock(actor, noteId, canvas);
-  return { blockId: block.blockId, strokeCount: block.strokeCount };
+  // The version comes back too, because the canvas has to know where the page
+  // WAS before it can tell whether a live event is news. ADR-058.
+  return { blockId: block.blockId, strokeCount: block.strokeCount, version: block.version };
 }
 
 /**
@@ -190,8 +192,8 @@ export async function appendStrokesAction(
   try {
     const { actor, draft } = await captureActor();
     if (draft) await assertAnonInkRoom(draft, Array.isArray(strokes) ? strokes.length : 0);
-    const { strokeCount } = await appendStrokes(actor, blockId, seq, strokes);
-    return { ok: true, strokeCount };
+    const { strokeCount, version } = await appendStrokes(actor, blockId, seq, strokes);
+    return { ok: true, strokeCount, version };
   } catch (err) {
     const e = err as { code?: string; message: string };
     if (e.code === "stroke_gap") {
@@ -199,18 +201,6 @@ export async function appendStrokesAction(
       return { ok: false, reason: "gap", serverCount: Number(at?.[1] ?? 0) };
     }
     return { ok: false, reason: "error", message: e.message };
-  }
-}
-
-export async function replaceStrokesAction(
-  blockId: string, strokes: unknown,
-): Promise<AppendResult> {
-  try {
-    const { actor } = await captureActor();
-    const { strokeCount } = await replaceStrokes(actor, blockId, strokes);
-    return { ok: true, strokeCount };
-  } catch (err) {
-    return { ok: false, reason: "error", message: (err as Error).message };
   }
 }
 

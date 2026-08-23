@@ -16,7 +16,7 @@ import {
   startAnonSession, resumeAnonSession, claimAnonSession, anonUsage,
   assertAnonRoom, sweepAnonSpaces, spaceUsage, ANON_MAX_NOTES,
   assertAnonInkRoom, ANON_MAX_STROKES,
-  type Stroke,
+  type Stroke, type StrokeInput,
 } from "../src/index";
 
 let failures = 0;
@@ -35,7 +35,7 @@ async function refused(label: string, code: string, fn: () => Promise<unknown>) 
   check(label, got === code, `expected code "${code}", got "${got}"`);
 }
 
-const scrawl = (): Stroke => ({
+const scrawl = (): StrokeInput => ({
   tool: "pen", color: "#1A1817", width: 2,
   pts: Array.from({ length: 12 }, (_, i) => [
     20 + i * 10, 50 + i, i * 8, 0.5, 0, 0,

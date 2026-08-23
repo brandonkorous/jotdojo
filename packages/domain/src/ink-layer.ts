@@ -42,6 +42,7 @@ export async function findInkBlock(actor: Actor, noteId: string): Promise<InkBlo
       confidence: blocks.confidence,
       width: mediaAssets.width,
       height: mediaAssets.height,
+      version: mediaAssets.strokesVersion,
       strokeCount: sql<number>`jsonb_array_length(${mediaAssets.strokes} -> 'strokes')`,
     })
       .from(blocks)
@@ -59,6 +60,7 @@ export async function findInkBlock(actor: Actor, noteId: string): Promise<InkBlo
       noteId: row.noteId,
       spaceId: row.spaceId,
       strokeCount: Number(row.strokeCount ?? 0),
+      version: Number(row.version ?? 0),
       canvas: { w: row.width ?? 0, h: row.height ?? 0 },
       transcript: row.transcript,
       transcriptState: row.transcriptState,

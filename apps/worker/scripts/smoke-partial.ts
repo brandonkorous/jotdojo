@@ -30,7 +30,12 @@ const user = await upsertUserFromGoogle({
 const actor = asUser(user.id);
 const space = await defaultSpaceId(actor);
 
+/** Counted rather than random, so a failing run names the same stroke twice. */
+let strokeNo = 0;
+const nextId = () => `stroke-${++strokeNo}`;
+
 const scribble = (): Stroke => ({
+  id: nextId(),
   tool: "pen", color: "#1A1817", width: 2,
   pts: [[0, 0, 0, 0.5, 0, 0], [40, 30, 8, 0.5, 0, 0], [80, 10, 16, 0.5, 0, 0]],
 });

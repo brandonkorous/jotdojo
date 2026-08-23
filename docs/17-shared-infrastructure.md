@@ -65,18 +65,28 @@ ceiling, not a tunable — and sparx is already drawing on it.
 
 `packages/db/src/client.ts` reads `DB_POOL_MAX`. `infra/k8s` sets it per service:
 
-| Service | `DB_POOL_MAX` | Why |
-|---|---|---|
-| web | 5 | BFF, concurrent user requests |
-| api | 5 | concurrent third-party requests |
-| mcp | 3 | one agent tool call at a time |
-| worker | 3 | one batch at a time |
-| | **16 total** | |
+| Service | `DB_POOL_MAX` | Live channel | Why |
+|---|---|---|---|
+| web | 5 | +1 | BFF, concurrent user requests |
+| api | 5 | — | concurrent third-party requests |
+| mcp | 3 | — | one agent tool call at a time |
+| worker | 3 | — | one batch at a time |
+| | **16 total** | **+1 per web pod** | **17, or 18 mid-deploy** |
 
 The default is 10, which across four services is 40 and does not fit. Exceeding
 the ceiling does not make anything slow — Postgres refuses the connection with
 `FATAL: sorry, too many clients already`, and which service loses depends on pod
 start order. **Raising a pool size is a decision about sparx too.**
+
+**The live channel is a connection, and it is not in a pool.** `LISTEN` holds a
+backend open for the life of the process, so `packages/db/src/live.ts` opens its
+own client (`application_name=jotdojo-live`) rather than taking a fifth of web's
+pool and never giving it back. It is opened lazily, on the first subscriber, so
+a web pod that nobody has a note open on does not hold one at all.
+
+Count it as **one per web pod**, and two during a rolling update, because web
+surges. If web ever scales past a couple of replicas, this line grows with it
+and the number above has to be redone. ADR-058.
 
 Scaling the tier is the alternative and it is not cheap: B1ms is ~$14/mo and the
 next step B2s is ~$56/mo — 4×, not 2×. Cap the pools first.

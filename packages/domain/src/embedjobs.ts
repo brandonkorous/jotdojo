@@ -1,4 +1,5 @@
 import { sql } from "drizzle-orm";
+import { publish } from "./events";
 import { withoutActor } from "@jotdojo/db";
 
 /**
@@ -121,6 +122,7 @@ export async function storeTranscript(
       )
     `);
   });
+  await announce(blockId, "ready");
 }
 
 /**
@@ -139,5 +141,30 @@ export async function recordRecognition(blockId: string, units: number): Promise
 export async function failTranscript(blockId: string): Promise<void> {
   await withoutActor(async (tx) => {
     await tx.execute(sql`SELECT app_fail_transcript(${blockId}::uuid)`);
+  });
+  await announce(blockId, "failed");
+}
+
+/**
+ * Tell any open page that this block has been read. ADR-058.
+ *
+ * The reason /07-capture-pipeline.md always said "push to any open client":
+ * recognition settles thirty seconds after the last stroke and then takes as
+ * long as a model call takes, by which point nobody is watching a spinner. It
+ * should simply appear.
+ *
+ * Best effort, and after the write. A reading that is stored but not announced
+ * shows up on the next visit; one that is announced but not stored would be a
+ * lie, which is why the order is not the other way round.
+ */
+async function announce(blockId: string, state: string): Promise<void> {
+  const where = await withoutActor(async (tx) => {
+    const rows = await tx.execute(sql`SELECT * FROM app_block_note(${blockId}::uuid)`);
+    return (rows as unknown as Array<{ note_id: string; space_id: string }>)[0];
+  });
+  if (!where) return;
+  publish({
+    kind: "block", spaceId: where.space_id, noteId: where.note_id,
+    blockId, transcriptState: state, at: Date.now(),
   });
 }

@@ -2,12 +2,28 @@ import type { Point, Stroke } from "@jotdojo/domain";
 import { HIGHLIGHTER_WIDTH, PEN_WIDTH } from "./ink-paint";
 
 /**
+ * A stroke id the client chooses for itself.
+ *
+ * Chosen here rather than by the server because the canvas has to be able to
+ * erase a stroke it drew a second ago and has not finished uploading. ADR-058.
+ * `randomUUID` needs a secure context, which the app always is and a plain-HTTP
+ * dev host is not, so there is a fallback.
+ */
+function newStrokeId(): string {
+  return globalThis.crypto?.randomUUID?.()
+    ?? `s-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+/**
  * The stroke currently under the pen: the draw-mode counterpart to
  * InkSelection's select-mode. The engine dispatches to one or the other rather
  * than holding both state machines itself. ADR-030.
  */
 export class StrokeCapture {
   private pts: Point[] = [];
+  /** Minted at `begin`, not at `finish`: the preview and the committed stroke
+   *  have to be the same stroke, or a live update would draw it twice. */
+  private id = "";
   private tool: Stroke["tool"] = "pen";
   private color = "#1A1817";
   private chosenWidth = PEN_WIDTH;
@@ -23,13 +39,13 @@ export class StrokeCapture {
     this.chosenWidth = width;
   }
 
-  begin(p: Point) { this.pts = [p]; }
+  begin(p: Point) { this.pts = [p]; this.id = newStrokeId(); }
   extend(p: Point) { this.pts.push(p); }
 
   /** What to draw for the in-progress stroke, using the same painter as a
    *  finished one so the line does not change appearance when it commits. */
   preview(): Stroke {
-    return { tool: this.tool, color: this.color, width: this.width(), pts: this.pts };
+    return { id: this.id, tool: this.tool, color: this.color, width: this.width(), pts: this.pts };
   }
 
   /**
@@ -41,7 +57,7 @@ export class StrokeCapture {
   finish(): Stroke | null {
     if (this.pts.length === 0) return null;
     const stroke: Stroke = {
-      tool: this.tool, color: this.color, width: this.width(), pts: this.pts,
+      id: this.id, tool: this.tool, color: this.color, width: this.width(), pts: this.pts,
     };
     this.pts = [];
     return stroke;

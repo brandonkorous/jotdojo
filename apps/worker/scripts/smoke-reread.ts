@@ -31,7 +31,12 @@ const check = (label: string, ok: boolean, detail?: string) => {
   if (!ok) failures++;
 };
 
+/** Counted rather than random, so a failing run names the same stroke twice. */
+let strokeNo = 0;
+const nextId = () => `stroke-${++strokeNo}`;
+
 const scrawl = (row: number): Stroke => ({
+  id: nextId(),
   tool: "pen", color: "#1A1817", width: 2,
   pts: Array.from({ length: 20 }, (_, i) => [
     40 + i * 12, row + Math.sin(i / 2) * 8, i * 8, 0.5, 0, 0,

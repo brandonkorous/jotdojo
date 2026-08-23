@@ -30,6 +30,10 @@ export const mediaAssets = pgTable("media_assets", {
   width: integer("width"),
   height: integer("height"),
   previewUrl: text("preview_url"),
+  /** Bumped by every write to an ink page. A whole-page replacement states the
+   *  version it believed in, so a stale one is refused rather than applied over
+   *  the top of somebody else's strokes. Migration 0029, ADR-058. */
+  strokesVersion: integer("strokes_version").notNull().default(0),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

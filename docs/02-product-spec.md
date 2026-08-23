@@ -101,6 +101,7 @@ This is a safety control wearing a product feature's clothes, and it is a genuin
 
 ## v1 non-goals
 
-Real-time collaborative editing (CRDTs), a rich-text document model (the markdown toolbar in ADR-045 is not one), attachments beyond images and audio, note templates, reminders and notifications, public share links, import from other apps, browser extension, offline-authoritative editing.
+Concurrent editing of the same paragraph by two people (CRDTs — live multi-device updates
+and presence DO ship, ADR-058), a rich-text document model (the markdown toolbar in ADR-045 is not one), attachments beyond images and audio, note templates, reminders and notifications, public share links, import from other apps, browser extension, offline-authoritative editing.
 
 Several of these are good ideas. None of them is "the thought lands in under a second."

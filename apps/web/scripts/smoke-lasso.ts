@@ -20,8 +20,13 @@ const check = (label: string, ok: boolean, detail?: string) => {
 };
 
 const pt = (x: number, y: number): Point => [x, y, 0, 0.5, 0, 0];
+
+/** Counted rather than random, so a failure names the same stroke twice. */
+let nth = 0;
+const id = () => `stroke-${++nth}`;
+
 const stroke = (...xy: [number, number][]): Stroke => ({
-  tool: "pen", color: "#1A1817", width: 2, pts: xy.map(([x, y]) => pt(x, y)),
+  id: id(), tool: "pen", color: "#1A1817", width: 2, pts: xy.map(([x, y]) => pt(x, y)),
 });
 
 /** A square loop from (0,0) to (100,100). */
@@ -81,7 +86,9 @@ check("tool and colour survive", moved.tool === "pen" && moved.color === "#1A181
 
 console.log("\nrestyling what the lasso caught. ADR-045");
 const inked = stroke([0, 0], [10, 10]);
-const marked: Stroke = { tool: "highlighter", color: "#F2D648", width: 18, pts: [pt(0, 0)] };
+const marked: Stroke = {
+  id: id(), tool: "highlighter", color: "#F2D648", width: 18, pts: [pt(0, 0)],
+};
 
 check("recolouring reports that something changed",
   restyle([inked], { color: "#E0432F" }) === true);

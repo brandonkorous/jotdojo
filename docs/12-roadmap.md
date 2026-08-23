@@ -169,13 +169,15 @@ unmeasured, and none of it has reached a Claude client.
 - [x] Triage agent: scheduled pass proposing actions as comments (ADR-048, `triage:smoke` 42) — Team only, off until an owner turns it on, and off stops work already queued
 - ~~Suite gateway: one account, one MCP endpoint spanning jotdojo and kanninja~~ — **deferred by the vision doc**, not by scheduling. docs/00 says do not build a shared account layer before there is a customer who wants both products, and ADR-002 keeps them separate
 - [x] Re-recognition of old content with newer models (ADR-046, `reread:smoke` 24) — `pnpm reread`, dry run by default, scoped with `--space`
+- [x] Live updates across devices and between members of a space (ADR-058, `live:smoke` 30, `merge:smoke` 15, `live:http-smoke` 10) — strokes, typed text, readings and presence, over `LISTEN/NOTIFY` + SSE. It also fixed a data-loss bug that predated it: erase resent the whole page and discarded whatever a second device had drawn
 - Whatever the first fifty users actually asked for, which will be more informative than this list
 
 **Exit:** users open the app to see what their agent noticed overnight.
 
 ## Deliberately unscheduled
 
-Real-time collaborative editing (CRDTs), native apps (see [14-native-apps.md](14-native-apps.md)), public share links, import from other apps, browser extension, rich text, templates, reminders.
+Concurrent editing of one paragraph by two people (CRDTs — live updates and presence
+shipped in ADR-058), native apps (see [14-native-apps.md](14-native-apps.md)), public share links, import from other apps, browser extension, rich text, templates, reminders.
 
 Each is a reasonable feature. None is "the thought lands in under a second."
 

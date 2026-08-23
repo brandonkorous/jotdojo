@@ -1,7 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import { saveNoteAction } from "@/app/actions";
+import { useRef, useState } from "react";
 import type { Align } from "@/lib/toolbar-side";
 import { isInk, type CanvasTool } from "@/lib/canvas-tool";
 import { DEFAULT_STYLES, styleFor, type InkStyles } from "@/lib/ink-style";
@@ -15,8 +14,10 @@ import { Photos } from "./Photos";
 import { Recorder } from "./Recorder";
 import { ScribbleHint } from "./ScribbleHint";
 import { Chrome } from "./Chrome";
-
-import type { SaveState } from "@/lib/save-state";
+import { Presence } from "./Presence";
+import { useNoteBody } from "@/lib/use-note-body";
+import { usePresence } from "@/lib/use-presence";
+import { useLiveNote } from "@/lib/use-live";
 
 /**
  * The canvas. This IS the app -- no dashboard, no create button, no empty
@@ -37,8 +38,6 @@ export function Canvas({
   user: { name?: string | null; image?: string | null; email?: string | null } | null;
   toolbarPreference: Align;
 }) {
-  const [body, setBody] = useState(initialBody);
-  const [state, setState] = useState<SaveState>("idle");
   const [dimmed, setDimmed] = useState(false);
   const dimmedRef = useRef(false);
   const [tool, setTool] = useState<CanvasTool>("text");
@@ -79,50 +78,30 @@ export function Canvas({
     which: "pen" | "highlighter", patch: { color?: string; width?: number },
   ) => setStyles((all) => ({ ...all, [which]: { ...all[which], ...patch } }));
 
-  const revision = useRef(initialRevision);
-  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const dimTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const inFlight = useRef(false);
-  const pendingBody = useRef<string | null>(null);
 
+  const { body, state, onChange: save, adopt } = useNoteBody(noteId, initialBody, initialRevision);
+  // Presence is for people, and an anonymous draft is one device by
+  // construction -- its cookie is host-only. ADR-039, ADR-058.
+  const { others, writing, refresh } = usePresence(noteId, user !== null);
 
-  const flush = useCallback(async () => {
-    if (inFlight.current) return;
-    const next = pendingBody.current;
-    if (next === null) return;
-
-    pendingBody.current = null;
-    inFlight.current = true;
-    setState("saving");
-
-    const result = await saveNoteAction(noteId, next, revision.current);
-    inFlight.current = false;
-
-    if (result.ok) {
-      revision.current = result.revision;
-      setState("saved");
-    } else if (result.reason === "conflict") {
-      // Never merge, never discard -- see RevisionConflict in the domain layer.
-      // M0 surfaces it; M3 forks the losing copy into a flagged duplicate.
-      revision.current = result.currentRevision;
-      setState("conflict");
-    } else {
-      // The text is still in the textarea and still in pendingBody. Retry.
-      pendingBody.current = next;
-      setState("retrying");
-      setTimeout(() => void flush(), 3000);
-      return;
-    }
-
-    if (pendingBody.current !== null) void flush();
-  }, [noteId]);
+  /**
+   * What another device did. ADR-058.
+   *
+   * `adopt` is the whole text story and it is deliberately conservative: it
+   * takes the other version only when there is nothing unsaved here. Ink is not
+   * in this list because InkCanvas subscribes for itself -- the stream is
+   * shared, so that costs no second connection.
+   */
+  useLiveNote(user ? noteId : null, {
+    onNote: (event) => { void adopt(event.revision); },
+    onPresence: () => { void refresh(); },
+    onResync: () => { void adopt(); void refresh(); },
+  });
 
   const onChange = (value: string) => {
-    setBody(value);
-    pendingBody.current = value;
-
-    if (saveTimer.current) clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(() => void flush(), 600);
+    save(value);
+    writing();
 
     dim(true);
     if (dimTimer.current) clearTimeout(dimTimer.current);
@@ -144,25 +123,6 @@ export function Canvas({
   }
 
   const { input, block, mark, heading, syncBlock, onKeyDown } = useMarks(onChange);
-
-  // A tab closing mid-thought must not eat the last few characters.
-  useEffect(() => {
-    const onHide = () => {
-      if (pendingBody.current === null) return;
-      navigator.sendBeacon?.(
-        "/api/capture-beacon",
-        new Blob(
-          [JSON.stringify({ noteId, body: pendingBody.current, revision: revision.current })],
-          { type: "application/json" },
-        ),
-      );
-    };
-    document.addEventListener("visibilitychange", () => {
-      if (document.visibilityState === "hidden") onHide();
-    });
-    window.addEventListener("pagehide", onHide);
-    return () => window.removeEventListener("pagehide", onHide);
-  }, [noteId]);
 
   // The canvas runs edge to edge. The only padding that matters is enough top
   // room to clear the pill, and enough bottom room to clear the save line.
@@ -200,6 +160,8 @@ export function Canvas({
             tool={inkToolFor(tool)}
             style={styleFor(inkToolFor(tool), styles)}
             onReady={setInkBlockId}
+            onDraw={writing}
+            live={user !== null}
           />
         </div>
       )}
@@ -212,7 +174,7 @@ export function Canvas({
 
       <Photos noteId={noteId} openSignal={cameraSignal} />
 
-      {inkStarted && <InkTranscript blockId={inkBlockId} />}
+      {inkStarted && <InkTranscript noteId={noteId} blockId={inkBlockId} live={user !== null} />}
 
       <Chrome align={toolbarPreference} user={user} dimmed={dimmed} tool={tool} onTool={chooseTool}
         onCamera={() => setCameraSignal((n) => n + 1)}
@@ -228,6 +190,8 @@ export function Canvas({
         onMark={mark}
         onBlock={heading}
       />
+
+      <Presence who={others} />
 
       <SaveIndicator state={state} />
     </div>

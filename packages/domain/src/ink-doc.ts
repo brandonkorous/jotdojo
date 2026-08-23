@@ -18,11 +18,30 @@ import { DomainError } from "./errors";
 export type Point = [number, number, number, number, number, number];
 
 export type Stroke = {
+  /**
+   * Stable identity, so an edit can NAME a stroke. ADR-058.
+   *
+   * Without it the only way to say "remove this one" is to resend the whole
+   * page, which discards anything a second device drew in the meantime. Minted
+   * by the client where there is one, and by validateStrokes otherwise, so
+   * every stroke in storage has one.
+   */
+  id: string;
   tool: "pen" | "highlighter";
   color: string;
   width: number;
   pts: Point[];
 };
+
+/**
+ * A stroke as a CLIENT may send it: the id is optional, and validateStrokes
+ * mints one when it is absent.
+ *
+ * Only a client that intends to edit a stroke later needs to choose its own id,
+ * and only the canvas does. The Shortcuts endpoint and the MCP server write
+ * strokes too, and neither has any business knowing that erase needs identity.
+ */
+export type StrokeInput = Omit<Stroke, "id"> & { id?: string };
 
 export type InkDocument = {
   v: 1;
@@ -75,6 +94,25 @@ export function validateStrokes(input: unknown): Stroke[] {
         throw new DomainError(`${where}: each point is six finite numbers`, "bad_strokes", 400);
       }
     }
-    return { tool: s.tool as Stroke["tool"], color: s.color, width: s.width, pts: s.pts as Point[] };
+    return {
+      id: strokeId(s.id, where),
+      tool: s.tool as Stroke["tool"], color: s.color, width: s.width, pts: s.pts as Point[],
+    };
   });
+}
+
+/**
+ * A stroke's id, minted here when the caller did not supply one.
+ *
+ * Optional on the wire on purpose: the Shortcuts endpoint and the MCP server
+ * both write strokes, and neither has any reason to know that erase needs
+ * identity. Only a client that intends to EDIT a stroke later needs to choose
+ * its own id, and the canvas does.
+ */
+function strokeId(given: unknown, where: string): string {
+  if (given === undefined || given === null) return crypto.randomUUID();
+  if (typeof given !== "string" || given.length === 0 || given.length > 64) {
+    throw new DomainError(`${where}: id must be a short string`, "bad_strokes", 400);
+  }
+  return given;
 }

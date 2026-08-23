@@ -50,6 +50,10 @@ spec:
             # larger shares of the connection budget. See config.yaml and
             # packages/db/src/client.ts for why this is set per service: the
             # whole SERVER is capped at 50 connections and sparx is on it too.
+            #
+            # This pod also holds ONE connection outside this pool, for the live
+            # channel's LISTEN (packages/db/src/live.ts, ADR-058). Budget six per
+            # web pod, not five. docs/17-shared-infrastructure.md keeps the sum.
             - name: DB_POOL_MAX
               value: '5'
           # Next.js standalone boots in a few seconds, so a short startup budget

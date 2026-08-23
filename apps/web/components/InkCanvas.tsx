@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import type { Stroke } from "@jotdojo/domain";
 import { InkEngine, type SelectionSummary, type Tool } from "@/lib/ink-engine";
 import { InkSync, type SyncState } from "@/lib/ink-sync";
+import { InkCatchup } from "@/lib/ink-catchup";
+import { useLiveNote } from "@/lib/use-live";
 import type { InkStyle } from "@/lib/ink-style";
 import { inkLayerAction, getInkAction } from "@/app/actions";
 import { SelectionBar } from "./SelectionBar";
@@ -22,13 +24,25 @@ import { ZoomChip } from "./ZoomChip";
 const NO_SELECTION: SelectionSummary = { count: 0, pen: false, marker: false };
 
 export function InkCanvas({
-  noteId, tool, style, onReady,
+  noteId, tool, style, onReady, onDraw, live = false,
 }: {
   noteId: string;
   tool: Tool;
   /** Colour and width for THIS tool. Held per tool by the caller. ADR-045. */
   style: InkStyle;
   onReady?: (blockId: string) => void;
+  /** Somebody is drawing here, for presence. Called per finished stroke, never
+   *  per pointer sample -- the hot path stays out of React. ADR-058. */
+  onDraw?: () => void;
+  /**
+   * Whether to watch for changes from elsewhere. OFF by default, deliberately.
+   *
+   * The marketing hero draws on an anonymous draft, which is one device by
+   * construction -- its cookie is host-only and httpOnly. Subscribing there
+   * would open a stream that answers 401 and then retry it six times on every
+   * visit. A component that has not said it wants this does not get it.
+   */
+  live?: boolean;
 }) {
   const committedRef = useRef<HTMLCanvasElement>(null);
   const liveRef = useRef<HTMLCanvasElement>(null);
@@ -36,12 +50,37 @@ export function InkCanvas({
   const gridRef = useRef<HTMLDivElement>(null);
   const engineRef = useRef<InkEngine | null>(null);
   const syncRef = useRef<InkSync | null>(null);
+  const catchupRef = useRef<InkCatchup | null>(null);
+  /** In a ref, because the engine is built once and this changes per render. */
+  const draw = useRef(onDraw);
+  draw.current = onDraw;
 
   const [state, setState] = useState<SyncState>("idle");
   const [selected, setSelected] = useState<SelectionSummary>(NO_SELECTION);
   const [error, setError] = useState<string | null>(null);
   /** Only ever set from the engine's `onView`, which stays silent on a pan. */
   const [view, setView] = useState({ k: 1, home: true });
+  /** Held in state as well as in a ref, because the live subscription below is
+   *  a hook and cannot read a ref that was filled after mount. */
+  const [blockId, setBlockId] = useState<string | null>(null);
+
+  /**
+   * Somebody else's strokes. ADR-058.
+   *
+   * The event says only how far the page has got; the catch-up decides whether
+   * that means "ask for the tail" or "read it whole", and merges the result
+   * with anything still queued here.
+   */
+  useLiveNote(live && blockId ? noteId : null, {
+    onInk: (event) => {
+      if (event.blockId !== blockId) return;
+      void catchupRef.current?.check({ count: event.strokeCount, version: event.version });
+    },
+    // A reconnect means events were missed by definition -- NOTIFY has no
+    // durability -- so the page is checked against the server rather than
+    // assumed to be current.
+    onResync: () => { void catchupRef.current?.check(); },
+  });
 
   useEffect(() => {
     const committed = committedRef.current;
@@ -59,7 +98,7 @@ export function InkCanvas({
       const rect = shell.getBoundingClientRect();
       const canvas = { w: Math.round(rect.width), h: Math.round(rect.height) };
 
-      let block: { blockId: string; strokeCount: number };
+      let block: { blockId: string; strokeCount: number; version: number };
       try {
         block = await inkLayerAction(noteId, canvas);
       } catch (err) {
@@ -68,13 +107,15 @@ export function InkCanvas({
       }
       if (disposed) return;
 
-      sync = new InkSync(block.blockId, setState, block.strokeCount);
+      sync = new InkSync(block.blockId, setState, {
+        count: block.strokeCount, version: block.version,
+      });
       engine = new InkEngine({
         committed,
         live,
         grid,
-        onStrokes: (strokes) => sync!.push(strokes),
-        onReplace: (all: Stroke[]) => sync!.replace(all),
+        onStrokes: (strokes) => { sync!.push(strokes); draw.current?.(); },
+        onDelta: (delta) => sync!.delta(delta),
         onSelectionChange: setSelected,
         onView: (k, home) => setView({ k, home }),
       });
@@ -97,6 +138,8 @@ export function InkCanvas({
 
       engineRef.current = engine;
       syncRef.current = sync;
+      catchupRef.current = new InkCatchup(block.blockId, sync, engine);
+      setBlockId(block.blockId);
       onReady?.(block.blockId);
     })();
 
@@ -109,6 +152,7 @@ export function InkCanvas({
       engine?.destroy();
       engineRef.current = null;
       syncRef.current = null;
+      catchupRef.current = null;
     };
     // noteId only: tool and colour are pushed imperatively below so that
     // changing a pen does not rebuild the engine and lose the page.
@@ -149,12 +193,17 @@ export function InkCanvas({
    */
   useEffect(() => {
     const flush = () => { void syncRef.current?.flush(); };
-    const onHidden = () => { if (document.visibilityState === "hidden") flush(); };
+    const onVisible = () => {
+      if (document.visibilityState === "hidden") return flush();
+      // A phone that was asleep may have had its stream suspended without ever
+      // reporting an error, so coming back is treated as a gap.
+      void catchupRef.current?.check();
+    };
     window.addEventListener("pagehide", flush);
-    document.addEventListener("visibilitychange", onHidden);
+    document.addEventListener("visibilitychange", onVisible);
     return () => {
       window.removeEventListener("pagehide", flush);
-      document.removeEventListener("visibilitychange", onHidden);
+      document.removeEventListener("visibilitychange", onVisible);
     };
   }, []);
 

@@ -1641,3 +1641,122 @@ it either. Run against the schema after 0027 it names all twelve.
 **This is the third bug this week that green suites could not see** — after a worker that
 exited 0 into a restart loop and a canvas that clipped ink out of recognition. The pattern
 is the same each time: the check ran somewhere the failure was impossible.
+
+### ADR-058 — Live updates: the stream is a hint, and it carries pointers
+
+**Decided:** 2026-08-22. **Status:** built.
+
+Write on the iPad, watch it appear on the laptop. Members of a shared space see each
+other's strokes land, see who else has the note open, and see who is writing before they
+collide. Handwriting, typed text, and readings coming back from the worker.
+
+**The stream carries ids and counters. It never carries content.** An event says "block X
+is now at 42 strokes, version 19" and nothing else. Every receiver then reads the page for
+itself, through the same row-level security as any other read. Three things follow from
+that one choice, and they are why it is the choice:
+
+- **Authorization is not a second implementation.** A member removed from a space mid-stream
+  cannot be sent anything, whatever the stream layer forgets to check, because the fetch is
+  what carries the data and the fetch goes through RLS.
+- **A duplicate event is free and a lost one is only late.** Delivery needs no guarantees,
+  which is what makes the transport below a reasonable thing to build on.
+- **Nothing has to be kept in sync twice.** There is no second copy of a stroke in flight
+  that could disagree with the row.
+
+#### The transport is Postgres LISTEN/NOTIFY, and sparx's is not
+
+sparx solves the same problem with **NATS JetStream** (`EVENT_BROKER=nats`, a StatefulSet in
+the `sparx-prod` namespace of the cluster jotDOJO shares) fanned out to browsers over
+socket.io with a Redis adapter. It is in reach: same cluster, resolvable by DNS. It was not
+chosen, and the reason is not that it is unavailable.
+
+sparx has **two layers** — a durable broker for business events that must not be lost, and a
+non-durable last hop to an open tab. jotDOJO already has the first: the **Postgres outbox**,
+with `attempts`, `locked_until` and `last_error`, chosen in ADR-002 for the reason that
+still holds. What was missing was only the second, and the second wants none of what
+JetStream sells. No acks, no redelivery, no replay — a page's truth is in the database and
+the channel exists to say "go and look."
+
+So depending on it would mean a runtime dependency on **another product's namespace** for a
+feature that gains nothing from it. Today jotDOJO's outage surface is the cluster and the
+Postgres server; this would make it three, and the third would be a service sparx can
+restart without telling us. One Postgres connection per web pod is the price instead, and
+docs/17 now counts it.
+
+**What WOULD change this:** web scaling past a couple of replicas, where one connection per
+pod starts to matter against a 50-connection ceiling shared with sparx; or jotDOJO needing
+events to cross a service boundary that the outbox does not already cover. The seam is one
+file — `packages/db/src/live.ts` — and no domain code knows what is underneath it.
+
+**What was taken from sparx instead is the lesson in its `transport.ts`,** which documents a
+real incident: a GCP→Azure migration unset `GCP_PROJECT_ID`, that silently selected a
+fire-and-forget dev transport, and events vanished for weeks while every publish returned
+success. **The default was a downgrade.** `publishRaw` here also swallows every error — and
+that is how the same bug starts if anybody forgets why. The defence is not vigilance: it is
+that this channel *cannot* carry anything worth losing, because `LiveEvent` is ids and
+counters by construction. Anything that must happen goes in the outbox. That rule is written
+at the top of `live.ts`.
+
+#### SSE down, server actions up
+
+Not a WebSocket. Writes already had a good path and did not need replacing, so only the
+downward half was missing — half the machinery for all of the benefit. `EventSource` also
+reconnects with backoff by itself, which is the part of a hand-rolled socket that gets
+written once and then fails quietly on a train.
+
+Publishing happens **after** the commit, not inside the transaction. Inside, a full
+notification queue — one stuck listener is enough — would roll back the write that triggered
+it, and that write is somebody's handwriting. After it, the strokes are already durable and
+the worst a failure costs is a device finding out late. That trade is only available because
+the payload is a pointer; with content in the event it would have to be the other way round.
+
+#### A stroke now has an id, and that is what fixes the real bug
+
+The append protocol only adds to the end, so erase, move and recolour were expressed by
+resending the whole page. **That was already a data-loss bug**, not one this feature
+introduced: erase a word on a tablet and every stroke the laptop drew while the request was
+in flight is gone, silently, with the erase reported as success. Live updates only make
+people hit it.
+
+Naming strokes by id turns those edits into a **delta** — `remove: id[]`, `upsert: Stroke[]`
+— and a delta is *commutative* with drawing. Removing stroke A and appending stroke B are
+independent facts; either order gives the same page. So there is no version guard, no
+refusal and no retry loop. The conflict was never real; it was an artefact of describing an
+edit as a snapshot. Where two devices touch the *same* stroke, removal wins over restyling:
+they disagree about whether it should exist, and the one who wanted it can draw it again.
+
+`media_assets.strokes_version` is therefore not a lock. It is how a follower tells "the page
+grew, ask for the tail" from "the middle changed, read it whole" — a count alone cannot,
+because a delta that removes two and adds two leaves it unmoved.
+
+**A second bug fell out of the same review.** `seq < count` meant "a retry whose response was
+lost", which was true with one writer and false with two: a batch can be behind the page
+because somebody else drew first, and dismissing it as a retry discards real strokes *with a
+success code*. A batch that names its strokes is now deduplicated by id and the rest are
+kept. A batch with no ids — the Shortcuts endpoint, MCP — is still assumed to be a retry,
+which is the only safe guess when a stroke cannot be recognised.
+
+#### Typed text follows when clean. ADR-001 still stands
+
+No CRDT. A device with nothing unsaved adopts what another device wrote; a device in the
+middle of a sentence keeps its sentence, and the existing revision conflict handles the
+collision exactly as before. That covers what people actually do — pick up a different
+device, or watch an agent append to a note they have open.
+
+It does not solve two people typing into one paragraph, and **presence is the honest answer
+to that** rather than a merge algorithm nobody can predict: you can see who else is here and
+who is writing, before you collide. A warning you can act on beats a silent three-way merge.
+Yjs or Loro remains available if simultaneous editing of the same paragraph ever becomes a
+demonstrated need.
+
+#### Consequences
+
+- Polling retires. `InkTranscript` backs off to a 15s safety net instead of leading with 4s;
+  the reading now arrives when the worker stores it, which is what docs/03 and docs/07 have
+  claimed since they were written.
+- One Postgres connection per web pod, lazily opened, outside the pool. docs/17 counts it.
+- `ink.ts` split into `ink.ts` / `ink-delta.ts` / `ink-recognition.ts` / `ink-page.ts`, and
+  `ink-engine.ts` into `ink-painter.ts` / `ink-framing.ts` / `ink-merge.ts` — both were at
+  the size limit and both were edited, which is when the rule applies.
+- `pnpm live:smoke` proves the two-device cases against a real database; `pnpm merge:smoke`
+  proves the reconciliation rules with no database at all.
