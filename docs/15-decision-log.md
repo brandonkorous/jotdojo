@@ -1617,6 +1617,27 @@ ROLLBACK;` as the real owner role reproduced
 `new row violates row-level security policy for table "users"` before the fix and returned
 a row after it, without writing anything either time.
 
+**Correction, same day: the first fix was three tables and the problem was sixteen.**
+0027 unblocked account creation, and the hero canvas still could not create an anonymous
+draft -- `new row violates row-level security policy for table "anon_sessions"`. The rule
+was never about account tables. Every SECURITY DEFINER function in this schema writes as
+the owner, so FORCE breaks all of them; 0028 removes it from the twelve remaining tables
+that definer functions write to.
+
+**The second failure mode is worse than the one that was reported.** Where a table has no
+INSERT policy the write raises, which is loud and findable. Where it has an ALL policy keyed
+on `app_actor_id()` -- `blocks`, `notes`, `comments`, `oauth_tokens` -- there is no actor
+inside `withoutActor`, so the policy matches nothing and the UPDATE reports success having
+changed zero rows. A transcript that was never stored, metering that never recorded, and no
+error anywhere. Recognition being switched off in production is the only reason that had
+not yet bitten.
+
+**So the guard is derived from the catalogue, not hand-written.** `smoke-rls` now joins
+`pg_proc` on `prosecdef` against `pg_class.relforcerowsecurity` and fails if the
+intersection is non-empty. A hand-kept list is what produced a three-table fix for a
+sixteen-table problem, and the next definer function someone writes would not have been on
+it either. Run against the schema after 0027 it names all twelve.
+
 **This is the third bug this week that green suites could not see** — after a worker that
 exited 0 into a restart loop and a canvas that clipped ink out of recognition. The pattern
 is the same each time: the check ran somewhere the failure was impossible.

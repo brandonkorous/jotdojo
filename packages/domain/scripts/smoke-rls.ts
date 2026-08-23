@@ -8,15 +8,15 @@
  * empty or refused.
  */
 import { sql } from "drizzle-orm";
-import { withoutActor } from "@jotdojo/db";
+import { withoutActor, checkNotOwner } from "@jotdojo/db";
 import {
   upsertUserFromGoogle, asUser, createNote, getNote, listNotes, searchNotes,
   defaultSpaceId, listSpaces,
 } from "../src/index";
 
 let failures = 0;
-const check = (label: string, ok: boolean) => {
-  console.log(`${ok ? "  ok  " : "  FAIL"}  ${label}`);
+const check = (label: string, ok: boolean, detail?: string) => {
+  console.log(`${ok ? "  ok  " : "  FAIL"}  ${label}${detail && !ok ? `\n          ${detail}` : ""}`);
   if (!ok) failures++;
 };
 
@@ -106,21 +106,43 @@ const forced = await withoutActor(async (tx) => tx.execute(sql`
 
 const flag = (name: string) => forced.find((r) => r.relname === name);
 
-for (const name of ["users", "spaces", "space_members"]) {
-  const row = flag(name);
-  check(`${name} has RLS enabled`, row?.relrowsecurity === true);
-  // Nothing may write to these except app_provision_user and its siblings, and
-  // those are SECURITY DEFINER -- which needs the owner exemption FORCE removes.
-  check(`${name} is NOT forced, or the one door welds shut`,
-    row?.relforcerowsecurity === false);
+for (const name of ["users", "spaces", "space_members", "notes", "blocks"]) {
+  check(`${name} has RLS enabled`, flag(name)?.relrowsecurity === true);
 }
 
-for (const name of ["notes", "blocks"]) {
-  // Tenant content. No definer function writes here, and the owner has no
-  // business reading across spaces, so these keep FORCE.
-  const row = flag(name);
-  check(`${name} keeps FORCE`, row?.relforcerowsecurity === true);
-}
+/**
+ * NO table written by a SECURITY DEFINER function may be FORCE.
+ *
+ * Derived from the catalogue rather than a hand-kept list, because the first
+ * version of this fix WAS a hand-kept list of three tables and there were
+ * sixteen. A definer function runs as the table owner and FORCE is precisely
+ * the flag that strips the owner's exemption, so the two are simply
+ * incompatible -- and the failure is silent wherever the table's policy is
+ * keyed on app_actor_id(): no actor, no matching rows, zero rows updated,
+ * no error. ADR-057.
+ */
+const offenders = await withoutActor(async (tx) => tx.execute(sql`
+  SELECT DISTINCT c.relname
+    FROM pg_class c
+    JOIN pg_namespace n ON n.oid = c.relnamespace
+    JOIN pg_proc p ON p.prosecdef
+                  AND p.pronamespace = n.oid
+                  AND p.prosrc ~* ('(insert\\s+into|update|delete\\s+from)\\s+' || c.relname || '\\M')
+   WHERE n.nspname = 'public'
+     AND c.relkind = 'r'
+     AND c.relforcerowsecurity
+   ORDER BY c.relname
+`)) as unknown as Array<{ relname: string }>;
+
+check("no table written by a SECURITY DEFINER function is FORCE",
+  offenders.length === 0,
+  offenders.map((r) => r.relname).join(", "));
+
+// The protection FORCE was reaching for, done directly. A table owner is
+// exempt from RLS, so the application must never be one.
+const ownership = await checkNotOwner();
+check(`the app connects as a non-owner (${ownership.role})`,
+  ownership.ok, `owns ${ownership.owns.join(", ")}`);
 
 console.log(failures === 0 ? "\nRLS smoke: all checks passed" : `\nRLS smoke: ${failures} FAILED`);
 process.exit(failures === 0 ? 0 : 1);
