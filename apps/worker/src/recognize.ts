@@ -2,12 +2,12 @@ import sharp from "sharp";
 import {
   claimRecognizeJobs, storeTranscript, failTranscript, finishJob, recordRecognition,
   type RecognizeJob,
-} from "@jotdojo/domain";
-import { tiles, bounds } from "@jotdojo/ink-render";
-import { toPng } from "@jotdojo/ink-render/raster";
-import { storage } from "@jotdojo/storage";
-import { RecognitionError, type Recognizer, type Page } from "@jotdojo/vision";
-import { TranscriptionError, type Transcriber } from "@jotdojo/speech";
+} from "@jotacular/domain";
+import { tiles, bounds } from "@jotacular/ink-render";
+import { toPng } from "@jotacular/ink-render/raster";
+import { storage } from "@jotacular/storage";
+import { RecognitionError, type Recognizer, type Page } from "@jotacular/vision";
+import { TranscriptionError, type Transcriber } from "@jotacular/speech";
 import { sourceFor } from "./sources";
 
 export type RecognizeResult = { claimed: number; read: number; failed: number };

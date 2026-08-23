@@ -1,5 +1,5 @@
 /**
- * Sharing into jotdojo, over real HTTP. ADR-064.
+ * Sharing into Jotacular, over real HTTP. ADR-064.
  *
  * Follows smoke-capture.ts beside it, and covers the two things that were not
  * possible before:
@@ -15,7 +15,7 @@
  */
 import {
   upsertUserFromGoogle, asUser, defaultSpaceId, createCaptureToken, getNote,
-} from "@jotdojo/domain";
+} from "@jotacular/domain";
 
 const API = process.env.API_URL ?? "http://localhost:3401";
 

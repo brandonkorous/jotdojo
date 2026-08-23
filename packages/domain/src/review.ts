@@ -1,7 +1,7 @@
 import { and, desc, eq, isNull, lt, sql } from "drizzle-orm";
 import {
   withActor, notes, blocks, noteRevisions, mcpClients, type Tx,
-} from "@jotdojo/db";
+} from "@jotacular/db";
 import { canReachSpace, type Actor } from "./actor";
 import { Forbidden, NotFound } from "./errors";
 

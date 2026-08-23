@@ -1,6 +1,6 @@
 ---
 title: Capturing to a web app with iOS Shortcuts
-description: A web app on iOS has no share sheet, no Siri and no Action Button. Shortcuts gives you all three for the price of one HTTP endpoint — here is how, whether or not you use jotdojo.
+description: A web app on iOS has no share sheet, no Siri and no Action Button. Shortcuts gives you all three for the price of one HTTP endpoint — here is how, whether or not you use Jotacular.
 date: 2026-08-19
 ---
 
@@ -18,7 +18,7 @@ anything competing with Apple Notes, that is a losing position no matter how goo
 the rest of the product is.
 
 **Shortcuts closes the entire gap**, and it works for any web app with an HTTP
-endpoint. This post is the general recipe; jotdojo is just the example.
+endpoint. This post is the general recipe; Jotacular is just the example.
 
 ## The recipe
 
@@ -73,13 +73,13 @@ immediately instead of discovered next week.
 Ours looks like this:
 
 ```http
-POST https://api.jotdojo.com/v1/capture
+POST https://api.jotacular.com/v1/capture
 Authorization: Bearer <capture token>
 Content-Type: application/json
 
 { "text": "...", "space_id": "...", "source": "shortcut:jot" }
 
-201 { "note_id": "...", "url": "https://app.jotdojo.com/n/..." }
+201 { "note_id": "...", "url": "https://app.jotacular.com/n/..." }
 ```
 
 ## The token question
@@ -119,5 +119,5 @@ that silently failed, and the user will conclude your product does not work.
 
 ---
 
-The endpoint above is jotdojo's, and it is live. You can also [try the app](/)
+The endpoint above is Jotacular's, and it is live. You can also [try the app](/)
 with no account and no token at all.

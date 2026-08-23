@@ -1,5 +1,5 @@
-import type { Point, TextBox } from "@jotdojo/domain";
-import { cardBounds, textBounds } from "@jotdojo/ink-render";
+import type { Point, TextBox } from "@jotacular/domain";
+import { cardBounds, textBounds } from "@jotacular/ink-render";
 import { pointInPolygon, type Bounds } from "./ink-geometry";
 
 /**
@@ -12,7 +12,7 @@ import { pointInPolygon, type Bounds } from "./ink-geometry";
  */
 
 /**
- * One box's rectangle -- from `@jotdojo/ink-render`, never a copy.
+ * One box's rectangle -- from `@jotacular/ink-render`, never a copy.
  *
  * There WAS a copy here, and it multiplied by 1.35 where the renderer used
  * 1.25, so a lasso and an export disagreed about where a box ended. Invisible

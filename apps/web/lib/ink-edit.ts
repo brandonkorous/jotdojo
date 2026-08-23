@@ -1,4 +1,4 @@
-import type { Stroke } from "@jotdojo/domain";
+import type { Stroke } from "@jotacular/domain";
 import { dist2 } from "./ink-geometry";
 import { ERASE_RADIUS } from "./ink-paint";
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { Download, Trash2 } from "lucide-react";
+import { Icon } from "@/components/Icon";
 import { MARKER_COLORS, PEN_COLORS } from "@/lib/ink-style";
 import { CARD_COLORS } from "@/lib/ink-cards";
 import { PenSize } from "./PenSize";
@@ -88,7 +88,7 @@ export function SelectionBar({
         aria-label="Save selection as an image"
         onClick={onExport}
       >
-        <Download aria-hidden strokeWidth={1.75} />
+        <Icon name="download" />
       </button>
 
       <button
@@ -98,7 +98,7 @@ export function SelectionBar({
         aria-label="Delete selection"
         onClick={onDelete}
       >
-        <Trash2 aria-hidden strokeWidth={1.75} />
+        <Icon name="remove" />
       </button>
     </div>
   );

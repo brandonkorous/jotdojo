@@ -2,7 +2,7 @@
 #
 # apps/worker -- the async half: outbox drain, embeddings, handwriting
 # recognition. Build from the REPO ROOT:
-#   docker build -f infra/docker/worker.Dockerfile -t <registry>/jotdojo-worker:<tag> .
+#   docker build -f infra/docker/worker.Dockerfile -t <registry>/jotacular-worker:<tag> .
 #
 # NO PORT AND NO SERVICE. apps/worker/src/index.ts is a polling loop with no HTTP
 # listener, so there is nothing to probe over the network and nothing for Caddy to
@@ -33,7 +33,7 @@ FROM base AS deps
 # dependency -- it is a lockfile that no longer matches the workspace. The
 # manifests are a few kB and change rarely, so this layer still caches well.
 #
-# The subgraph is also not what it looks like. `@jotdojo/domain` pulls in db,
+# The subgraph is also not what it looks like. `@jotacular/domain` pulls in db,
 # embeddings AND storage, so a service that only declares `domain` still needs
 # all four present at install and at runtime.
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
@@ -50,24 +50,24 @@ COPY packages/reason/package.json packages/reason/
 COPY packages/speech/package.json packages/speech/
 COPY packages/storage/package.json packages/storage/
 COPY packages/vision/package.json packages/vision/
-RUN pnpm install --frozen-lockfile --filter @jotdojo/worker...
+RUN pnpm install --frozen-lockfile --filter @jotacular/worker...
 
 # --- runtime --------------------------------------------------------------
 FROM base AS runtime
 ENV NODE_ENV=production
-RUN addgroup -g 1001 nodejs && adduser -S -u 1001 -G nodejs jotdojo
+RUN addgroup -g 1001 nodejs && adduser -S -u 1001 -G nodejs jotacular
 
-COPY --from=deps --chown=jotdojo:nodejs /repo/node_modules ./node_modules
-COPY --chown=jotdojo:nodejs package.json pnpm-workspace.yaml tsconfig.base.json ./
-COPY --from=deps --chown=jotdojo:nodejs /repo/apps/worker/node_modules ./apps/worker/node_modules
-COPY --chown=jotdojo:nodejs apps/worker ./apps/worker
+COPY --from=deps --chown=jotacular:nodejs /repo/node_modules ./node_modules
+COPY --chown=jotacular:nodejs package.json pnpm-workspace.yaml tsconfig.base.json ./
+COPY --from=deps --chown=jotacular:nodejs /repo/apps/worker/node_modules ./apps/worker/node_modules
+COPY --chown=jotacular:nodejs apps/worker ./apps/worker
 
 # EVERY workspace package needs its OWN node_modules, not just its source.
 #
 # pnpm does not hoist. Each package gets a `node_modules` of symlinks into
 # `/repo/node_modules/.pnpm`, and the root tree does not contain the leaves:
 # `postgres` and `drizzle-orm` live under `packages/db/node_modules`, and the
-# `@jotdojo/*` links that make `import { db } from "@jotdojo/db"` resolve live
+# `@jotacular/*` links that make `import { db } from "@jotacular/db"` resolve live
 # under `packages/domain/node_modules` and `packages/ink-render/node_modules`.
 #
 # Copying only the source of these packages builds a perfectly clean image that
@@ -76,24 +76,24 @@ COPY --chown=jotdojo:nodejs apps/worker ./apps/worker
 # what makes it read like a dependency bug rather than a missing directory. The
 # worker is the widest graph of the four, so it is the one with the most ways to
 # get this wrong.
-COPY --from=deps --chown=jotdojo:nodejs /repo/packages/billing/node_modules ./packages/billing/node_modules
-COPY --chown=jotdojo:nodejs packages/billing ./packages/billing
-COPY --from=deps --chown=jotdojo:nodejs /repo/packages/db/node_modules ./packages/db/node_modules
-COPY --chown=jotdojo:nodejs packages/db ./packages/db
-COPY --from=deps --chown=jotdojo:nodejs /repo/packages/domain/node_modules ./packages/domain/node_modules
-COPY --chown=jotdojo:nodejs packages/domain ./packages/domain
-COPY --from=deps --chown=jotdojo:nodejs /repo/packages/embeddings/node_modules ./packages/embeddings/node_modules
-COPY --chown=jotdojo:nodejs packages/embeddings ./packages/embeddings
-COPY --from=deps --chown=jotdojo:nodejs /repo/packages/ink-render/node_modules ./packages/ink-render/node_modules
-COPY --chown=jotdojo:nodejs packages/ink-render ./packages/ink-render
-COPY --from=deps --chown=jotdojo:nodejs /repo/packages/reason/node_modules ./packages/reason/node_modules
-COPY --chown=jotdojo:nodejs packages/reason ./packages/reason
-COPY --from=deps --chown=jotdojo:nodejs /repo/packages/speech/node_modules ./packages/speech/node_modules
-COPY --chown=jotdojo:nodejs packages/speech ./packages/speech
-COPY --from=deps --chown=jotdojo:nodejs /repo/packages/storage/node_modules ./packages/storage/node_modules
-COPY --chown=jotdojo:nodejs packages/storage ./packages/storage
-COPY --from=deps --chown=jotdojo:nodejs /repo/packages/vision/node_modules ./packages/vision/node_modules
-COPY --chown=jotdojo:nodejs packages/vision ./packages/vision
+COPY --from=deps --chown=jotacular:nodejs /repo/packages/billing/node_modules ./packages/billing/node_modules
+COPY --chown=jotacular:nodejs packages/billing ./packages/billing
+COPY --from=deps --chown=jotacular:nodejs /repo/packages/db/node_modules ./packages/db/node_modules
+COPY --chown=jotacular:nodejs packages/db ./packages/db
+COPY --from=deps --chown=jotacular:nodejs /repo/packages/domain/node_modules ./packages/domain/node_modules
+COPY --chown=jotacular:nodejs packages/domain ./packages/domain
+COPY --from=deps --chown=jotacular:nodejs /repo/packages/embeddings/node_modules ./packages/embeddings/node_modules
+COPY --chown=jotacular:nodejs packages/embeddings ./packages/embeddings
+COPY --from=deps --chown=jotacular:nodejs /repo/packages/ink-render/node_modules ./packages/ink-render/node_modules
+COPY --chown=jotacular:nodejs packages/ink-render ./packages/ink-render
+COPY --from=deps --chown=jotacular:nodejs /repo/packages/reason/node_modules ./packages/reason/node_modules
+COPY --chown=jotacular:nodejs packages/reason ./packages/reason
+COPY --from=deps --chown=jotacular:nodejs /repo/packages/speech/node_modules ./packages/speech/node_modules
+COPY --chown=jotacular:nodejs packages/speech ./packages/speech
+COPY --from=deps --chown=jotacular:nodejs /repo/packages/storage/node_modules ./packages/storage/node_modules
+COPY --chown=jotacular:nodejs packages/storage ./packages/storage
+COPY --from=deps --chown=jotacular:nodejs /repo/packages/vision/node_modules ./packages/vision/node_modules
+COPY --chown=jotacular:nodejs packages/vision ./packages/vision
 
 # NUMERIC, not a name. Kubernetes cannot verify a NAMED user is non-root, so a
 # pod with `runAsNonRoot: true` refuses the container outright with

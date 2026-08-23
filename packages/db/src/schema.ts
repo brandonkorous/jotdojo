@@ -5,7 +5,7 @@
  * migrations are hand-written because the RLS policies are the tenancy
  * boundary and must be reviewed as SQL. Keep the two in step.
  *
- * Split by responsibility (ADR-030) and re-exported here, so `@jotdojo/db`
+ * Split by responsibility (ADR-030) and re-exported here, so `@jotacular/db`
  * still hands out every table from one place.
  */
 export * from "./schema/_columns";

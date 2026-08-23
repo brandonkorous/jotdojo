@@ -13,7 +13,7 @@
  *      four hundred that meant "a zip was made".
  */
 import { sql } from "drizzle-orm";
-import { withActor } from "@jotdojo/db";
+import { withActor } from "@jotacular/db";
 import {
   upsertUserFromGoogle, asUser, createNote, defaultSpaceId, getNote,
   createInkBlock, appendStrokes, exportNote, exportSpace,

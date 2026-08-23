@@ -1,4 +1,4 @@
-import type { Bounds } from "@jotdojo/ink-render";
+import type { Bounds } from "@jotacular/ink-render";
 
 /**
  * Where the camera is over an endless surface. ADR-053.

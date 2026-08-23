@@ -36,7 +36,7 @@ async function refused(label: string, code: string, fn: () => Promise<unknown>) 
   check(label, got === code, `expected code "${code}", got "${got}"`);
 }
 
-const RESOURCE = "https://mcp.jotdojo.com/mcp";
+const RESOURCE = "https://mcp.jotacular.com/mcp";
 const REDIRECT = "https://claude.ai/api/mcp/auth_callback";
 const verifier = randomBytes(32).toString("base64url");
 const challenge = createHash("sha256").update(verifier).digest("base64url");

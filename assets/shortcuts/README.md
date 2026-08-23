@@ -9,7 +9,7 @@ Everything below needs a **capture token**, minted at `/account` → One-tap
 capture. It reaches exactly one space and can only create notes; it cannot read,
 list or search. Losing one costs you nothing but a revoke.
 
-Replace `API` with your capture host (`https://api.jotdojo.com`) and `TOKEN`
+Replace `API` with your capture host (`https://api.jotacular.com`) and `TOKEN`
 with the token, which starts `jd_cap_`.
 
 ---
@@ -40,7 +40,7 @@ thought — a small betrayal in a capture app.
 
 ---
 
-## 2. Send to jotdojo — the share sheet
+## 2. Send to jotacular — the share sheet
 
 Set **Show in Share Sheet** on, accepting *Text*, *URLs* and *Images*.
 
@@ -109,6 +109,6 @@ capture interrupted between the steps leaves a visible gap rather than nothing.
 
 ## Android
 
-None of this is needed. Install the PWA and jotdojo appears in the system share
+None of this is needed. Install the PWA and jotacular appears in the system share
 sheet directly, text and files both — `share_target` in
 `apps/web/public/manifest.webmanifest`, handled by `apps/web/app/share/route.ts`.

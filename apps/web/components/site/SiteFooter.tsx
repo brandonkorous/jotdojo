@@ -1,32 +1,17 @@
 import Link from "next/link";
 import { appOrigin } from "@/lib/hosts";
+import { brand } from "@/lib/brand";
+import { Wordmark } from "@/components/Brand";
 
 /**
  * The site footer. docs/13-security-and-privacy.md.
  *
- * The last thing on the page is not a link farm. It is the promises we make
- * about other people's notes, and the name of who else gets to read them.
+ * The last thing on the page is not a link farm. It is the name of who else
+ * gets to read a note -- which is the one disclosure that appears nowhere
+ * else, and the reason this is a footer rather than a sitemap.
  */
 
 type Group = { title: string; links: { href: string; label: string }[] };
-
-const PROMISES = [
-  {
-    title: "Your notes are yours",
-    body: "Export all of them, any time, as markdown that opens anywhere."
-      + " Leaving is a supported operation.",
-  },
-  {
-    title: "Agents see only what you grant",
-    body: "Per space, per client, never pre-selected. Revoke it and it is gone"
-      + " the same second.",
-  },
-  {
-    title: "Nothing an agent does is permanent",
-    body: "Every change is labelled with the name of the thing that made it,"
-      + " logged, and undone with one tap.",
-  },
-];
 
 const DISCLOSURE = "Handwriting, voice and photos are read by Azure OpenAI in"
   + " eastus2, and by nobody else. We do not train on your notes. Nothing reads"
@@ -70,15 +55,6 @@ export function SiteFooter() {
           {groups().map((group) => <FootNav key={group.title} group={group} />)}
         </div>
 
-        <div className="jd-foot-promises">
-          {PROMISES.map((promise) => (
-            <div key={promise.title}>
-              <h2 className="font-head">{promise.title}</h2>
-              <p>{promise.body}</p>
-            </div>
-          ))}
-        </div>
-
         <Fine />
       </div>
     </footer>
@@ -89,10 +65,9 @@ function Brand() {
   return (
     <div className="jd-foot-brand">
       <Link href="/" className="jd-site-mark">
-        <span aria-hidden className="jd-site-seal">覚</span>
-        <span className="font-head text-lg">jotdojo</span>
+        <Wordmark className="jd-wordmark-lg" />
       </Link>
-      <p className="jd-foot-tagline">Where the thought lands.</p>
+      <p className="jd-foot-tagline">{brand.line}</p>
       <p className="jd-foot-line">
         Your notes, readable by your AI, from your phone, with no computer running.
       </p>

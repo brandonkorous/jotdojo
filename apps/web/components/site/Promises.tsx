@@ -1,28 +1,43 @@
-/** What the product guarantees, in the reader's terms rather than ours. */
+/**
+ * Privacy and control. design.md §18.6.
+ *
+ * The old version of this promised three things about the software. These
+ * promise three things about who else gets to read your notes, which is the
+ * question a person actually has once they understand an agent can reach them.
+ */
+
 const PROMISES = [
   {
-    title: "You will not lose it",
-    body: "It saves while you type, not when you remember to. Close the tab mid-word,"
-      + " drop the phone, run flat at the gate — the words were already somewhere safe,"
-      + " and they are on your other devices too.",
+    title: "Your notes are yours",
+    body: "Export every one of them, any time, as markdown that opens anywhere."
+      + " Leaving is a supported operation, not a support ticket.",
   },
   {
-    title: "Your handwriting is searchable",
-    body: "Write a page by hand in March and find it in November by one word in it."
-      + " So can Claude. Everywhere else, handwriting hands an agent a picture and"
-      + " a shrug.",
+    title: "You choose what connects",
+    body: "Nothing reaches your notes until you say so, per space and per agent."
+      + " Revoke it and it is gone the same second.",
+  },
+  {
+    title: "Nothing reads them on a schedule",
+    body: "Not unless you switched it on yourself. This is a place to put things,"
+      + " not an AI quietly reading everything you write.",
   },
   {
     title: "Nothing is rewritten behind your back",
-    body: "When Claude adds something it says so, in its own colour, with its name on"
-      + " it. If you do not like what it did, one tap puts the note back the way it was.",
+    body: "When an agent adds something it says so, in its own colour, with its"
+      + " name on it. One tap puts the note back.",
   },
 ];
 
 export function Promises() {
   return (
-    <section className="jd-band jd-band-quiet">
-      <h2 className="font-head">What you can count on</h2>
+    <section className="jd-band">
+      <h2 className="font-head">
+        Yours, and <span className="jd-ul">only</span> yours
+      </h2>
+      <p className="jd-lede">
+        Connecting an agent is a decision you make once, and unmake in a second.
+      </p>
       <div className="jd-cards">
         {PROMISES.map((promise) => (
           <article key={promise.title}>

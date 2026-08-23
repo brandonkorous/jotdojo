@@ -1,4 +1,4 @@
-import type { Point, Stroke } from "@jotdojo/domain";
+import type { Point, Stroke } from "@jotacular/domain";
 import { isDrawing, type InkTool } from "./canvas-tool";
 import type { StrokeCapture } from "./ink-capture";
 import type { InkSelection } from "./ink-selection";

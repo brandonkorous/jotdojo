@@ -1,4 +1,4 @@
-import type { Point, Stroke, TextBox } from "@jotdojo/domain";
+import type { Point, Stroke, TextBox } from "@jotacular/domain";
 import { type Bounds, inBounds, strokeBounds, strokeInPolygon } from "./ink-geometry";
 import { boxAt, boxInPolygon, boxesBounds, translateBoxes } from "./ink-objects";
 import { topmostAt } from "./ink-edit";

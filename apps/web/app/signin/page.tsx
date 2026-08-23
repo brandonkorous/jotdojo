@@ -1,4 +1,6 @@
 import { signIn } from "@/auth";
+import { brand } from "@/lib/brand";
+import { Wordmark } from "@/components/Brand";
 
 /**
  * Where to land afterwards.
@@ -22,15 +24,10 @@ export default async function SignIn(
   return (
     <main className="flex min-h-dvh flex-col items-center justify-center gap-8 px-6">
       <div className="text-center">
-        {/* The seal. One per screen. */}
-        <div
-          aria-hidden
-          className="mx-auto mb-6 flex h-14 w-14 items-center justify-center rounded-field bg-accent text-2xl text-accent-content"
-        >
-          覚
-        </div>
-        <h1 className="font-head text-4xl">jotdojo</h1>
-        <p className="mt-2 opacity-70">Where the thought lands.</p>
+        <h1 className="mt-2">
+          <Wordmark className="jd-wordmark-lg" />
+        </h1>
+        <p className="mt-2 opacity-70">{brand.line}</p>
       </div>
 
       <form

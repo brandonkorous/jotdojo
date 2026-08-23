@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import {
   getClient, resolveCimdClient, issueAuthCode, listSpaces,
   DEFAULT_SCOPES, SCOPES, type Scope, type ClientRecord,
-} from "@jotdojo/domain";
+} from "@jotacular/domain";
 import { requireActor } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
@@ -105,7 +105,7 @@ export default async function Authorize({
   return (
     <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-center px-5 py-10">
       <h1 className="font-head text-2xl">
-        {client.clientName ?? "An application"} wants access to jotdojo
+        {client.clientName ?? "An application"} wants access to Jotacular
       </h1>
 
       <form action={approve} className="mt-6">

@@ -1,4 +1,4 @@
-import type { InkDelta, Stroke, TextBox } from "@jotdojo/domain";
+import type { InkDelta, Stroke, TextBox } from "@jotacular/domain";
 import { restyle, without } from "./ink-edit";
 import { InkSelection, NO_SELECTION, type SelectionSummary } from "./ink-selection";
 import type { StrokeIndex } from "./ink-index";

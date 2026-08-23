@@ -20,7 +20,7 @@ import { encode } from "@auth/core/jwt";
 import {
   upsertUserFromGoogle, asUser, createNote, defaultSpaceId,
   createInkBlock, appendStrokes, type Stroke,
-} from "@jotdojo/domain";
+} from "@jotacular/domain";
 
 let failures = 0;
 const check = (label: string, ok: boolean, detail?: string) => {
@@ -44,7 +44,7 @@ const note = await createNote(actor, await defaultSpaceId(actor), "watched from 
 const ink = await createInkBlock(actor, note.id, { w: 800, h: 600 });
 
 const token = await encode({
-  salt: COOKIE, secret, token: { jotdojoUserId: user.id, sub: user.id },
+  salt: COOKIE, secret, token: { jotacularUserId: user.id, sub: user.id },
 });
 
 console.log("\nwho may open a stream");

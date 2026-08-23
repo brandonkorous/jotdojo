@@ -1,5 +1,5 @@
 import { and, asc, eq, sql } from "drizzle-orm";
-import { withActor, blocks, mediaAssets } from "@jotdojo/db";
+import { withActor, blocks, mediaAssets } from "@jotacular/db";
 import { canReachSpace, type Actor } from "./actor";
 import { createInkBlock, type InkBlock } from "./ink-block";
 

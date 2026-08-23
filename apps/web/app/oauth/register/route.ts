@@ -1,4 +1,4 @@
-import { registerClient, OAuthError } from "@jotdojo/domain";
+import { registerClient, OAuthError } from "@jotacular/domain";
 
 /** Dynamic Client Registration (RFC 7591). Unauthenticated by design. */
 export async function POST(request: Request) {

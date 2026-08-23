@@ -12,7 +12,7 @@
  *
  * ONE PRODUCT PER PLAN, not three prices on one product. Checkout and every
  * invoice line show the PRODUCT name, so plans sharing a product produce three
- * indistinguishable line items reading "jotdojo".
+ * indistinguishable line items reading "jotacular".
  *
  * The key is read from the environment and never printed. Use a RESTRICTED key
  * for this too -- it needs write on Products and Prices and nothing else.
@@ -23,9 +23,9 @@ const API_VERSION = "2026-07-29.dahlia";
 
 /** Must match docs/01-audience-and-pricing.md and the pricing page. */
 const PLANS = [
-  { key: "solo", name: "jotdojo Solo", cents: 500, blurb: "Everything, for one person." },
-  { key: "family", name: "jotdojo Family", cents: 900, blurb: "Everything, for up to six people." },
-  { key: "team", name: "jotdojo Team", cents: 1900, blurb: "Everything, for a small company." },
+  { key: "solo", name: "jotacular Solo", cents: 500, blurb: "Everything, for one person." },
+  { key: "family", name: "jotacular Family", cents: 900, blurb: "Everything, for up to six people." },
+  { key: "team", name: "jotacular Team", cents: 1900, blurb: "Everything, for a small company." },
 ];
 
 const key = process.env.STRIPE_SECRET_KEY;
@@ -80,7 +80,7 @@ async function listTaxCodes() {
 async function existing() {
   const { data } = await stripe("/products?limit=100&active=true");
   const mine = new Map();
-  for (const p of data) if (p.metadata?.jotdojo_plan) mine.set(p.metadata.jotdojo_plan, p);
+  for (const p of data) if (p.metadata?.jotacular_plan) mine.set(p.metadata.jotacular_plan, p);
   return mine;
 }
 
@@ -102,7 +102,7 @@ async function survey() {
 }
 
 function report(rows) {
-  console.log(`\n${live ? "LIVE MODE" : "test mode"} — jotdojo catalogue\n`);
+  console.log(`\n${live ? "LIVE MODE" : "test mode"} — jotacular catalogue\n`);
   for (const { plan, product, price } of rows) {
     const money = `$${(plan.cents / 100).toFixed(2)}/mo`;
     if (!product) console.log(`  ${plan.key.padEnd(7)} ${money.padEnd(10)} no product`);
@@ -127,7 +127,7 @@ async function apply(rows, taxCode, behavior) {
         name: plan.name,
         description: plan.blurb,
         tax_code: taxCode,
-        "metadata[jotdojo_plan]": plan.key,
+        "metadata[jotacular_plan]": plan.key,
       });
       console.log(`  created product ${row.product.id} for ${plan.key}`);
     } else if (row.product.tax_code !== taxCode) {
@@ -142,7 +142,7 @@ async function apply(rows, taxCode, behavior) {
         unit_amount: String(plan.cents),
         "recurring[interval]": "month",
         tax_behavior: behavior,
-        "metadata[jotdojo_plan]": plan.key,
+        "metadata[jotacular_plan]": plan.key,
       });
       console.log(`  created price ${row.price.id} for ${plan.key}`);
     }

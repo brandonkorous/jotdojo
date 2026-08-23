@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import {
   startAnonSession, resumeAnonSession, type AnonSession,
-} from "@jotdojo/domain";
+} from "@jotacular/domain";
 
 /**
  * The anonymous draft a visitor is holding, as a cookie. ADR-009, ADR-041.

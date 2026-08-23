@@ -1,4 +1,4 @@
-import type { InkDocument } from "@jotdojo/domain";
+import type { InkDocument } from "@jotacular/domain";
 import { bounds, intersects, strokeBounds, type Bounds } from "./geometry";
 import { scaleFor } from "./svg";
 

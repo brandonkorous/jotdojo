@@ -1,6 +1,11 @@
 # 10 — Design system
 
-Built on **Silica UI** (`silicaui.com`), the in-house Tailwind v4 design system — and on **kanninja's existing brand kit**, because jotdojo is the second product in a house that already has a visual language.
+Built on **Silica UI** (`silicaui.com`), the in-house Tailwind v4 design system, and on Jotacular's own brand — see [design.md](../design.md), which is canonical for anything this doc does not settle.
+
+> **Rewritten 2026-08-23 for the rebrand (ADR-072).** Until then this doc said Jotacular
+> inherited kanninja's palette and type unchanged. It no longer does. What survives is the
+> architecture below the brand line: the `agent` colour role, the canvas-first shell, the
+> floating chrome, and the handedness setting.
 
 ## Packages
 
@@ -16,57 +21,66 @@ Built on **Silica UI** (`silicaui.com`), the in-house Tailwind v4 design system 
 
 Everything outside the ink canvas is a Silica component. The canvas is a bare `canvas` element with imperative rendering (see [08-ink.md](08-ink.md)); only its floating chrome is Silica.
 
-## Brand: inherit from kanninja
-
-kanninja's brand kit already defines the house:
+## Brand: Jotacular's own
 
 | Pigment | Value | Role |
 |---|---|---|
-| **Vermillion** | `#E0432F` | The seal. **One per screen** |
-| **Sumi** | `#0E0F12` | The ink. Primary text |
-| **Washi** | `#F8F4EC` | Cream paper. The page |
-| **Snow** | `#FBFAF6` | Elevated surfaces — cards, modals |
+| **Mint** | `#00C2A8` | The primary. CTAs, active states, the dot over the `j` |
+| **Violet** | `#6A39FF` | The agent, and the underline in the app mark |
+| **Charcoal** | `#111418` | The ink. Primary text |
+| **Warm paper** | `#F7F3EA` | The page |
 
-Type: **Fraunces** display, **Inter** body, **JetBrains Mono** for code.
+Type: **Nunito** (rounded) for headings, **DM Sans** for body and UI, **JetBrains Mono** for
+code. DM Sans over Inter because its rounded terminals sit under Nunito without a seam;
+Inter stays in the stack as the fallback.
 
-The mark is a seal bearing 忍 (*nin*) — endure, persevere — described as 心 (heart) beneath 刃 (blade).
+The mark is `jot` — white, on a charcoal tile, with a mint dot over the `j` and a violet
+hand-drawn underline. The wordmark is `jotacular`, lowercase, with the mint dot and **no
+underline**. Icon is the action; wordmark is the brand. design.md §24.
 
-**jotdojo uses this palette and this type unchanged.** Two products from one workshop should look like it. This also happens to be exactly right for a product about napkins and notepads: washi is literally paper, sumi is literally ink.
+### No gradients
 
-### The vermillion rule
+design.md §12, and it is a rule rather than a preference: no gradient fills, text, borders,
+buttons or backgrounds, anywhere. Flat colour and contrast instead. Gradients read as
+generic AI SaaS, which is the one thing this product must not look like.
 
-*"One per screen."* Vermillion is the seal, not a button colour. It marks the single most important thing in a view and nothing else. In jotdojo that is normally the capture affordance — and when the seal is on screen twice, one of them is wrong.
+### What replaced the vermillion rule
 
-This is the strongest constraint in the visual system. Honour it.
+The old system's strongest constraint was *"one seal per screen"* — vermillion marked the
+single most important thing in a view and nothing else. **That rule is retired.** Mint is an
+ordinary primary now: it is the CTA colour, so it cannot also be scarce. ADR-073.
 
-## Theme: a declared `washi` theme, not a preset
+What carries the discipline instead is the flat surface and the whitespace. If a screen
+feels loud, the answer is fewer elements, not a rationed colour.
 
-Silica preset `dune` is close, but "close" is the wrong standard when the sibling product has exact values. Declare the house theme against Silica's tokens instead:
+## Theme: a declared `paper` theme, not a preset
+
+No preset is close enough to be worth adapting. Declare the house theme against Silica's tokens instead:
 
     @plugin "@wizeworks/silicaui";
 
     @plugin "@wizeworks/silicaui/theme" {
-      name: washi;
+      name: paper;
       default: true;
       prefersdark: false;
 
-      --color-base-100: #F8F4EC;   /* washi — the page */
-      --color-base-200: #FBFAF6;   /* snow — elevated */
-      --color-base-300: #EDE7DA;   /* hairline / rules */
-      --color-base-content: #0E0F12; /* sumi — the ink */
+      --color-base-100: #F7F3EA;   /* warm paper -- the page */
+      --color-base-200: #FBF8F2;   /* elevated */
+      --color-base-300: #EBE5D8;   /* hairline / rules */
+      --color-base-content: #111418; /* charcoal -- the ink */
 
-      --color-primary: #0E0F12;    /* ink, not a brand blue */
-      --color-accent: #E0432F;     /* vermillion — the seal */
+      --color-primary: #00C2A8;    /* mint */
+      --color-accent: #6A39FF;     /* violet */
 
       --depth: 0;                  /* ink on paper casts no shadow */
       --noise: 1;                  /* paper grain on the themed surface */
       --duration: 120ms;           /* capture must feel instant */
-      --font-head: Fraunces;
-      --font-sans: Inter;
+      --font-head: Nunito;
+      --font-sans: "DM Sans";
       --font-mono: "JetBrains Mono";
     }
 
-Then `<html data-theme="washi">`. A matching dark declaration inverts washi and sumi; vermillion holds in both.
+Then `<html data-theme="paper">`. A matching `paper-night` inverts paper and charcoal; mint holds in both, and violet lifts to `#8A63FF` so it clears the dark ground.
 
 `--noise: 1` deserves specific mention — one token puts a subtle grain on the themed surface while cards keep clean fills. For a brand whose base colour is named after paper, it is the highest ratio of atmosphere to effort available anywhere in the system.
 
@@ -76,7 +90,7 @@ Then `<html data-theme="washi">`. A matching dark declaration inverts washi and 
 
 The most important design decision in the product.
 
-> **Human ink is sumi. Agent ink is `agent`.**
+> **Human ink is charcoal. Agent ink is `agent`.**
 
 Everything an agent produced — comments, suggested edits, triage proposals — renders in a visually distinct ink. A person can tell at a glance, anywhere in the product, whether a human or a machine wrote something. It is a safety property expressed as colour, for the cost of one token.
 
@@ -86,12 +100,12 @@ Silica's colour list is open, so register it rather than reaching for a hex:
       colors: primary, secondary, accent, neutral, info, success, warning, error, agent;
     }
     @theme {
-      --color-agent: oklch(52% 0.09 265);   /* indigo */
+      --color-agent: #6A39FF;   /* violet */
     }
 
 `colors:` **replaces** the default list, so the eight built-ins are re-listed. Registering properly means `text-agent`, `border-agent`, `badge-agent`, `alert-agent` and every other `*-agent` variant exist automatically, in both modes, with a contrast-measured `-content` ink derived for us.
 
-Indigo is deliberate: cool where washi is warm, and unmistakable against vermillion — so agent content reads as *visiting* the page rather than belonging to it, and never competes with the seal.
+Violet is deliberate, and it is the brand's own: design.md §11 gives violet the "AI/agent association", which is the job this token already had under a different hue. It is cool where paper is warm, so agent content reads as *visiting* the page rather than belonging to it — and it is the one accent that never appears on a control the user drives.
 
 ## Typography
 
@@ -99,26 +113,125 @@ Silica's scale. No magic numbers, never `text-[13px]`.
 
 | Role | Face / size |
 |---|---|
-| Note body | Inter, `text-md` (16px) |
-| Note title | Fraunces, `text-xl` |
-| UI labels | Inter, `text-sm` |
-| Metadata, provenance, confidence | Inter, `text-xs`, muted |
-| Marketing headlines | Fraunces, `text-5xl`+ |
+| Note body | DM Sans, `text-md` (16px) |
+| Note title | Nunito, `text-xl` |
+| UI labels | DM Sans, `text-sm` |
+| Metadata, provenance, confidence | DM Sans, `text-xs`, muted |
+| Marketing headlines | Nunito, `text-5xl`+ |
+
+**Caveat** is available as a handwritten accent, and design.md §10 says sparingly: small
+annotations and napkin moments only, never navigation or any string the user must read to
+operate the product. It is not loaded unless something actually uses it.
 
 16px minimum for anything editable on iOS — smaller triggers zoom-on-focus and breaks the canvas layout.
 
 ## The mark
 
-A seal in the same frame as kanninja's, carrying a different character. Two recommendations:
+**`jot`** — white lowercase on a charcoal rounded tile, a mint dot over the `j`, a violet
+hand-drawn underline beneath. Flat: no gradient, gloss, bevel or shadow, at any size.
 
-- **覚** (*oboe* / *kaku*) — remember, perceive. Appears in 覚え書き (*oboegaki*), "memorandum." This is the better choice: it names the half of the product that is not about action, which is exactly the distinction drawn in ADR-002.
-- **記** (*ki*) — record, write down. Appears in 記録 (*kiroku*, record) and 日記 (*nikki*, diary). Safer, more literal, slightly less interesting.
+The underline should read as a real quick pen stroke — slightly imperfect, slightly
+asymmetric — and never as a drawn rule. The dot stays flat and simple.
 
-Either sits in a vermillion seal square, legible at 16px as a favicon. The wordmark is `jotdojo` in Fraunces, lowercase always, including sentence-initial.
+At favicon sizes the underline is the first thing to fail; test at 16, 24, 32, 48 and 64px
+and keep it a single visible stroke. The icon survives small because it literally says
+`jot`.
+
+The wordmark is **`jotacular`**, lowercase always including sentence-initial, charcoal on
+light and white on dark, carrying the mint dot and **no underline**. The icon carries the
+underline; the wordmark carries the dot. design.md §8.
+
+Both are committed artwork under `assets/brand/`, and `pnpm icons` derives every size the
+app serves from them — see `scripts/make-icons.mjs`. The old generator drew a font glyph,
+which meant a machine without that font silently produced a blank tile; reading committed
+artwork removes that whole class of failure.
+
+## Two rules the marketing pages kept breaking
+
+### Fill the zone
+
+**A section's content spans its band.** No `max-width` that leaves a dead column
+down the right of the page.
+
+Running prose still needs a measure -- but a measure is a property of a *paragraph*,
+not of a section. A band of pure text gets `.jd-prose-2` and reads in two columns; a
+band of items gets a grid. The one thing that may sit narrow is `.jd-lede`, at 52ch,
+directly under a heading.
+
+This was wrong site-wide until ADR-076: `--measure: 34rem` inside a 62rem band put
+every paragraph at 55% of its own width, left-aligned, with nothing beside it. It
+reads as a template nobody finished.
+
+### Text you must read is not dimmed
+
+**No `opacity` on text on the marketing site. None.** Not on body copy, not on
+navigation, not on a date, a price cadence or a bullet glyph. The only survivor is
+the hero input's `::placeholder`, which is not text anybody is reading.
+
+Dimming text is a habit rather than a decision. It costs contrast, it fails users who
+need it most, and it makes a page look tentative. And alpha does not produce a quieter
+ink -- it produces the same ink half-applied, which on a page whose whole material
+argument is *paper* reads as a page that has not finished loading.
+
+Genuinely secondary text gets **`--ink-2`**, a real flat colour declared on `.jd-site`
+and redeclared lighter inside `.jd-band-ink`. Otherwise say "secondary" with size,
+weight or position; if something is so secondary it must be greyed to be bearable,
+cut it.
+
+Twenty-six rules broke this before ADR-076 -- the main navigation and the one privacy
+disclosure that appears nowhere else among them. Seven more survived that pass by
+claiming to be metadata, and went in ADR-082.
+
+### One body size, and it has a name
+
+`--body` (1.0625rem) is the marketing site's running text, set on `.jd-site` and used
+by every nested rule that needs to name a size. Writing `font-size: 1rem` inside a
+section does **not** inherit it -- `rem` resolves against the root -- so a card that
+looked like it matched the prose beside it was in fact a step smaller. ADR-082.
+
+### Vertical rhythm
+
+Bands are `clamp(2rem, 4.2vw, 3.5rem)`. A page with more air than content reads as
+stretched, and the fix is never to add another section.
+
+## Icons
+
+**Font Awesome Whiteboard Semibold, everywhere, through `components/Icon.tsx`.**
+Nothing imports an icon library directly and nothing draws its own SVG glyph.
+ADR-083.
+
+- The map lives in `lib/icons.ts`, keyed by the **job** — `remove`, `agent`,
+  `zoomOut` — not by the picture. Changing artwork must never mean editing a
+  caller.
+- **Size with `font-size`, never with `width` and `height`.** A Whiteboard glyph
+  is rarely square (`pen-line` is 640x512), and a square box squashes it.
+  `.jd-icon` is one em tall and as wide as its own artwork.
+- The family is 492 icons, not the whole library. `eraser`, `highlighter` and
+  `lasso` are not in it; `SUBSTITUTED` lists what stands in for them.
+- Installing needs `FONTAWESOME_NPM_TOKEN` — on a laptop, in CI, and as a
+  BuildKit secret in `web.Dockerfile`.
+
+## Images
+
+**Every marketing page carries at least one real image.** A page of type on paper is
+not "clean", it is unfinished -- and it is the single loudest tell that nobody looked
+at the page after writing it.
+
+What counts, in order of preference (design.md §15, §16):
+
+1. **A real situation** -- someone jotting outdoors, a phone at a lake, a photo taken
+   during a project. Never stock-photo offices, never a robot, never a glowing brain.
+2. **Loose ink illustration** -- simple black lines, a sketch, a handwritten arrow, a
+   scribbled circle. The napkin, drawn.
+3. **The product itself**, framed -- what the hero does.
+
+Assets live in `apps/web/public/img/`, and that path is in the middleware's
+`PASSTHROUGH` (ADR-076) -- without it the apex rewrites `/img/...` to `/site/img/...`
+and every image on the marketing site is a broken icon.
 
 ## The app shell: canvas-first, two pieces of floating chrome
 
-**The app is a canvas.** Opening `app.jotdojo.com` puts a live writable surface on screen — content if there is any, otherwise blank with *Start jotting*. Zero clicks to write.
+**The app is a canvas.** Opening `app.jotacular.com` puts a live writable surface on screen — content if there is any, otherwise blank with *Start jotting*. Zero clicks to write.
 
 A dashboard, a notes list, and history all still exist. **They are simply not the landing page.** They are reached from the chrome and return to the canvas.
 

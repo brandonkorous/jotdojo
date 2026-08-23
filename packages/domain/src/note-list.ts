@@ -1,5 +1,5 @@
 import { eq, sql } from "drizzle-orm";
-import { withActor, notes } from "@jotdojo/db";
+import { withActor, notes } from "@jotacular/db";
 import { canReachSpace, type Actor } from "./actor";
 import { Forbidden, NotFound } from "./errors";
 import { previewOf, audit } from "./note-body";
@@ -81,7 +81,7 @@ export async function listNotes(
   });
 }
 
-/** Soft delete, always. Nothing in jotdojo is destroyed. */
+/** Soft delete, always. Nothing in jotacular is destroyed. */
 export async function deleteNote(actor: Actor, noteId: string): Promise<void> {
   await withActor(actor.userId, async (tx) => {
     const rows = await tx.select({ spaceId: notes.spaceId }).from(notes)

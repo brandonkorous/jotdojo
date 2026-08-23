@@ -1,5 +1,5 @@
 {
-  "name": "@jotdojo/domain",
+  "name": "@jotacular/domain",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -24,11 +24,11 @@
     "smoke:live": "dotenv -e ../../.env -- tsx scripts/smoke-live.ts"
   },
   "dependencies": {
-    "@jotdojo/db": "workspace:*",
+    "@jotacular/db": "workspace:*",
     "drizzle-orm": "^0.38.3",
-    "@jotdojo/embeddings": "workspace:*",
-    "@jotdojo/storage": "workspace:*",
-    "@jotdojo/billing": "workspace:*"
+    "@jotacular/embeddings": "workspace:*",
+    "@jotacular/storage": "workspace:*",
+    "@jotacular/billing": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^5.7.3",

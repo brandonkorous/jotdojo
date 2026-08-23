@@ -1,6 +1,6 @@
 "use client";
 
-import { MessageSquare } from "lucide-react";
+import { Icon } from "@/components/Icon";
 import { useRemarks } from "@/lib/remarks";
 
 /**
@@ -26,7 +26,7 @@ export function RemarksButton() {
       aria-label={waiting === 0 ? "What your agent has said" : `${waiting} waiting`}
       onClick={() => remarks.setDrawer(true)}
     >
-      <MessageSquare aria-hidden strokeWidth={1.75} />
+      <Icon name="remarks" />
       {waiting > 0 && <span aria-hidden className="jd-remarks-count">{waiting}</span>}
     </button>
   );

@@ -1,0 +1,116 @@
+/* The repeating things: promise cards, the pricing table, and the post list.
+   docs/10-design-system.md.
+
+   Split out of site.css at the 250-line limit. site.css is the shell -- the
+   bar, the bands and the type scale every page shares; this is the furniture
+   that sits inside them. ADR-080. */
+
+/* --- lists of things ---------------------------------------------------- */
+
+.jd-cards,
+.jd-plans {
+    display: grid;
+    gap: 1.5rem;
+    /* Four plans, and four is the number that has to fit. At a 15rem minimum
+     the fourth wrapped to a row of its own with three empty columns beside it,
+     which reads as "and one more we forgot" rather than as a price list. */
+    grid-template-columns: repeat(auto-fit, minmax(12.5rem, 1fr));
+}
+.jd-cards article,
+.jd-plans article {
+    border: 1px solid var(--color-base-300);
+    border-radius: var(--radius-box, 0.75rem);
+    padding: 1.5rem;
+    background: var(--color-base-100);
+    box-shadow: var(--shadow-lift);
+}
+/* The featured plan sits a step higher than the rest, which is the point of it. */
+.jd-plans article[data-feature='true'] {
+    box-shadow: var(--shadow-raise);
+}
+.jd-cards p {
+    font-size: var(--body);
+    line-height: 1.55;
+    max-width: none;
+}
+
+/* Mint marks the plan we would like read first. Not violet: that is the agent's
+   colour and it never lands on something the reader is choosing. ADR-073. */
+.jd-plans article[data-feature='true'] {
+    border-color: var(--color-primary);
+}
+.jd-plan-price strong {
+    font-size: 2.25rem;
+    font-family: var(--font-head);
+    font-weight: 800;
+}
+.jd-plan-price span {
+    color: var(--ink-2);
+    font-size: 0.9rem;
+}
+.jd-plan-who {
+    font-size: 0.9rem;
+    color: var(--ink-2);
+}
+.jd-plan-reads {
+    font-size: 0.9rem;
+    margin-top: 0.5rem;
+}
+.jd-plans ul {
+    margin-top: 1rem;
+    display: grid;
+    gap: 0.4rem;
+    font-size: 0.95rem;
+    line-height: 1.45;
+}
+.jd-plans li {
+    padding-left: 1rem;
+    text-indent: -1rem;
+}
+.jd-plans li::before {
+    color: var(--color-primary);
+    content: '\2014\00a0';
+}
+
+.jd-plan-cta {
+    margin-top: 2rem;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem 1rem;
+}
+.jd-plan-cta span {
+    font-size: 0.95rem;
+    color: var(--ink-2);
+}
+
+.jd-fineprint {
+    margin-top: 1.25rem;
+    font-size: 0.95rem;
+    color: var(--ink-2);
+    max-width: none;
+}
+
+.jd-post-list {
+    display: grid;
+    gap: 1.5rem;
+    grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr));
+}
+.jd-post-list > li > a {
+    font-family: var(--font-head);
+    font-size: 1.15rem;
+    font-weight: 700;
+    line-height: 1.25;
+}
+.jd-post-list > li > a:hover {
+    text-decoration: underline;
+}
+.jd-post-list p {
+    font-size: var(--body);
+    margin-top: 0.4rem;
+    max-width: none;
+}
+.jd-post-list time {
+    font-size: 0.85rem;
+    color: var(--ink-2);
+}

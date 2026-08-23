@@ -1,4 +1,4 @@
-import { exportSpace } from "@jotdojo/domain";
+import { exportSpace } from "@jotacular/domain";
 import { requireActor } from "@/lib/session";
 import { zipNotes } from "@/lib/export-zip";
 import { download, refusal } from "@/lib/export-response";
@@ -29,7 +29,7 @@ export async function GET(
 
   const at = new Date();
   // Dated, because this is the kind of file that gets downloaded twice and
-  // then compared. `jotdojo.zip (2)` answers no question anybody has.
-  const name = `jotdojo-${at.toISOString().slice(0, 10)}.zip`;
+  // then compared. `jotacular.zip (2)` answers no question anybody has.
+  const name = `jotacular-${at.toISOString().slice(0, 10)}.zip`;
   return download(await zipNotes(notes, at), "application/zip", name);
 }

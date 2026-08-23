@@ -1,6 +1,6 @@
-# jotdojo — project documentation
+# Jotacular — project documentation
 
-Everything needed to take jotdojo from empty repo to shipped product. Read in order the first time; after that, jump to what you need.
+Everything needed to take Jotacular from empty repo to shipped product. Read in order the first time; after that, jump to what you need.
 
 | Doc | What it settles |
 |---|---|
@@ -23,10 +23,11 @@ Everything needed to take jotdojo from empty repo to shipped product. Read in or
 | [16-web-presence.md](16-web-presence.md) | Domains, canvas-first shell, anonymous capture, SEO |
 | [17-shared-infrastructure.md](17-shared-infrastructure.md) | **Read before deploying.** We share sparx's cluster and SQL server: what that constrains, and the pipeline that follows |
 | [18-app-directories.md](18-app-directories.md) | Reaching people who never learned the word MCP: Claude and ChatGPT listings |
+| [19-rebrand.md](19-rebrand.md) | The rename to Jotacular: what moved, what deliberately did not, and why the domain lags |
 
 ## The one-paragraph version
 
-jotdojo is a web-only capture app where a thought lands in under a second — typed, handwritten, spoken, or photographed — and becomes useful later, because agents can read it over a hosted MCP server. It is the bar napkin a business starts on, and the notepad in a bag at cheer practice. It is not a knowledge base and it is not a task manager; its sibling product **kanninja** handles action.
+Jotacular is a web-only capture app where a thought lands in under a second — typed, handwritten, spoken, or photographed — and becomes useful later, because agents can read it over a hosted MCP server. It is the bar napkin a business starts on, and the notepad in a bag at cheer practice. It is not a knowledge base and it is not a task manager; its sibling product **kanninja** handles action.
 
 ## The code
 
@@ -45,5 +46,5 @@ boundary and should stay green — ADR-019 explains why that is not optional.
 
 - **Must / should / may** are used deliberately. "Must" means a decision is settled — see [15-decision-log.md](15-decision-log.md) before reopening one.
 - Code and schema here are illustrative, not authoritative. The repo is the truth once it exists.
-- The repo directory is `jotDOJO`, matching the product. It was `noteNINJA` for historical reasons and was renamed on 2026-08-21; anything still saying otherwise is stale.
-- The **GitHub repository name is a separate fact from the directory name**, and one place depends on it: the federated credential in the sparx repo at `terraform/envs/azure/jotdojo.tf` builds its subject from `owner/repo`, matched exactly and case-sensitively. There is no remote yet. When the repo is created, check that variable against the real name before the first deploy.
+- The repo directory is still `jotDOJO`. It is the one name the rename left alone (ADR-086): renaming a checkout other sessions and tools hold open buys nothing, and the product's name is not in a path anybody reads. Everything inside it says Jotacular.
+- The **GitHub repository name is a separate fact from the directory name**, and one place depends on it: the federated credential in the sparx repo at `terraform/envs/azure/jotacular.tf` builds its subject from `owner/repo`, matched exactly and case-sensitively. There is no remote yet. When the repo is created, check that variable against the real name before the first deploy.

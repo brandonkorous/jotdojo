@@ -1,14 +1,14 @@
 /**
  * Every workspace package an image needs must actually be IN the image.
  *
- * The triage agent shipped a new package, `@jotdojo/reason`, and nothing copied
+ * The triage agent shipped a new package, `@jotacular/reason`, and nothing copied
  * it into worker.Dockerfile. Typecheck passed, sixteen suites passed, CI went
  * green, and the container crashlooped in production on
  * `ERR_MODULE_NOT_FOUND`. Nothing in this repo was in a position to notice,
  * because every check runs against the workspace where the package is present.
  *
  * The rule is the whole declared closure, with no exemption for packages that
- * are only imported as TYPES today. `@jotdojo/billing` was exactly that -- an
+ * are only imported as TYPES today. `@jotacular/billing` was exactly that -- an
  * `import type` in domain, stripped at transpile, absent from three images and
  * harmless until the day somebody imports a value from it. A rule with an
  * exception list is a rule that gets an entry added instead of being obeyed.
@@ -29,14 +29,14 @@ const check = (label: string, ok: boolean, detail = "") => {
 
 const read = (path: string) => readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
 
-/** The `@jotdojo/*` names a package.json declares as runtime dependencies. */
+/** The `@jotacular/*` names a package.json declares as runtime dependencies. */
 function deps(dir: string): string[] {
   const json = JSON.parse(read(`${dir}/package.json`)) as {
     dependencies?: Record<string, string>;
   };
   return Object.keys(json.dependencies ?? {})
-    .filter((name) => name.startsWith("@jotdojo/"))
-    .map((name) => name.slice("@jotdojo/".length));
+    .filter((name) => name.startsWith("@jotacular/"))
+    .map((name) => name.slice("@jotacular/".length));
 }
 
 /** Transitive, because an image needs what its dependencies need. */

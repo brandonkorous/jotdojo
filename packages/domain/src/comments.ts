@@ -1,5 +1,5 @@
 import { and, asc, eq } from "drizzle-orm";
-import { withActor, comments, notes, mcpClients, users } from "@jotdojo/db";
+import { withActor, comments, notes, mcpClients, users } from "@jotacular/db";
 import { attribution, canReachSpace, hasScope, type Actor } from "./actor";
 import { Forbidden, NotFound } from "./errors";
 import { assertAgentMayWrite } from "./plans";

@@ -1,6 +1,6 @@
 # 17 — Shared infrastructure, and the deploy that follows from it
 
-jotDOJO does not own the cluster or the database server. Both belong to **sparx**
+Jotacular does not own the cluster or the database server. Both belong to **sparx**
 — a different product in a different repository — which already runs sparx
 itself, the piggles brand, and kanNINJA on them.
 
@@ -13,15 +13,15 @@ production and fails for a reason nothing here would have suggested.
 
 | Thing | Owner | Ours |
 |---|---|---|
-| AKS cluster `aks-sparx-prod-cus` | sparx | the `jotdojo` **namespace** |
+| AKS cluster `aks-sparx-prod-cus` | sparx | the `jotacular` **namespace** |
 | Caddy ingress + its routing table | sparx | nothing — see [Cross-repo](#the-cross-repo-part) |
-| Postgres server `psql-sparx-prod-cus` | sparx | the `jotdojo` **database** |
-| Key Vault | — | `kv-jotdojo-prod-cus`, ours alone |
-| Blob storage | — | `stjotdojoprodcus`, ours alone |
-| Azure CI identity | — | ours alone, `brandonkorous/jotdojo` only |
+| Postgres server `psql-sparx-prod-cus` | sparx | the `jotacular` **database** |
+| Key Vault | — | `kv-jotacular-prod-cus`, ours alone |
+| Blob storage | — | `stjotacularprodcus`, ours alone |
+| Azure CI identity | — | ours alone, `brandonkorous/jotacular` only |
 
 Everything on the right is defined in the **sparx** repo at
-`terraform/envs/azure/jotdojo.tf` — one file, so deleting it removes jotDOJO's
+`terraform/envs/azure/jotacular.tf` — one file, so deleting it removes Jotacular's
 whole Azure footprint and touches nothing of sparx's.
 
 ## The database
@@ -80,7 +80,7 @@ start order. **Raising a pool size is a decision about sparx too.**
 
 **The live channel is a connection, and it is not in a pool.** `LISTEN` holds a
 backend open for the life of the process, so `packages/db/src/live.ts` opens its
-own client (`application_name=jotdojo-live`) rather than taking a fifth of web's
+own client (`application_name=jotacular-live`) rather than taking a fifth of web's
 pool and never giving it back. It is opened lazily, on the first subscriber, so
 a web pod that nobody has a note open on does not hold one at all.
 
@@ -93,7 +93,7 @@ next step B2s is ~$56/mo — 4×, not 2×. Cap the pools first.
 
 ### Roles
 
-`DATABASE_URL` must point at the **restricted `jotdojo_app` role**, created by
+`DATABASE_URL` must point at the **restricted `jotacular_app` role**, created by
 `0001_app_role.sql`. Never the owner. PostgreSQL exempts superusers and
 `BYPASSRLS` roles from every policy, so an owner connection string turns the
 entire tenancy boundary off while every policy still reads as though it were
@@ -103,8 +103,8 @@ environment you are unsure about.
 
 ## Secrets
 
-Key Vault `kv-jotdojo-prod-cus`, read at deploy time and materialised into a
-Kubernetes Secret named `jotdojo-secrets` in the `jotdojo` namespace. The
+Key Vault `kv-jotacular-prod-cus`, read at deploy time and materialised into a
+Kubernetes Secret named `jotacular-secrets` in the `jotacular` namespace. The
 manifests in `infra/k8s` mount it with `envFrom.secretRef`; nothing in this repo
 contains a secret value.
 
@@ -113,7 +113,7 @@ a compromised workflow cannot rewrite a credential the product then deploys.
 Loading a secret is a human action:
 
 ```
-az keyvault secret set --vault-name kv-jotdojo-prod-cus --name DATABASE-URL --value '...'
+az keyvault secret set --vault-name kv-jotacular-prod-cus --name DATABASE-URL --value '...'
 ```
 
 Key Vault secret names allow only alphanumerics and hyphens, so an env var like
@@ -122,7 +122,7 @@ Key Vault secret names allow only alphanumerics and hyphens, so an env var like
 ## The deploy pipeline
 
 This repo has its own workflows, and needs them: sparx's pipeline cannot deploy
-jotDOJO, because its release is scoped to its own overlay and its Azure identity
+Jotacular, because its release is scoped to its own overlay and its Azure identity
 is a different OIDC subject. Two are enough, and both are written:
 `.github/workflows/ci.yml` and `.github/workflows/release.yml`.
 
@@ -146,20 +146,20 @@ variables:
 
 | Variable | Value |
 |---|---|
-| `AZURE_CLIENT_ID` | from `terraform output jotdojo_github_setup` |
+| `AZURE_CLIENT_ID` | from `terraform output jotacular_github_setup` |
 | `AZURE_TENANT_ID` | ” |
 | `AZURE_SUBSCRIPTION_ID` | ” |
-| `AZURE_KEY_VAULT_NAME` | `kv-jotdojo-prod-cus` |
+| `AZURE_KEY_VAULT_NAME` | `kv-jotacular-prod-cus` |
 
-Run `terraform output jotdojo_github_setup` in the sparx repo — it prints the
+Run `terraform output jotacular_github_setup` in the sparx repo — it prints the
 four `gh variable set` commands verbatim.
 
-**2. Build and push four images** to `ghcr.io/brandonkorous/jotdojo/<service>`,
+**2. Build and push four images** to `ghcr.io/brandonkorous/jotacular/<service>`,
 tagged with the commit SHA — never `latest`. Dockerfiles are in `infra/docker/`
 and all four **build from the repo root**:
 
 ```
-docker build -f infra/docker/api.Dockerfile -t ghcr.io/brandonkorous/jotdojo/api:$SHA .
+docker build -f infra/docker/api.Dockerfile -t ghcr.io/brandonkorous/jotacular/api:$SHA .
 ```
 
 **3. Get cluster credentials.**
@@ -170,7 +170,7 @@ az aks get-credentials -g rg-sparx-prod-cus -n aks-sparx-prod-cus --overwrite-ex
 
 **4. Apply namespace, config, and the Secret** — before anything that reads them.
 `kubectl apply -f infra/k8s/00-namespace.yaml -f infra/k8s/01-config.yaml`, then
-read Key Vault and write `jotdojo-secrets` with
+read Key Vault and write `jotacular-secrets` with
 `kubectl create secret generic ... --dry-run=client -o yaml | kubectl apply -f -`.
 
 **5. Migrate, as a Job in the cluster.** This is the step that cannot be a
@@ -183,7 +183,7 @@ as no migration at all, discovered later by a user.
 `:latest` placeholder:
 
 ```
-kubectl set image -n jotdojo deploy/api api=ghcr.io/brandonkorous/jotdojo/api:$SHA
+kubectl set image -n jotacular deploy/api api=ghcr.io/brandonkorous/jotacular/api:$SHA
 ```
 
 Then `kubectl rollout status` on each, with a timeout, so a wedged rollout fails
@@ -211,16 +211,16 @@ three of them proxy to the same Service:
 
 | Hostname | Service | What it serves |
 |---|---|---|
-| `jotdojo.com` | `jotdojo-web` | the marketing site |
-| `www.jotdojo.com` | `jotdojo-web` | the same, matched by the app (ADR-040) |
-| `app.jotdojo.com` | `jotdojo-web` | **the app.** Never the apex — ADR-010, ADR-018 |
-| `api.jotdojo.com` | `jotdojo-api` | REST v1, the Shortcuts endpoint |
-| `mcp.jotdojo.com` | `jotdojo-mcp` | MCP + the OAuth authorization server |
+| `jotacular.com` | `jotacular-web` | the marketing site |
+| `www.jotacular.com` | `jotacular-web` | the same, matched by the app (ADR-040) |
+| `app.jotacular.com` | `jotacular-web` | **the app.** Never the apex — ADR-010, ADR-018 |
+| `api.jotacular.com` | `jotacular-api` | REST v1, the Shortcuts endpoint |
+| `mcp.jotacular.com` | `jotacular-mcp` | MCP + the OAuth authorization server |
 
-Blocks already exist for `jotdojo.com`, `www.`, `api.` and `mcp.`. **`app.` is the
+Blocks already exist for `jotacular.com`, `www.`, `api.` and `mcp.`. **`app.` is the
 one to check before deploying** — it was not in the original four, and it is the
 hostname the whole product is installed from. The apex and `www` need no change
-beyond confirming they still point at `jotdojo-web`, because the marketing site
+beyond confirming they still point at `jotacular-web`, because the marketing site
 is that same deployment answering to a different Host.
 
 **TLS authorisation** — `wizeworks/services/api-rest/src/routes/internal/domain-check.ts`.
@@ -243,26 +243,26 @@ running a second ingress, which would mean a second load balancer.
 - [ ] Apply the sparx-side Terraform so the database, vault, storage and CI
       identity exist.
 - [ ] Set the four repository variables (step 1 above).
-- [ ] Load the secrets into `kv-jotdojo-prod-cus`. Key Vault names allow only
+- [ ] Load the secrets into `kv-jotacular-prod-cus`. Key Vault names allow only
       alphanumerics and hyphens, so the release step maps `DATABASE_URL` to a
       secret named `DATABASE-URL`; the authoritative list is the `required` and
       `optional` arrays in `.github/workflows/release.yml`.
-- [ ] `JOTDOJO-APP-PASSWORD` must be the SAME password that appears inside
-      `DATABASE-URL`. A release job runs `ALTER ROLE jotdojo_app LOGIN PASSWORD`
+- [ ] `JOTACULAR-APP-PASSWORD` must be the SAME password that appears inside
+      `DATABASE-URL`. A release job runs `ALTER ROLE jotacular_app LOGIN PASSWORD`
       with it, so a mismatch resets the role out from under the connection
       string every service is using, and they all crashloop together.
 - [ ] Adding a secret to the vault is not enough on its own. If its name is not
       in one of those two arrays the release never reads it, and the feature is
       off in production while the vault looks correctly configured.
-- [ ] Point `jotdojo.com`, `www`, `app`, `api` and `mcp` DNS at the cluster's ingress IP.
-- [ ] Confirm the Caddyfile has an `app.jotdojo.com` block proxying to `jotdojo-web`,
+- [ ] Point `jotacular.com`, `www`, `app`, `api` and `mcp` DNS at the cluster's ingress IP.
+- [ ] Confirm the Caddyfile has an `app.jotacular.com` block proxying to `jotacular-web`,
       and that `app.` is in the `domain-check.ts` allow-list. Without it the app
       is unreachable while the marketing site loads perfectly, which reads as a
       DNS problem and is not one.
-- [ ] Confirm `MCP_RESOURCE` is exactly `https://mcp.jotdojo.com/mcp` — RFC 8707
+- [ ] Confirm `MCP_RESOURCE` is exactly `https://mcp.jotacular.com/mcp` — RFC 8707
       binds every access token to that literal string.
 - [ ] If the deployment takes money: register the Stripe webhook at
-      `https://app.jotdojo.com/api/billing/webhook`, subscribed to
+      `https://app.jotacular.com/api/billing/webhook`, subscribed to
       `customer.subscription.created`, `.updated` and `.deleted` — those three
       and not `checkout.session.completed`, which this integration ignores. A
       key without a registered webhook charges cards and grants nothing, and it

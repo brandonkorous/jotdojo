@@ -64,7 +64,7 @@
   background: color-mix(in oklch, var(--color-base-content) 35%, transparent);
 }
 
-.jd-live-dot[data-tone="trouble"] { background: var(--color-accent); }
+.jd-live-dot[data-tone="trouble"] { background: var(--color-error); }
 .jd-live-dot[data-tone="standing"] { background: var(--color-agent); }
 .jd-live[data-tone="trouble"] .jd-live-text { opacity: 1; }
 
@@ -80,7 +80,7 @@
 }
 
 .jd-live-more:hover { opacity: 1; }
-.jd-live-chevron { width: 0.875rem; height: 0.875rem; transition: transform 140ms ease; }
+.jd-live-chevron { font-size: 0.875rem; transition: transform 140ms ease; }
 .jd-live-chevron-open { transform: rotate(180deg); }
 
 /* What is behind the line. It grows UPWARD from the line so the line itself

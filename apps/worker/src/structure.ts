@@ -1,10 +1,10 @@
 import {
   claimStructureJobs, storeStructure, finishJob, recordRecognition,
   type StructureJob,
-} from "@jotdojo/domain";
-import { tiles, bounds } from "@jotdojo/ink-render";
-import { toPng } from "@jotdojo/ink-render/raster";
-import { readStructure, RecognitionError, type Recognizer } from "@jotdojo/vision";
+} from "@jotacular/domain";
+import { tiles, bounds } from "@jotacular/ink-render";
+import { toPng } from "@jotacular/ink-render/raster";
+import { readStructure, RecognitionError, type Recognizer } from "@jotacular/vision";
 import { structureSourceFor } from "./sources";
 
 /**

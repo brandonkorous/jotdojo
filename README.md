@@ -1,4 +1,4 @@
-# jotdojo
+# Jotacular
 
 Where the thought lands.
 
@@ -74,7 +74,7 @@ Known gaps in M0, both intentional:
     pnpm install
     cp .env.example .env          # then fill in AUTH_SECRET and the Google OAuth pair
     pnpm db:up                    # Postgres 17 + pgvector on :5433
-    pnpm db:setup                 # migrations + the local jotdojo_app password
+    pnpm db:setup                 # migrations + the local jotacular_app password
     pnpm db:smoke                 # proves row-level security actually enforces
     pnpm dev                      # http://localhost:3400
 
@@ -82,7 +82,7 @@ Generate `AUTH_SECRET` with:
 
     node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
 
-### Ports: jotdojo owns 3400-3409
+### Ports: Jotacular owns 3400-3409
 
 | Port | Service |
 |---|---|
@@ -92,9 +92,9 @@ Generate `AUTH_SECRET` with:
 | 3403 | `apps/worker` — health and metrics (M2) |
 | 5433 | Postgres (docker compose) |
 
-A block rather than the next free port, because jotdojo is four services and taking
+A block rather than the next free port, because Jotacular is four services and taking
 single ports as we go would scatter them through whatever gaps exist that week. On this
-machine `sparx.works` occupies 3000-3022 plus 3100/3200/3300, so jotdojo starts cleanly
+machine `sparx.works` occupies 3000-3022 plus 3100/3200/3300, so Jotacular starts cleanly
 after it. If kanninja ever runs locally, give it 3500-3509.
 
 **Not port 3000**, and the reason is worth knowing because the failure is silent: if
@@ -107,7 +107,7 @@ Keep 3400 stable: the Google OAuth redirect URI is registered against it.
 
 **The marketing site shares 3400.** The apex and the app are one deployment routed by Host
 (ADR-040), so locally the app is `http://localhost:3400` and the marketing site is
-`http://jotdojo.localhost:3400` — browsers resolve `*.localhost` to loopback, so no hosts
+`http://jotacular.localhost:3400` — browsers resolve `*.localhost` to loopback, so no hosts
 file is involved. Node's resolver does not, which is why `site:smoke` sends the hostname as
 `x-forwarded-host`, exactly as Caddy does.
 
@@ -143,7 +143,7 @@ If you add a workspace that needs configuration, give its scripts the same
 
 ## The governing rule
 
-**One domain core, three thin adapters.** `apps/api`, `apps/mcp`, and `apps/worker` all call `@jotdojo/domain`. Nothing but `@jotdojo/db` talks to Postgres, and nothing but the domain layer calls `@jotdojo/db`. If an agent can do a thing, it is because a domain method allowed it and the web UI could do the same thing the same way.
+**One domain core, three thin adapters.** `apps/api`, `apps/mcp`, and `apps/worker` all call `@jotacular/domain`. Nothing but `@jotacular/db` talks to Postgres, and nothing but the domain layer calls `@jotacular/db`. If an agent can do a thing, it is because a domain method allowed it and the web UI could do the same thing the same way.
 
 See [docs/03-architecture.md](docs/03-architecture.md).
 
@@ -152,7 +152,7 @@ See [docs/03-architecture.md](docs/03-architecture.md).
 Row-level security keyed to space membership is the tenancy boundary. Two things keep
 it real, and both are easy to get wrong (ADR-019):
 
-- **The app connects as `jotdojo_app`, never as an admin role.** PostgreSQL exempts
+- **The app connects as `jotacular_app`, never as an admin role.** PostgreSQL exempts
   superusers from every policy, so an admin connection string turns tenancy off while
   every policy still reads as though it were enforced.
 - **`pnpm db:smoke` must stay green.** It creates two users and asserts that neither can

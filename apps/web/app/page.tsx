@@ -1,7 +1,7 @@
 import {
   listNotes, getNote, createNote, defaultSpaceId, getToolbarSide, hasInk,
   listNoteComments,
-} from "@jotdojo/domain";
+} from "@jotacular/domain";
 import { requireActor, currentUser } from "@/lib/session";
 import { Canvas } from "@/components/Canvas";
 import { CanvasStage } from "@/components/CanvasStage";

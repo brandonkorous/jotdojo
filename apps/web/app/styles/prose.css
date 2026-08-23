@@ -34,7 +34,7 @@
 }
 .jd-prose pre code { background: none; padding: 0; }
 .jd-prose blockquote {
-  border-left: 2px solid var(--color-accent);
+  border-left: 2px solid var(--color-primary);
   padding-left: 1rem;
   opacity: 0.85;
 }

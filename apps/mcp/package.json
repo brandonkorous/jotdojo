@@ -1,5 +1,5 @@
 {
-  "name": "@jotdojo/mcp",
+  "name": "@jotacular/mcp",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -15,8 +15,8 @@
     "check:tools": "tsx scripts/check-tools.ts"
   },
   "dependencies": {
-    "@jotdojo/domain": "workspace:*",
-    "@jotdojo/ink-render": "workspace:*",
+    "@jotacular/domain": "workspace:*",
+    "@jotacular/ink-render": "workspace:*",
     "sharp": "^0.33.5",
     "@modelcontextprotocol/sdk": "^1.30.0",
     "zod": "^3.24.1",

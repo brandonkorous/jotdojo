@@ -1,4 +1,4 @@
-import { artifactBytes, type ExportNote } from "@jotdojo/domain";
+import { artifactBytes, type ExportNote } from "@jotacular/domain";
 import { attachmentsOf, inkSvg, noteMarkdown, slugOf } from "./export-files";
 import { zip, type ZipEntry } from "./zip";
 
@@ -62,7 +62,7 @@ export async function zipNotes(notes: ExportNote[], at = new Date()): Promise<Ui
  */
 function readme(count: number, skipped: string[], at: Date): string {
   const lines = [
-    "Your jotdojo notes",
+    "Your Jotacular notes",
     "==================",
     "",
     `${count} ${count === 1 ? "note" : "notes"}, exported ${at.toISOString().slice(0, 10)}.`,

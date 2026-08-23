@@ -1,4 +1,4 @@
-import type { Point } from "@jotdojo/domain";
+import type { Point } from "@jotacular/domain";
 import type { Bounds } from "./ink-geometry";
 
 /**

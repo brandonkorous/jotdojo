@@ -1,5 +1,5 @@
 /**
- * @jotdojo/worker -- the async half.
+ * @jotacular/worker -- the async half.
  *
  * Drains the outbox and runs everything the capture path is forbidden from
  * doing. The synchronous capture path never calls a model; if a model is in
@@ -11,10 +11,10 @@
  * independent -- a missing provider for one does not stop the others, and none
  * of them stops capture. ADR-007, ADR-066.
  */
-import { embedder } from "@jotdojo/embeddings";
-import { recognizer } from "@jotdojo/vision";
-import { transcriber } from "@jotdojo/speech";
-import { reasoner } from "@jotdojo/reason";
+import { embedder } from "@jotacular/embeddings";
+import { recognizer } from "@jotacular/vision";
+import { transcriber } from "@jotacular/speech";
+import { reasoner } from "@jotacular/reason";
 import { runCycle } from "./embed";
 import { runRecognitionCycle } from "./recognize";
 import { runStructureCycle } from "./structure";

@@ -1,4 +1,4 @@
-import { exchangeAuthCode, refreshTokens, OAuthError } from "@jotdojo/domain";
+import { exchangeAuthCode, refreshTokens, OAuthError } from "@jotacular/domain";
 
 const fail = (code: string, description: string, status = 400) =>
   Response.json({ error: code, error_description: description }, {

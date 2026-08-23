@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { listNotes, defaultSpaceId, listSpaces } from "@jotdojo/domain";
+import { listNotes, defaultSpaceId, listSpaces } from "@jotacular/domain";
 import { requireActor } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
@@ -34,7 +34,7 @@ export default async function Dashboard() {
       <section>
         <h2 className="mb-3 font-head text-xl">History</h2>
         {notes.length === 0 ? (
-          <p className="opacity-60">Nothing here yet.</p>
+          <p className="opacity-60">Nothing here yet. Go have a thought.</p>
         ) : (
           <ul className="divide-y divide-base-300">
             {notes.map((n) => (

@@ -1,5 +1,5 @@
-import { claimEmbedJobs, finishJob, storeEmbedding, type EmbedJob } from "@jotdojo/domain";
-import { EmbeddingError, type Embedder } from "@jotdojo/embeddings";
+import { claimEmbedJobs, finishJob, storeEmbedding, type EmbedJob } from "@jotacular/domain";
+import { EmbeddingError, type Embedder } from "@jotacular/embeddings";
 
 export type CycleResult = { claimed: number; embedded: number; failed: number };
 

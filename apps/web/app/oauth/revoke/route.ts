@@ -1,4 +1,4 @@
-import { revokeToken } from "@jotdojo/domain";
+import { revokeToken } from "@jotacular/domain";
 
 /**
  * Token revocation (RFC 7009).

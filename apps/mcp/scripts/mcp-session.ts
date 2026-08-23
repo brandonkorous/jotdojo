@@ -6,7 +6,7 @@ import {
   createInkBlock, appendStrokes,
   registerClient, issueAuthCode, exchangeAuthCode,
   type Actor, type Point, type Stroke,
-} from "@jotdojo/domain";
+} from "@jotacular/domain";
 
 /**
  * Standing up a real agent against a real server.

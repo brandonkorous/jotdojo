@@ -23,11 +23,11 @@ Four deployables. Keep it at four as long as possible.
 | **mcp** | Node, TypeScript, MCP SDK | Streamable HTTP transport, OAuth 2.1 resource server, tool surface |
 | **worker** | Node, TypeScript | Recognition pipeline, embeddings, triage agent, outbox drain |
 
-`api`, `mcp`, and `worker` all import the same `@jotdojo/domain` package. That package owns authorization, validation, and persistence. Nothing else talks to Postgres.
+`api`, `mcp`, and `worker` all import the same `@jotacular/domain` package. That package owns authorization, validation, and persistence. Nothing else talks to Postgres.
 
 ## Repo layout
 
-    jotdojo/
+    jotacular/
       apps/
         web/            Next.js PWA + BFF
         api/            Fastify REST
@@ -64,7 +64,7 @@ Monorepo with pnpm workspaces + Turborepo. One language (TypeScript) end to end,
 | Database | **Azure Postgres Flexible Server** | With `pgvector` and `pg_trgm`. Single database, RLS for tenancy |
 | Object storage | **Azure Blob** | Audio, images, rendered ink previews. SAS URLs, never proxied through the API |
 | Secrets | **Key Vault** + CSI driver | With AKS Workload Identity. No secrets in env vars or images |
-| Terraform | **in the sparx repo** | `terraform/envs/azure/jotdojo.tf`, one file, so deleting it removes jotDOJO's whole Azure footprint |
+| Terraform | **in the sparx repo** | `terraform/envs/azure/jotacular.tf`, one file, so deleting it removes Jotacular's whole Azure footprint |
 | Ingress | **the shared Caddy**, on-demand TLS | Not ours. It lives in the sparx repo and routes cross-namespace; adding a hostname is a two-repo change. See [infra/README.md](../infra/README.md) |
 | Queue | **Postgres outbox** first | Azure Service Bus only if the outbox actually becomes a bottleneck. Not Kafka. Ever. |
 | Observability | OpenTelemetry to Azure Monitor | One trace ID across web, api, mcp, worker |
@@ -131,7 +131,7 @@ coming back from the worker. ADR-058, and it is one page of rules:
 - **Presence** says who is here and who is writing — the honest substitute for a merge
   algorithm, since you can see the collision coming.
 
-sparx solves this with NATS JetStream and socket.io. ADR-058 says why jotDOJO does not,
+sparx solves this with NATS JetStream and socket.io. ADR-058 says why Jotacular does not,
 and what would change that.
 
 ## Multi-tenancy

@@ -34,11 +34,27 @@ const config: NextConfig = {
   },
 
   // The domain and db packages ship as TypeScript source, not built output.
-  transpilePackages: ["@jotdojo/domain", "@jotdojo/db"],
+  transpilePackages: ["@jotacular/domain", "@jotacular/db"],
   // Neither of these may be bundled into the server build. postgres-js breaks
   // when it is; sharp is a platform-specific native binary, reached only from
-  // the export routes through `@jotdojo/ink-render/raster`. ADR-067.
+  // the export routes through `@jotacular/ink-render/raster`. ADR-067.
   serverExternalPackages: ["postgres", "sharp"],
+
+  /**
+   * The rename moved our most-linked post. ADR-072.
+   *
+   * Permanent, because the old slug is in other people's bookmarks and in the
+   * index -- a 404 there costs the one piece of SEO we actually have.
+   */
+  async redirects() {
+    return [
+      {
+        source: "/blog/connect-jotacular-to-claude",
+        destination: "/blog/connect-jotacular-to-claude",
+        permanent: true,
+      },
+    ];
+  },
 
   // Next ignores directories starting with a dot, so the well-known paths
   // required by RFC 8414 are rewritten onto ordinary route handlers.

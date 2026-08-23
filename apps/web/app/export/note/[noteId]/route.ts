@@ -1,5 +1,5 @@
-import { exportNote, type ExportNote } from "@jotdojo/domain";
-import { svgToPng } from "@jotdojo/ink-render/raster";
+import { exportNote, type ExportNote } from "@jotacular/domain";
+import { svgToPng } from "@jotacular/ink-render/raster";
 import { requireActor } from "@/lib/session";
 import { inkOf, inkSvg, noteMarkdown, slugOf } from "@/lib/export-files";
 import { zipNotes } from "@/lib/export-zip";

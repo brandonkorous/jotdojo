@@ -15,7 +15,7 @@ import {
   upsertUserFromGoogle, asUser, createNote, defaultSpaceId,
   createInkBlock, appendStrokes, storeTranscript, correctTranscript, getNote,
   type Stroke,
-} from "@jotdojo/domain";
+} from "@jotacular/domain";
 
 let failures = 0;
 const check = (label: string, ok: boolean, detail?: string) => {

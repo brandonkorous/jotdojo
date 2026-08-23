@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { revokeConnectionAction } from "@/app/actions";
-import type { Connection } from "@jotdojo/domain";
+import type { Connection } from "@jotacular/domain";
 
 /**
  * Every agent that can reach your notes, and the button that stops it.

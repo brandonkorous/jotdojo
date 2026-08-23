@@ -10,13 +10,13 @@
  * stop work that is ALREADY in the queue, or "off" means "off from tomorrow",
  * which is not what anybody reads it as.
  */
-import { fakeReasoner } from "@jotdojo/reason";
+import { fakeReasoner } from "@jotacular/reason";
 import {
   upsertUserFromGoogle, asUser, createNote, deleteNote, defaultSpaceId, getNote,
   applyBillingEvent, listNoteComments, listTriageSettings, setTriage, spaceUsage,
   enqueueTriage, recordTriage, createSpace, inviteToSpace, acceptInvite,
   DomainError,
-} from "@jotdojo/domain";
+} from "@jotacular/domain";
 import { runTriageCycle } from "../src/triage";
 
 let failures = 0;
@@ -42,7 +42,7 @@ const codeOf = async (run: Promise<unknown>): Promise<string> =>
  * space happened to have the agent on. Development databases only.
  */
 async function clearForeignJobs(mine: string[]) {
-  const { db } = await import("@jotdojo/db");
+  const { db } = await import("@jotacular/db");
   const ours = mine.map((id) => `'${id}'`).join(",");
   await db.execute(
     `UPDATE outbox o SET completed_at = now(), locked_until = NULL
@@ -222,7 +222,7 @@ async function lastError(noteId: string): Promise<string | null> {
 }
 
 async function outboxRow(noteId: string): Promise<Record<string, unknown> | null> {
-  const { db } = await import("@jotdojo/db");
+  const { db } = await import("@jotacular/db");
   const rows = await db.execute(
     `SELECT completed_at, last_error FROM outbox WHERE topic = 'note.triage'
        AND payload->>'noteId' = '${noteId}' ORDER BY id DESC LIMIT 1`,

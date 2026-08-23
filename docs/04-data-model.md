@@ -245,7 +245,7 @@ The domain layer opens every transaction by setting `app.actor_id`. For agent ca
 
 Workers legitimately operate across spaces, and they do it **without** a role that bypasses
 RLS. That role was removed in ADR-024: the worker connects as the same restricted
-`jotdojo_app` role as everything else, and reaches across spaces only through named
+`jotacular_app` role as everything else, and reaches across spaces only through named
 `SECURITY DEFINER` functions — claim a job, store a result, meter it, close it, leave a
 comment. A role that can silently switch tenancy off everywhere is worse than a door that
 can only do one thing.

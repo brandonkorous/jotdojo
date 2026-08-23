@@ -1,0 +1,28 @@
+/* The wordmark. design.md §8, ADR-072.
+ *
+ * Sized by its height, in `em`, so it sits on the same line as whatever text it
+ * is set beside, and scales with a single class. The width follows the
+ * artwork's own aspect -- declared here as well as on the element, so
+ * reserving the space does not wait for the file. */
+
+.jd-wordmark {
+  display: inline-block;
+  height: 1.5rem;
+  width: auto;
+  aspect-ratio: 2001 / 503;
+  vertical-align: -0.3rem;
+}
+
+/* The sign-in screen, where the wordmark is the whole page's masthead rather
+   than a label in a bar. */
+.jd-wordmark-lg { height: 3rem; vertical-align: baseline; }
+
+/* The mark -- `jot` on a charcoal tile. Used where the wordmark is too wide to
+ * read: design.md §9 asks for whichever lockup is less repetitive at small
+ * sizes, and in the site bar that is the wordmark on its own. */
+.jd-mark {
+  display: inline-block;
+  width: 1.9rem;
+  height: 1.9rem;
+  border-radius: 0.5rem;
+}

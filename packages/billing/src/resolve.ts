@@ -20,7 +20,7 @@ export function resolveBilling(env = process.env): BillingProvider | null {
     // ADR-052. The CI flag is the ONLY exemption, and release.yml cannot
     // forward it: the container env is built solely from vault entries on
     // its allow-lists, and this name is deliberately absent from both.
-    if (env.NODE_ENV === "production" && env.JOTDOJO_FAKE_PROVIDERS_OK !== "1") {
+    if (env.NODE_ENV === "production" && env.JOTACULAR_FAKE_PROVIDERS_OK !== "1") {
       throw new Error("BILLING_PROVIDER=fake must never run in production");
     }
     const secret = env.BILLING_WEBHOOK_SECRET ?? env.AUTH_SECRET;

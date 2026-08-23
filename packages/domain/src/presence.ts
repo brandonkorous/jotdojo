@@ -1,5 +1,5 @@
 import { eq, sql } from "drizzle-orm";
-import { withActor, type Tx } from "@jotdojo/db";
+import { withActor, type Tx } from "@jotacular/db";
 import { type Actor } from "./actor";
 import { Forbidden } from "./errors";
 import { loadNote } from "./ink-block";

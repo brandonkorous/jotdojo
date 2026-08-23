@@ -9,7 +9,7 @@
  * Standing the agent up is mcp-session.ts. What it is TOLD is here.
  */
 import { openSession, text, images, MCP_URL } from "./mcp-session.js";
-import { applyBillingEvent } from "@jotdojo/domain";
+import { applyBillingEvent } from "@jotacular/domain";
 
 let failures = 0;
 const check = (label: string, ok: boolean, detail = "") => {
@@ -47,14 +47,14 @@ const readClient = await connect(await grant(["notes:read", "notes:comment"]));
 
 const tools = (await readClient.listTools()).tools;
 check(`exposes a small tool surface (${tools.length} tools, budget is under 12)`, tools.length < 12, String(tools.length));
-// ADR-016. Every name carries a jotdojo noun, and none collides with a tool
+// ADR-016. Every name carries a Jotacular noun, and none collides with a tool
 // kanninja already owns -- an agent doing our flow holds both servers at once.
 const KANNINJA_TOOLS = [
   "list_boards", "get_board", "list_tasks", "get_task", "get_my_work", "search",
   "list_comments", "list_checklist", "list_labels", "create_task", "update_task",
   "move_task", "add_comment", "assign_task", "set_due_date",
 ];
-check("every tool name carries a jotdojo noun",
+check("every tool name carries a Jotacular noun",
   tools.every((t) => /(note|space)/.test(t.name)),
   tools.filter((t) => !/(note|space)/.test(t.name)).map((t) => t.name).join(", "));
 check("NO tool name collides with one kanninja already owns",

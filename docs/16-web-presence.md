@@ -1,6 +1,7 @@
 # 16 — Web presence, domains, and SEO
 
-> **Status: built.** The apex serves the marketing site — hero, three beats, pricing, five
+> **Status: built.** The apex serves the marketing site — hero, the seven bands of
+> design.md §18, pricing, five
 > posts, `robots.txt`, `sitemap.xml` and JSON-LD — from the same `apps/web` deployment as
 > the app, routed by Host (ADR-040). `pnpm site:smoke` proves the split over real HTTP.
 >
@@ -8,7 +9,7 @@
 > httpOnly cookie rather than `localStorage` (ADR-041), and returning visitors are not
 > auto-redirected from the apex to the app — see the deferral in ADR-040.
 >
-> **The line that could not wait, and did not:** the app is at `app.jotdojo.com`. The PWA
+> **The line that could not wait, and did not:** the app is at `app.jotacular.com`. The PWA
 > install origin is baked into every installed home-screen icon, so moving it later forces
 > every user to reinstall.
 
@@ -23,14 +24,14 @@ An app shell is thin content and will never rank. A marketing page is a click aw
 
 ## The decision
 
-    jotdojo.com          marketing site, and the hero is a REAL working canvas
-    app.jotdojo.com      the app. Canvas-first, no marketing, ever
-    api.jotdojo.com      REST v1, the Shortcuts endpoint
-    mcp.jotdojo.com      MCP server + OAuth authorization server
+    jotacular.com          marketing site, and the hero is a REAL working canvas
+    app.jotacular.com      the app. Canvas-first, no marketing, ever
+    api.jotacular.com      REST v1, the Shortcuts endpoint
+    mcp.jotacular.com      MCP server + OAuth authorization server
 
 ### The hero is the product
 
-`jotdojo.com` is a normal, crawlable, statically rendered marketing page — headline, three beats, pricing, footer links, a blog. It ranks because it is real content.
+The apex is a normal, crawlable, statically rendered marketing page — headline, the seven bands of design.md §18, pricing, footer links, a blog. It ranks because it is real content.
 
 But the hero is not a screenshot. It is **a live canvas you can type or draw in immediately**, anonymously, with no account. The headline sits above it and the page continues below it.
 
@@ -38,15 +39,15 @@ This resolves the tension completely:
 
 - A crawler gets a content-rich page at the root. No cloaking, no doorway page, no penalty risk — bots and humans see the same HTML.
 - A first-time human can jot **within one second of the page painting**, which is a far better demonstration than any copy we could write.
-- "Keep this" hands the content to `app.jotdojo.com` and prompts for Google sign-in.
+- "Keep this" hands the content to `app.jotacular.com` and prompts for Google sign-in.
 
 The most persuasive marketing for a capture app is letting someone capture something.
 
 ### Returning users skip it
 
-A session cookie or a stored preference at the root redirects straight to `app.jotdojo.com`. That is session-based routing, which is ordinary and not cloaking — logged-out visitors and crawlers get the marketing page every time.
+A session cookie or a stored preference at the root redirects straight to `app.jotacular.com`. That is session-based routing, which is ordinary and not cloaking — logged-out visitors and crawlers get the marketing page every time.
 
-Anyone who installs the PWA installs it **from `app.jotdojo.com`**, so the home-screen icon opens directly onto the canvas and never shows marketing. This is important: the installed app is the daily driver and it must be pure.
+Anyone who installs the PWA installs it **from `app.jotacular.com`**, so the home-screen icon opens directly onto the canvas and never shows marketing. This is important: the installed app is the daily driver and it must be pure.
 
 ## Anonymous capture
 
@@ -59,7 +60,7 @@ So anonymous notes are **server-side from the first keystroke**:
 - On first jot, mint an anonymous space server-side and store an opaque token in an httpOnly cookie. `localStorage` was the original plan and is the wrong one — ITP caps script-writable storage at seven days, which is the very thing this design exists to avoid. See ADR-041.
 - Content persists to Postgres exactly like a signed-in user's. Durable, survives eviction, survives a browser crash.
 - Claiming at sign-in is a single `UPDATE` reassigning the space's owner. Nothing is copied, nothing is lost, no merge logic.
-- Because the token travels in a URL on the handoff from `jotdojo.com` to `app.jotdojo.com`, cross-subdomain `localStorage` isolation stops being a problem too.
+- Because the token travels in a URL on the handoff from `jotacular.com` to `app.jotacular.com`, cross-subdomain `localStorage` isolation stops being a problem too.
 
 Constraints on anonymous spaces:
 
@@ -96,7 +97,7 @@ We will not out-rank Notion for "note taking app," and trying is a waste. Rank f
 
 **Content plan.** A small number of genuinely useful, technically honest posts — the kind an engineer bookmarks. All five are written and live in `apps/web/content/blog` as markdown, rendered at build time:
 
-- Connecting jotdojo to Claude, ChatGPT and Claude Code
+- Connecting Jotacular to Claude, ChatGPT and Claude Code
 - Why local MCP servers do not work from your phone
 - What MCP actually is, for people who keep hearing about it
 - Capturing to a web app with iOS Shortcuts (useful even to non-customers — which is the point)
@@ -108,14 +109,14 @@ Each ends with a link to the live canvas rather than a signup CTA. Screenshots a
 
 ## Rejected alternatives
 
-**`jotdojo.com` as the app, marketing at `/why` and `/pricing`.** The root is our highest-authority URL and an app shell wastes it. Rendering different content to crawlers than to users at the same URL is cloaking and risks a penalty.
+**`jotacular.com` as the app, marketing at `/why` and `/pricing`.** The root is our highest-authority URL and an app shell wastes it. Rendering different content to crawlers than to users at the same URL is cloaking and risks a penalty.
 
 **A separate marketing domain.** Splits domain authority and looks like two companies.
 
-**Marketing at `www.` and app at the apex.** Confusing to link, confusing to explain, and every share of "jotdojo.com" would land on the app instead of the pitch.
+**Marketing at `www.` and app at the apex.** Confusing to link, confusing to explain, and every share of "jotacular.com" would land on the app instead of the pitch.
 
 ## Suite considerations
 
 `kanninja.com` stays its own domain with its own marketing. They are separate products with separate audiences — see ADR-002 in [15-decision-log.md](15-decision-log.md).
 
-If a shared account layer ever ships, it lives at a third domain or at `id.jotdojo.com`, and both products federate to it. Do not build this before there is a customer who wants both.
+If a shared account layer ever ships, it lives at a third domain or at `id.jotacular.com`, and both products federate to it. Do not build this before there is a customer who wants both.

@@ -103,7 +103,7 @@ sort the field quickly:
 
 ---
 
-We hit every one of these building jotdojo, which is why its MCP server is
+We hit every one of these building Jotacular, which is why its MCP server is
 remote: one URL, OAuth rather than a pasted key, and a list of connected agents
 with a revoke button beside each. It works from the phone in your pocket.
 [Try the notes half](/) first, without an account.

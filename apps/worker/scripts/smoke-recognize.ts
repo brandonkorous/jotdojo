@@ -12,14 +12,14 @@
  * under test is the pipeline. Nothing here claims anything about accuracy.
  */
 import sharp from "sharp";
-import { fakeRecognizer } from "@jotdojo/vision";
-import { toSvg, tiles, bounds } from "@jotdojo/ink-render";
+import { fakeRecognizer } from "@jotacular/vision";
+import { toSvg, tiles, bounds } from "@jotacular/ink-render";
 import {
   upsertUserFromGoogle, asUser, createNote, defaultSpaceId, searchNotes,
   createInkBlock, appendStrokes, getInk, correctTranscript,
   claimRecognizeJobs, storeTranscript,
   type Stroke, type InkDocument,
-} from "@jotdojo/domain";
+} from "@jotacular/domain";
 import { runRecognitionCycle } from "../src/recognize";
 
 let failures = 0;
@@ -157,7 +157,7 @@ check("a job just queued is not claimable yet -- it waits for a pause",
 
 /** Skip the quiet period for one block, without releasing anyone else's. */
 async function releaseQuietPeriod(id: string) {
-  const { db } = await import("@jotdojo/db");
+  const { db } = await import("@jotacular/db");
   await db.execute(
     `UPDATE outbox SET available_at = now() WHERE topic = 'block.recognize'
        AND completed_at IS NULL AND payload->>'blockId' = '${id}'`,
@@ -180,7 +180,7 @@ console.log("\na handwritten page names itself");
 // createNote leaves an empty text block at position 0, so before this a note
 // that was nothing but ink appeared in the list as an untitled blank row --
 // indistinguishable from one someone had abandoned.
-const { listNotes } = await import("@jotdojo/domain");
+const { listNotes } = await import("@jotacular/domain");
 const listed = (await listNotes(actor, space)).find((n) => n.id === note.id);
 check("the title comes from what was read off the page",
   listed?.title === "check with Dana about the margins", `got "${listed?.title}"`);

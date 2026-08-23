@@ -1,5 +1,5 @@
-import { billing } from "@jotdojo/billing";
-import { applyBillingEvent } from "@jotdojo/domain";
+import { billing } from "@jotacular/billing";
+import { applyBillingEvent } from "@jotacular/domain";
 
 /**
  * Where a payment provider tells us something happened. ADR-038.

@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { type Tx } from "@jotdojo/db";
+import { type Tx } from "@jotacular/db";
 import { NotFound } from "./errors";
 import { type Stroke } from "./ink-doc";
 import { type TextBox } from "./ink-text";

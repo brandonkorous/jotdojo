@@ -1,5 +1,5 @@
 import { eq } from "drizzle-orm";
-import { withActor, spaces, spaceMembers } from "@jotdojo/db";
+import { withActor, spaces, spaceMembers } from "@jotacular/db";
 import { canReachSpace, type Actor } from "./actor";
 import { DomainError, NotFound } from "./errors";
 import { assertOwner } from "./members";

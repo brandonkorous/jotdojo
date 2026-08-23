@@ -1,4 +1,4 @@
-import { Download } from "lucide-react";
+import { Icon } from "@/components/Icon";
 
 /**
  * Take it with you. ADR-067.
@@ -28,7 +28,7 @@ export function ExportSection({
               href={`/export/space/${space.id}`}
               className="btn btn-ghost btn-sm"
             >
-              <Download aria-hidden strokeWidth={1.75} className="size-4" />
+              <Icon name="download" />
               {space.name}
             </a>
           </li>

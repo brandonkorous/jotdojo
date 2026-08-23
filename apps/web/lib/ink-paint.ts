@@ -1,4 +1,4 @@
-import type { Point, Stroke } from "@jotdojo/domain";
+import type { Point, Stroke } from "@jotacular/domain";
 import type { Bounds } from "./ink-geometry";
 
 /** 3x on a large canvas costs more than it returns. docs/08. */

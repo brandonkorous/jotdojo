@@ -2,7 +2,7 @@ import Link from "next/link";
 import {
   getToolbarSide, listCaptureTokens, listConnections, listSpaces,
   listTriageSettings,
-} from "@jotdojo/domain";
+} from "@jotacular/domain";
 import { CaptureTokens } from "@/components/CaptureTokens";
 import { TriageSwitch } from "@/components/TriageSwitch";
 import { PlanSection } from "@/components/PlanSection";

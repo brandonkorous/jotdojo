@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Search } from "lucide-react";
+import { Icon } from "@/components/Icon";
 import { CommandPalette } from "@wizeworks/silicaui-react";
 import { RemarksButton } from "./RemarksButton";
 import type { CommandItem } from "@wizeworks/silicaui-react";
@@ -109,7 +109,7 @@ export function Chrome({
           title="Search notes, or jump somewhere  ⌘K"
           className="jd-tool"
         >
-          <Search aria-hidden strokeWidth={1.75} />
+          <Icon name="search" />
         </button>
 
         <span aria-hidden className="jd-rail-sep-v" />
@@ -138,7 +138,7 @@ export function Chrome({
         open={open}
         onOpenChange={setOpen}
         placeholder="Search notes, or jump somewhere"
-        emptyMessage="Nothing matches that yet."
+        emptyMessage="Hmm — not in your jots."
       />
     </>
   );

@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { join, resolve, sep } from "node:path";
 import type { FastifyInstance } from "fastify";
-import { verifyLocalSignature, writeLocal } from "@jotdojo/storage";
+import { verifyLocalSignature, writeLocal } from "@jotacular/storage";
 
 /**
  * The endpoints the LOCAL storage driver's signed URLs point at.

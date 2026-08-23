@@ -19,7 +19,7 @@ Infrastructure and the boring half of auth.
 
 **Not in M0:** the marketing site and anonymous capture. **App first.** See ADR-018.
 
-**One thing that cannot be deferred:** ship the app at `app.jotdojo.com` from the first deploy, with the apex parked on a single static page. Where the PWA installs from is baked into every installed icon; moving it later forces every user to reinstall. An hour now, a migration avoided.
+**One thing that cannot be deferred:** ship the app at `app.jotacular.com` from the first deploy, with the apex parked on a single static page. Where the PWA installs from is baked into every installed icon; moving it later forces every user to reinstall. An hour now, a migration avoided.
 
 **Exit:** jot on a phone, close the browser, open on a laptop, the note is there.
 
@@ -64,13 +64,13 @@ a laptop. It also gates the only questions that matter next, because every recog
 embedding path so far is proven against `fake` providers: whether a real model reads real
 handwriting, and whether the loop closes end to end.
 
-The deploy is also the moment `app.jotdojo.com` becomes permanent — see ADR-010 and
+The deploy is also the moment `app.jotacular.com` becomes permanent — see ADR-010 and
 ADR-018, and the hostname note in [infra/README.md](../infra/README.md). It is a two-repo
 change: routing and the TLS allow-list live in the sparx repo.
 
 **Exit:** say "Hey Siri, jot" in a car, then that evening ask Claude on a phone to read the note and build a plan in kanninja — and it works end to end.
 
-**kanninja is live and in daily use, so the far half of this loop already exists.** That makes M1 dramatically cheaper to prove than it would otherwise be: no mocking, no parallel build, no waiting. The only new thing being tested is whether jotdojo's half holds up.
+**kanninja is live and in daily use, so the far half of this loop already exists.** That makes M1 dramatically cheaper to prove than it would otherwise be: no mocking, no parallel build, no waiting. The only new thing being tested is whether Jotacular's half holds up.
 
 **This is the thesis. If it is unconvincing here, stop and rethink before building ink, billing, or voice.**
 
@@ -189,7 +189,7 @@ unmeasured, and none of it has reached a Claude client.
 ## M5 — Alive
 
 - [x] Triage agent: scheduled pass proposing actions as comments (ADR-048, `triage:smoke` 42) — Team only, off until an owner turns it on, and off stops work already queued
-- ~~Suite gateway: one account, one MCP endpoint spanning jotdojo and kanninja~~ — **deferred by the vision doc**, not by scheduling. docs/00 says do not build a shared account layer before there is a customer who wants both products, and ADR-002 keeps them separate
+- ~~Suite gateway: one account, one MCP endpoint spanning Jotacular and kanninja~~ — **deferred by the vision doc**, not by scheduling. docs/00 says do not build a shared account layer before there is a customer who wants both products, and ADR-002 keeps them separate
 - [x] Re-recognition of old content with newer models (ADR-046, `reread:smoke` 24) — `pnpm reread`, dry run by default, scoped with `--space`
 - [x] Live updates across devices and between members of a space (ADR-058, `live:smoke` 30, `merge:smoke` 15, `live:http-smoke` 10) — strokes, typed text, readings and presence, over `LISTEN/NOTIFY` + SSE. It also fixed a data-loss bug that predated it: erase resent the whole page and discarded whatever a second device had drawn
 - Whatever the first fifty users actually asked for, which will be more informative than this list
@@ -330,7 +330,7 @@ four Dockerfiles and `infra/k8s` manifests are written and waiting to be applied
 failures are different in kind.
 
 - **Release** stopped at `azure/login`: no federated identity credential matches
-  `repo:brandonkorous/jotdojo:environment:prod`. That is the sparx-side
+  `repo:brandonkorous/jotacular:environment:prod`. That is the sparx-side
   Terraform not applied yet, first item on the deploy checklist in docs/17. The
   deploy refused rather than half-shipping, which is the design working.
 - **CI** failed on `metering:smoke`, and that one was ours. **Fixed 2026-08-22.**
@@ -369,14 +369,14 @@ completed -- so the release got further than any before it and found the next
 thing.
 
 All four services sat in `CreateContainerConfigError`, which usually means a
-missing Secret and this time did not: `jotdojo-secrets` and `jotdojo-config`
+missing Secret and this time did not: `jotacular-secrets` and `jotacular-config`
 were both present and correct. The container state said what the events did not:
 
-    container has runAsNonRoot and image has non-numeric user (jotdojo),
+    container has runAsNonRoot and image has non-numeric user (jotacular),
     cannot verify user is non-root
 
 Every Dockerfile creates its user with `adduser -S -u 1001` and then writes
-`USER jotdojo` -- a NAME. Kubernetes cannot verify a named user is non-root, so
+`USER jotacular` -- a NAME. Kubernetes cannot verify a named user is non-root, so
 `runAsNonRoot: true` refuses the container before anything starts. Nothing
 crashlooped because nothing ever ran.
 
@@ -386,7 +386,7 @@ Dockerfile, and one source of truth beats four copies of a number.
 
 **The first deploy to actually run, 2026-08-22.** With the user numeric, api, mcp
 and web came up 1/1 and the worker crashlooped on
-`Cannot find package '@jotdojo/reason'`.
+`Cannot find package '@jotacular/reason'`.
 
 The triage agent shipped a new workspace package and nothing added it to
 `worker.Dockerfile`. Typecheck passed, sixteen suites passed, CI went green --
@@ -396,7 +396,7 @@ first thing that looked.
 
 `pnpm images:check` now compares each image against the transitive closure of
 its app's declared dependencies. It is deliberately strict about packages only
-imported as TYPES today: `@jotdojo/billing` was an `import type` in domain,
+imported as TYPES today: `@jotacular/billing` was an `import type` in domain,
 stripped at transpile, missing from three images and harmless until somebody
 imports a value from it. All three now carry it. A rule with an exception list
 gets an entry added instead of being obeyed.

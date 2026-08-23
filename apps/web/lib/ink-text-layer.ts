@@ -1,9 +1,8 @@
-import type { TextBox } from "@jotdojo/domain";
+import type { TextBox } from "@jotacular/domain";
 import type { ViewSnapshot } from "./ink-viewport";
 import type { Bounds } from "./ink-geometry";
 import { boxAt, boxesBounds, drawnBox, isEmpty, newBox } from "./ink-objects";
 import { InkPlane, MIN_SIZE } from "./ink-plane";
-import type { InkTool } from "./canvas-tool";
 
 /**
  * The text half of the engine. ADR-065.
@@ -71,19 +70,18 @@ export class InkTextLayer {
   frame(view: ViewSnapshot) { this.plane.frame(view.x, view.y, view.k); }
 
   /**
-   * Only the text box tool lets a box take the pointer. Everything else has to
-   * pass through to the canvas underneath.
+   * Whether a note may take a pointer at all.
    *
-   * The `| "text"` in this signature is unreachable and has always been:
-   * `inkToolFor` maps the spine's tool to `"pen"` before the engine sees it,
-   * because the engine routes pointers by tool and has no branch for the spine.
-   * So on the DEFAULT tool a note takes no clicks at all -- you cannot get back
-   * into one to keep typing without arming the box tool again. Fixing that
-   * needs a signal separate from the tool, not a fourth value in it. ADR-084.
+   * A signal of its own rather than a reading of the tool, and that IS the fix:
+   * `inkToolFor` collapses the spine to `"pen"` before the engine sees it, so a
+   * tool-derived answer said no on the tool people type with, and a note once
+   * placed could never be opened again. ADR-085.
+   *
+   * Off for the pen, the marker, the eraser and the lasso. All four have to
+   * pass THROUGH the plane to the canvas underneath, and a textarea that
+   * swallowed the pointer would make half the surface undrawable.
    */
-  setTool(tool: InkTool | "text") {
-    this.plane.setInteractive(tool === "textbox");
-  }
+  setReachable(on: boolean) { this.plane.setInteractive(on); }
 
   bounds(): Bounds | null { return boxesBounds(this.boxes); }
 

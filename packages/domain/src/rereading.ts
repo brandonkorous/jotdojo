@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { withoutActor } from "@jotdojo/db";
+import { withoutActor } from "@jotacular/db";
 
 /**
  * Reading old content again with a newer model. M5, ADR-046.

@@ -2,7 +2,7 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import {
   resolveCaptureToken, captureNote, createMediaBlock, finalizeMedia,
   DomainError, type Actor,
-} from "@jotdojo/domain";
+} from "@jotacular/domain";
 
 /**
  * A photo from a Shortcut, in three steps. ADR-064.

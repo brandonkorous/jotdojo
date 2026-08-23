@@ -1,7 +1,7 @@
 import { sql } from "drizzle-orm";
 import { publish } from "./events";
 import { writeChange } from "./changes";
-import { withoutActor } from "@jotdojo/db";
+import { withoutActor } from "@jotacular/db";
 
 /**
  * The outbox drain, from the domain side.
@@ -10,7 +10,7 @@ import { withoutActor } from "@jotdojo/db";
  * behalf of nobody -- it is background work over blocks whose owners are
  * asleep. The old design gave the worker a BYPASSRLS role for exactly that
  * reason; ADR-024 replaced it with three SECURITY DEFINER functions, so the
- * worker connects as the same restricted `jotdojo_app` role as everything else
+ * worker connects as the same restricted `jotacular_app` role as everything else
  * and can still only do these three things.
  *
  * That is why this file is thirty lines of function calls: all the authority

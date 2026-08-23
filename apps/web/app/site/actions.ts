@@ -1,7 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { createNote, listNotes, getNote, hasInk, type Actor } from "@jotdojo/domain";
+import { createNote, listNotes, getNote, hasInk, type Actor } from "@jotacular/domain";
 import { currentDraft, ensureDraft } from "@/lib/draft";
 import { appOrigin } from "@/lib/hosts";
 

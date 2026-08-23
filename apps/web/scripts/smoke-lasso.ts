@@ -7,7 +7,7 @@
  * that misbehaves quietly: the wrong answer is a selection that looks plausible
  * and takes the wrong strokes with it when someone drags.
  */
-import type { Point, Stroke } from "@jotdojo/domain";
+import type { Point, Stroke } from "@jotacular/domain";
 import {
   inBounds, pointInPolygon, strokeBounds, strokeInPolygon, translateStroke,
 } from "../lib/ink-geometry";

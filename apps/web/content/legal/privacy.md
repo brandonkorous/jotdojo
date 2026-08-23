@@ -1,18 +1,18 @@
 ---
 title: Privacy
-description: What jotdojo stores, who else ever sees a note, how long anything is kept, and how to take all of it away with you.
+description: What Jotacular stores, who else ever sees a note, how long anything is kept, and how to take all of it away with you.
 updated: 2026-08-22
 summary: Your notes are yours. We do not train on them. The only companies that ever see one are the provider that reads your handwriting, voice and photos, and the provider that handles payment — both named below.
 ---
 
 ## Who we are
 
-jotdojo is a note-taking service operated by WizeWorks LLC, of Visalia, California.
+Jotacular is a note-taking service operated by WizeWorks LLC, of Visalia, California.
 We decide how the information described here is handled, and we are the people to
-write to about it: **[legal@jotdojo.com](mailto:legal@jotdojo.com)**.
+write to about it: **[legal@jotacular.com](mailto:legal@jotacular.com)**.
 
-This policy covers `jotdojo.com`, `app.jotdojo.com`, `api.jotdojo.com` and
-`mcp.jotdojo.com`.
+This policy covers `jotacular.com`, `app.jotacular.com`, `api.jotacular.com` and
+`mcp.jotacular.com`.
 
 ## What we hold
 
@@ -46,7 +46,7 @@ act as you at Google.
 of these.
 
 **Trackers.** There is no advertising network, no analytics script, and no
-third-party pixel on any jotdojo page. The only cookies we set are the two
+third-party pixel on any Jotacular page. The only cookies we set are the two
 described below.
 
 ## Who else sees a note
@@ -98,7 +98,7 @@ An agent never has more access than the person who granted it.
 
 ## Notes written before you have an account
 
-You can write on `jotdojo.com` without signing in. When you do:
+You can write on `jotacular.com` without signing in. When you do:
 
 - the note is saved on our servers from the first keystroke, because keeping it
   only in your browser is how notes get lost
@@ -145,7 +145,7 @@ the rows that point at them. After the 30-day window a deleted note is gone and
 we cannot recover it for you.
 
 You can ask us to show you what we hold about you, correct it, or delete all of
-it, by writing to **[legal@jotdojo.com](mailto:legal@jotdojo.com)**. We will answer within 30 days.
+it, by writing to **[legal@jotacular.com](mailto:legal@jotacular.com)**. We will answer within 30 days.
 
 Depending on where you live you may also have the right to object to processing,
 to ask us to restrict it, or to complain to your national data protection
@@ -159,15 +159,15 @@ States. Handwriting, voice recordings and photographs are sent to Azure OpenAI i
 the `eastus2` region named above to be read, so the content of those notes is
 processed there under that provider's terms.
 
-If you are outside the United States, using jotdojo means your notes are stored
+If you are outside the United States, using Jotacular means your notes are stored
 and processed in the United States.
 
 **We do not offer data residency guarantees.** If where a note is processed
-matters to you contractually, jotdojo is not the right tool.
+matters to you contractually, Jotacular is not the right tool.
 
 ## Children
 
-jotdojo is not directed at children under 13, and we do not knowingly create
+Jotacular is not directed at children under 13, and we do not knowingly create
 accounts for them. A shared space belongs to the adult who owns it, and an adult
 who invites a child into their family space is responsible for what that child
 writes there. If you believe a child under 13 has an account, write to us and we
@@ -175,11 +175,11 @@ will remove it.
 
 ## What this service is not built for
 
-Being clear about this protects you more than it protects us. jotdojo has no
+Being clear about this protects you more than it protects us. Jotacular has no
 HIPAA compliance and we will not sign a business associate agreement. There is no
 SOC 2 report, no data residency guarantee, and no single sign-on. **Do not put
 clinical records, legally privileged material, or anything else you are obliged
-to protect into jotdojo.** If you need those things, use something built for them.
+to protect into Jotacular.** If you need those things, use something built for them.
 
 ## If something goes wrong
 
@@ -195,8 +195,8 @@ quietly widen what we are allowed to do with them.
 
 ## Contact
 
-**[legal@jotdojo.com](mailto:legal@jotdojo.com)** for anything about your privacy
-or this policy, or [hello@jotdojo.com](mailto:hello@jotdojo.com) for anything
+**[legal@jotacular.com](mailto:legal@jotacular.com)** for anything about your privacy
+or this policy, or [hello@jotacular.com](mailto:hello@jotacular.com) for anything
 about your account.
 
 WizeWorks LLC, Visalia, California.

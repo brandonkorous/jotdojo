@@ -1,17 +1,17 @@
-# apps/mcp -- the MCP server, the origin behind mcp.jotdojo.com.
+# apps/mcp -- the MCP server, the origin behind mcp.jotacular.com.
 #
 # Streamable HTTP transport and an OAuth 2.1 resource server. A thin adapter over
-# the same @jotdojo/domain services the web app uses: no SQL of its own, no
+# the same @jotacular/domain services the web app uses: no SQL of its own, no
 # permission checks of its own. If an agent can do a thing here it is because a
 # domain method allowed it (docs/03).
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: mcp
-  namespace: jotdojo
+  namespace: jotacular
   labels:
     app: mcp
-    app.kubernetes.io/part-of: jotdojo
+    app.kubernetes.io/part-of: jotacular
 spec:
   replicas: 1
   strategy:
@@ -26,7 +26,7 @@ spec:
     metadata:
       labels:
         app: mcp
-        app.kubernetes.io/part-of: jotdojo
+        app.kubernetes.io/part-of: jotacular
     spec:
       # Streamable HTTP means a client can hold a response open. 60s lets an
       # in-flight stream finish on a rollout instead of being cut at the default
@@ -35,14 +35,14 @@ spec:
       terminationGracePeriodSeconds: 60
       containers:
         - name: mcp
-          image: ghcr.io/brandonkorous/jotdojo/mcp:latest
+          image: ghcr.io/brandonkorous/jotacular/mcp:latest
           imagePullPolicy: Always
           ports:
             - name: http
               containerPort: 3402
           envFrom:
-            - configMapRef: { name: jotdojo-config }
-            - secretRef: { name: jotdojo-secrets }
+            - configMapRef: { name: jotacular-config }
+            - secretRef: { name: jotacular-secrets }
           env:
             # A smaller share than web and api: an agent tool call is one unit of
             # work at a time, not a concurrent request fan-out.
@@ -75,10 +75,10 @@ apiVersion: v1
 kind: Service
 metadata:
   name: mcp
-  namespace: jotdojo
+  namespace: jotacular
   labels:
     app: mcp
-    app.kubernetes.io/part-of: jotdojo
+    app.kubernetes.io/part-of: jotacular
 spec:
   type: ClusterIP
   ports:

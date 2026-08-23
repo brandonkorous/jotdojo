@@ -1,4 +1,4 @@
-import type { InkDelta, Stroke } from "@jotdojo/domain";
+import type { InkDelta, Stroke } from "@jotacular/domain";
 import { appendStrokesAction } from "@/app/actions";
 import { applyInkDeltaAction } from "@/app/actions/live";
 

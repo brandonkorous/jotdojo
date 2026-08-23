@@ -2,10 +2,10 @@
 
 import { useTransition } from "react";
 import { setTriageAction } from "@/app/actions";
-import type { TriageSetting } from "@jotdojo/domain";
+import type { TriageSetting } from "@jotacular/domain";
 
 /**
- * The switch for the one thing in jotdojo that speaks first. ADR-048.
+ * The switch for the one thing in Jotacular that speaks first. ADR-048.
  *
  * docs/07 asks for one property above all the others: it must be genuinely
  * easy to turn off, and off must mean off. So the button is here, next to the

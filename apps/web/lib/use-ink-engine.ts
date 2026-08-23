@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, type RefObject } from "react";
-import type { Stroke, TextBox } from "@jotdojo/domain";
+import type { Stroke, TextBox } from "@jotacular/domain";
 import { InkEngine, type SelectionSummary, type Tool } from "./ink-engine";
 import { InkSync, type SyncState } from "./ink-sync";
 import { InkCatchup } from "./ink-catchup";
@@ -39,7 +39,7 @@ export type MountOptions = {
   held: EngineRefs;
   /** Read ONCE, at mount. Later changes are pushed imperatively by the caller,
    *  so changing a pen does not rebuild the engine and lose the page. */
-  initial: { tool: Tool; style: InkStyle };
+  initial: { tool: Tool; style: InkStyle; textReachable: boolean };
   onState: (state: SyncState) => void;
   onSelection: (selection: SelectionSummary) => void;
   onView: (view: { k: number; home: boolean }) => void;
@@ -96,6 +96,10 @@ export function useInkEngine(o: MountOptions) {
         onView: (k, home) => o.onView({ k, home }),
       });
       engine.setTool(initial.tool);
+      // Here as well as in the caller's effect: the mount is async, so that
+      // effect has already run against a null ref by the time we get here, and
+      // the page opens on the text tool with every note unclickable. ADR-085.
+      engine.setTextReachable(initial.textReachable);
       engine.setStyle(initial.style);
       engine.resize(canvas.w, canvas.h);
 

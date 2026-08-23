@@ -8,10 +8,10 @@
  *
  * Requires the web app running -- pnpm dev.
  */
-import { startAnonSession, createNote, getNote } from "@jotdojo/domain";
+import { startAnonSession, createNote, getNote } from "@jotacular/domain";
 
 const WEB = process.env.APP_URL ?? "http://localhost:3400";
-const APEX = new URL(process.env.SITE_URL ?? "http://jotdojo.localhost:3400").host;
+const APEX = new URL(process.env.SITE_URL ?? "http://jotacular.localhost:3400").host;
 
 let failures = 0;
 const check = (label: string, ok: boolean, detail = "") => {
@@ -42,7 +42,7 @@ check("...and structured data saying what this is",
 
 console.log("\nthe hero is a real canvas");
 check("the hero is an editable surface, not a screenshot",
-  home.includes('aria-label="Try jotdojo"'));
+  home.includes('aria-label="Try Jotacular"'));
 // The hero carries the SAME rail as the app (components/ToolRail.tsx). A hero
 // with its own toolbar would be advertising a product that does not exist.
 check("...with the app's toolbar on it", home.includes('aria-label="Handwriting"')
@@ -54,7 +54,7 @@ check("...saying plainly which tools need an account",
 // Apple platforms. ADR-044. They must not come back.
 const FALLBACK_GLYPHS = /[✎▬⌧⬚●▢]/;
 check("...as drawn icons, not as Unicode the font does not serve",
-  home.includes("lucide-pen-line") && !FALLBACK_GLYPHS.test(home));
+  home.includes('class="jd-icon"') && !FALLBACK_GLYPHS.test(home));
 // Formatting is one tap away rather than pre-opened, so it is the TEXT tool
 // that has to be on the page, not the Bold button. The options pill used to
 // render itself open and this asserted on its contents; on a phone that put a
@@ -62,9 +62,11 @@ check("...as drawn icons, not as Unicode the font does not serve",
 // to be asked (tap the tool you already hold). The rail still has to carry the
 // whole product -- a hero that hides a tool is advertising a shorter one.
 check("...and a way into formatting, so the typing surface is more than a box",
-  home.includes('aria-label="Text"') && home.includes("lucide-type"));
-check("the headline is written ON the canvas, not above it",
+  home.includes('aria-label="Text"') && /aria-label="Text"[\s\S]{0,200}jd-icon/.test(home));
+check("the headline sits beside the canvas, in the hero itself",
   /jd-hero-titles[^>]*>\s*<h1/.test(home));
+check("...and the canvas is inside a frame, not a screenshot of one",
+  /jd-hero-frame[\s\S]{0,400}jd-hero-stage/.test(home));
 // The "keep this" affordance appears once there is something to keep. An
 // empty box with a sign-up button on it is the wall this page exists to avoid.
 check("...with nothing to sign up for before anything is written",

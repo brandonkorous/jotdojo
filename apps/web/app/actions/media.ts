@@ -2,7 +2,7 @@
 
 import {
   createMediaBlock, finalizeMedia, mediaUrl, getNote,
-} from "@jotdojo/domain";
+} from "@jotacular/domain";
 import { requireActor } from "@/lib/session";
 
 /**

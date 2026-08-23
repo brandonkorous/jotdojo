@@ -1,4 +1,4 @@
-# jotdojo — repository rules
+# Jotacular — repository rules
 
 Project context lives in [docs/](docs/README.md). This file is the short list of rules that
 apply to every change, in every package.

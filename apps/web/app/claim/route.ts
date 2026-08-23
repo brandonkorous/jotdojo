@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { asUser, claimAnonSession, listNotes } from "@jotdojo/domain";
+import { asUser, claimAnonSession, listNotes } from "@jotacular/domain";
 import { auth } from "@/auth";
 import { appOrigin } from "@/lib/hosts";
 

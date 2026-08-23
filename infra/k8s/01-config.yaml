@@ -2,12 +2,12 @@
 #
 # THE SPLIT IS "WOULD IT MATTER IF THIS LEAKED", not "does it change per
 # environment". Hostnames, ports and feature switches are here in plain sight;
-# anything that grants access lives in the `jotdojo-secrets` Secret, which this
+# anything that grants access lives in the `jotacular-secrets` Secret, which this
 # repo does not contain and must never contain. That Secret is written by the
-# deploy pipeline from Key Vault (kv-jotdojo-prod-cus, defined in the sparx repo
-# at terraform/envs/azure/jotdojo.tf) and holds:
+# deploy pipeline from Key Vault (kv-jotacular-prod-cus, defined in the sparx repo
+# at terraform/envs/azure/jotacular.tf) and holds:
 #
-#   DATABASE_URL          the RESTRICTED jotdojo_app role -- never the owner.
+#   DATABASE_URL          the RESTRICTED jotacular_app role -- never the owner.
 #   DATABASE_ADMIN_URL    owner connection. Migrations only, never the app.
 #   AUTH_SECRET           NextAuth session signing key.
 #   AUTH_GOOGLE_ID        Google OAuth client id.
@@ -27,14 +27,14 @@
 #   STRIPE_PRICE_TEAM     constants.
 #
 # To create it by hand for a first deploy:
-#     kubectl create secret generic jotdojo-secrets -n jotdojo --from-env-file=./prod.env
+#     kubectl create secret generic jotacular-secrets -n jotacular --from-env-file=./prod.env
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: jotdojo-config
-  namespace: jotdojo
+  name: jotacular-config
+  namespace: jotacular
   labels:
-    app.kubernetes.io/part-of: jotdojo
+    app.kubernetes.io/part-of: jotacular
 data:
   NODE_ENV: 'production'
 
@@ -52,8 +52,8 @@ data:
   # APP_URL is also the OAuth ISSUER (apps/web serves the AS metadata) and the
   # origin in the note links apps/api hands back to Apple Shortcuts, so these
   # three move together or not at all.
-  APP_URL: 'https://app.jotdojo.com'
-  API_URL: 'https://api.jotdojo.com'
+  APP_URL: 'https://app.jotacular.com'
+  API_URL: 'https://api.jotacular.com'
 
   # AUTH_URL, not NEXTAUTH_URL: Auth.js v5 only trusts the incoming Host when
   # AUTH_URL or AUTH_TRUST_HOST is set, and the v4 name is not on that list. Set
@@ -62,23 +62,23 @@ data:
   # Pinning the ORIGIN is also the point rather than a side effect. ADR-040 has
   # one deployment answering to three hostnames, and this is what stops a sign-in
   # begun on the apex from issuing its callback there.
-  AUTH_URL: 'https://app.jotdojo.com'
+  AUTH_URL: 'https://app.jotacular.com'
 
   # The apex. The same web deployment serves it, chosen by Host (ADR-040), so
   # this adds a Caddy block to the EXISTING backend rather than a fifth service.
   # `www.` is matched by the app itself and needs no separate entry here.
-  SITE_URL: 'https://jotdojo.com'
+  SITE_URL: 'https://jotacular.com'
 
   # RFC 8707 binds every MCP access token to this EXACT string. It has to equal
   # what apps/mcp advertises and what the Caddy block routes, character for
   # character -- a trailing slash or a missing `/mcp` mints tokens that validate
   # as intended-for-someone-else, and the whole agent surface 401s with nothing
   # in the logs pointing at a config value. This binding is also what stops a
-  # jotDOJO token being replayed against another MCP server.
-  MCP_RESOURCE: 'https://mcp.jotdojo.com/mcp'
+  # Jotacular token being replayed against another MCP server.
+  MCP_RESOURCE: 'https://mcp.jotacular.com/mcp'
 
   # --- ports ---------------------------------------------------------------
-  # jotdojo owns 3400-3409. Each Service publishes port 80 and targets these, so
+  # jotacular owns 3400-3409. Each Service publishes port 80 and targets these, so
   # the shared Caddy never has to know them.
   API_PORT: '3401'
   MCP_PORT: '3402'
@@ -98,7 +98,7 @@ data:
   #
   # ONE container. Every SAS URL is `<origin>/<container>/<key>` and the artifact
   # kinds are separated by KEY PREFIX, not by container. This name must match the
-  # container in terraform/envs/azure/jotdojo.tf in the sparx repo.
+  # container in terraform/envs/azure/jotacular.tf in the sparx repo.
   #
   # AZURE_STORAGE_ACCOUNT and AZURE_STORAGE_KEY are secrets and arrive from Key
   # Vault; only the two non-sensitive halves are here.

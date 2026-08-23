@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { withoutActor } from "@jotdojo/db";
+import { withoutActor } from "@jotacular/db";
 
 /**
  * The triage agent's side of the outbox. M5, ADR-048.

@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import type { CommentView } from "@jotdojo/domain";
+import type { CommentView } from "@jotacular/domain";
 import { LiveFeedProvider } from "@/lib/live-feed";
 import { RemarksProvider } from "@/lib/remarks";
 import { LiveFeed } from "./LiveFeed";

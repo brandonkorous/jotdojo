@@ -1,7 +1,7 @@
 import NextAuth, { type NextAuthResult } from "next-auth";
 import Google from "next-auth/providers/google";
 import Credentials from "next-auth/providers/credentials";
-import { upsertUserFromGoogle } from "@jotdojo/domain";
+import { upsertUserFromGoogle } from "@jotacular/domain";
 
 /**
  * Dev-only sign-in, so the app can be used before Google OAuth is configured.
@@ -56,7 +56,7 @@ const nextAuth = NextAuth({
     async jwt({ token, account, profile, user }) {
       // Dev provider: authorize() already resolved our user id.
       if (account?.provider === "dev" && user?.id) {
-        token.jotdojoUserId = user.id;
+        token.jotacularUserId = user.id;
         return token;
       }
       if (account && profile?.sub) {
@@ -66,13 +66,13 @@ const nextAuth = NextAuth({
           displayName: profile.name ?? null,
           avatarUrl: (profile as { picture?: string }).picture ?? null,
         });
-        token.jotdojoUserId = id;
+        token.jotacularUserId = id;
       }
       return token;
     },
     async session({ session, token }) {
-      if (token.jotdojoUserId) {
-        session.user.id = token.jotdojoUserId as string;
+      if (token.jotacularUserId) {
+        session.user.id = token.jotacularUserId as string;
       }
       return session;
     },

@@ -1,7 +1,7 @@
 import Fastify from "fastify";
 import {
   resolveCaptureToken, captureNote, RateLimited, DomainError,
-} from "@jotdojo/domain";
+} from "@jotacular/domain";
 import { registerCaptureMedia } from "./capture-media.js";
 
 const PORT = Number(process.env.API_PORT ?? 3401);

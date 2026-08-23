@@ -1,7 +1,7 @@
 /**
  * LOCAL DEVELOPMENT ONLY.
  *
- * Gives jotdojo_app a password so it can connect over TCP against the docker
+ * Gives jotacular_app a password so it can connect over TCP against the docker
  * Postgres. Production sets this out of band -- the password belongs in Key
  * Vault, not in a migration that is replayed everywhere.
  */
@@ -15,6 +15,6 @@ const adminUrl = process.env.DATABASE_ADMIN_URL;
 if (!adminUrl) throw new Error("DATABASE_ADMIN_URL is not set.");
 
 const sql = postgres(adminUrl, { max: 1, onnotice: () => {} });
-await sql.unsafe(`ALTER ROLE jotdojo_app LOGIN PASSWORD 'jotdojo'`);
-console.log("jotdojo_app password set for local development");
+await sql.unsafe(`ALTER ROLE jotacular_app LOGIN PASSWORD 'jotacular'`);
+console.log("jotacular_app password set for local development");
 await sql.end();

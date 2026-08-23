@@ -1,5 +1,5 @@
 import { and, eq, isNotNull, sql } from "drizzle-orm";
-import { blocks, type Tx } from "@jotdojo/db";
+import { blocks, type Tx } from "@jotacular/db";
 import { DomainError } from "./errors";
 import { queueEmbedding } from "./note-body";
 

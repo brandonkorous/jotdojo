@@ -1,11 +1,11 @@
 ---
-title: Connecting jotdojo to Claude, ChatGPT and Claude Code
+title: Connecting Jotacular to Claude, ChatGPT and Claude Code
 description: One button, an OAuth screen, and a choice of which space the agent may reach. Two minutes, or ten if you read the whole thing.
 date: 2026-08-17
 ---
 
-jotdojo runs a remote server, so connecting it is the same three steps
-everywhere: point your assistant at jotdojo, sign in, choose what it may reach.
+Jotacular runs a remote server, so connecting it is the same three steps
+everywhere: point your assistant at Jotacular, sign in, choose what it may reach.
 There is no config file and nothing to install.
 
 ## The short way
@@ -20,7 +20,7 @@ know what the button does.
 ## The address
 
 ```
-https://mcp.jotdojo.com/mcp
+https://mcp.jotacular.com/mcp
 ```
 
 ## Claude (web, desktop and mobile)
@@ -31,7 +31,7 @@ https://mcp.jotdojo.com/mcp
 
 Claude registers itself with our authorization server automatically — that is
 dynamic client registration, RFC 7591, and it is why you never enter a client id
-or a secret. You are then sent to a jotdojo consent screen that shows:
+or a secret. You are then sent to a Jotacular consent screen that shows:
 
 - which Google account you are signing in as,
 - **which spaces** the connection may reach, one checkbox each,
@@ -56,7 +56,7 @@ conversation depends on your ChatGPT plan and mode; that part is theirs, not our
 From a terminal:
 
 ```bash
-claude mcp add --transport http jotdojo https://mcp.jotdojo.com/mcp
+claude mcp add --transport http jotacular https://mcp.jotacular.com/mcp
 ```
 
 Then run `/mcp` inside Claude Code and pick **Authenticate**. Your browser opens,
@@ -99,7 +99,7 @@ we borrow from our sibling product: the model suggests, you decide, in that orde
 
 ## Revoking
 
-Open **Account → Connections** in jotdojo. Every client that has ever connected is
+Open **Account → Connections** in Jotacular. Every client that has ever connected is
 listed with when it last used the connection, and there is a revoke button beside
 each. Revoking one person's Claude does not affect anyone else's, even in a
 shared space — a grant is per user per client, not per application.

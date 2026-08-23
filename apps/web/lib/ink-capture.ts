@@ -1,4 +1,4 @@
-import type { Point, Stroke } from "@jotdojo/domain";
+import type { Point, Stroke } from "@jotacular/domain";
 import { HIGHLIGHTER_WIDTH, PEN_WIDTH } from "./ink-paint";
 
 /**

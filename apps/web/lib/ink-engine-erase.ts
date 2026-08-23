@@ -1,4 +1,4 @@
-import type { InkDelta, Stroke } from "@jotdojo/domain";
+import type { InkDelta, Stroke } from "@jotacular/domain";
 import { eraseNear } from "./ink-edit";
 import { ERASE_RADIUS } from "./ink-paint";
 

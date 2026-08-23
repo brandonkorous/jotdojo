@@ -1,4 +1,4 @@
-import type { Point } from "@jotdojo/domain";
+import type { Point } from "@jotacular/domain";
 
 /**
  * Was that meant to be a circle? ADR-066.

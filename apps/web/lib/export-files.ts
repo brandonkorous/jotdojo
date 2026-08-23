@@ -1,5 +1,5 @@
-import { renderNote, type ExportBlock, type ExportNote } from "@jotdojo/domain";
-import { contentBounds, toSvg } from "@jotdojo/ink-render";
+import { renderNote, type ExportBlock, type ExportNote } from "@jotacular/domain";
+import { contentBounds, toSvg } from "@jotacular/ink-render";
 
 /**
  * What one note becomes on somebody's disk. ADR-067.

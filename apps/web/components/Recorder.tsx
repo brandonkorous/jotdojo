@@ -106,7 +106,7 @@ export function Recorder({ noteId, startSignal }: { noteId: string; startSignal:
     } catch {
       // Almost always a denied microphone permission, and saying so is more
       // useful than the browser's own error, which people do not see.
-      setError("jotdojo could not reach your microphone. Check the site permissions.");
+      setError("Jotacular could not reach your microphone. Check the site permissions.");
     }
   }, []);
 

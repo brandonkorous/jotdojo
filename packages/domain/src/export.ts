@@ -1,6 +1,6 @@
 import { sql } from "drizzle-orm";
-import { withActor, type Tx } from "@jotdojo/db";
-import { storage } from "@jotdojo/storage";
+import { withActor, type Tx } from "@jotacular/db";
+import { storage } from "@jotacular/storage";
 import { canReachSpace, type Actor } from "./actor";
 import { NotFound } from "./errors";
 import { assertMember } from "./spaces";

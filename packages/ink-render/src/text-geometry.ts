@@ -1,4 +1,4 @@
-import type { TextBox } from "@jotdojo/domain";
+import type { TextBox } from "@jotacular/domain";
 import type { Bounds } from "./geometry";
 
 /**

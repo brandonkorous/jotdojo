@@ -1,5 +1,5 @@
 /**
- * The only place in jotdojo that sends an image to a model.
+ * The only place in jotacular that sends an image to a model.
  *
  * Handwriting recognition, tier 2 of docs/08-ink.md: render the strokes to a
  * clean high-contrast PNG and ask a vision model to read it. Chosen over a

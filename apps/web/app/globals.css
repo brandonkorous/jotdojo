@@ -1,19 +1,22 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 
 /* Split by responsibility rather than kept as one sheet. ADR-030. Imports sit
    at the top because CSS requires it; the tokens below are custom properties,
    which resolve where they are USED, so order does not affect them. */
-@import "./styles/canvas.css";
-@import "./styles/chrome.css";
-@import "./styles/ink.css";
-@import "./styles/live.css";
-@import "./styles/media.css";
-@import "./styles/presence.css";
-@import "./styles/prose.css";
-@import "./styles/site.css";
-@import "./styles/site-sections.css";
-@import "./styles/site-hero.css";
-@import "./styles/site-footer.css";
+@import './styles/brand.css';
+@import './styles/canvas.css';
+@import './styles/chrome.css';
+@import './styles/ink.css';
+@import './styles/live.css';
+@import './styles/media.css';
+@import './styles/presence.css';
+@import './styles/prose.css';
+@import './styles/site.css';
+@import './styles/site-lists.css';
+@import './styles/site-sections.css';
+@import './styles/site-story.css';
+@import './styles/site-hero.css';
+@import './styles/site-footer.css';
 
 /* Silica's React components live in node_modules, which Tailwind does not scan
    by default. Without this their utility classes are never emitted. */
@@ -28,73 +31,119 @@
  * modes, with a contrast-measured -content ink derived automatically.
  * ------------------------------------------------------------------------- */
 @plugin "@wizeworks/silicaui" {
-  colors: primary, secondary, accent, neutral, info, success, warning, error, agent;
+    colors: primary, secondary, accent, neutral, info, success, warning, error, agent;
 }
 
 /* ---------------------------------------------------------------------------
- * The house theme, declared from kanninja's published brand kit rather than
- * picked from a preset -- two products from one workshop should look like it.
- * ADR-011.
+ * The house theme. design.md §11, ADR-072.
  *
- *   Vermillion  #E0432F   the seal. ONE PER SCREEN. Not a button colour.
- *   Sumi        #0E0F12   the ink
- *   Washi       #F8F4EC   cream paper, the page
- *   Snow        #FBFAF6   elevated surfaces
+ *   Mint        #00C2A8   the primary. CTAs, active states, the jot dot
+ *   Violet      #6A39FF   the agent, and the underline in the mark
+ *   Charcoal    #111418   the ink
+ *   Warm paper  #F7F3EA   the page
+ *
+ * Flat, always -- no gradient anywhere in this file or any it imports.
+ * design.md §12 is a strict rule, not a preference.
  * ------------------------------------------------------------------------- */
 @plugin "@wizeworks/silicaui/theme" {
-  name: washi;
-  color-scheme: light;
-  default: true;
+    name: paper;
+    color-scheme: light;
+    default: true;
 
-  --color-base-100: #F8F4EC;
-  --color-base-200: #FBFAF6;
-  --color-base-300: #EDE7DA;
-  --color-base-content: #0E0F12;
+    --color-base-100: #ffffff;
+    --color-base-200: #f7f3ea;
+    --color-base-300: #ece6da;
+    --color-base-content: #111418;
 
-  --color-primary: #0E0F12;
-  --color-primary-content: #F8F4EC;
-  --color-accent: #E0432F;
-  --color-accent-content: #FBFAF6;
+    --color-primary: #00c2a8;
+    --color-primary-content: #08201c;
+    --color-accent: #6a39ff;
+    --color-accent-content: #ffffff;
 
-  --depth: 0;      /* ink on paper casts no shadow */
-  --noise: 1;      /* paper grain on the themed surface */
-  --duration: 120ms;
+    --depth: 1; /* paper lifts off the desk. ADR-077 */
+    --noise: 1; /* paper grain on the themed surface */
+    --duration: 120ms;
 
-  --radius-field: 0.25rem;
-  --radius-box: 0.375rem;
+    --radius-field: 0.5rem; /* rounded, to match the mark */
+    --radius-box: 0.75rem;
 }
 
 @plugin "@wizeworks/silicaui/theme" {
-  name: washi-night;
-  color-scheme: dark;
-  prefersdark: true;
+    name: paper-night;
+    color-scheme: dark;
+    prefersdark: true;
 
-  --color-base-100: #0E0F12;
-  --color-base-200: #16171B;
-  --color-base-300: #24262C;
-  --color-base-content: #F8F4EC;
+    --color-base-100: #111418;
+    --color-base-200: #181c21;
+    --color-base-300: #262b32;
+    --color-base-content: #f7f3ea;
 
-  --color-primary: #F8F4EC;
-  --color-primary-content: #0E0F12;
-  --color-accent: #E0432F;   /* vermillion holds in both modes */
-  --color-accent-content: #FBFAF6;
+    --color-primary: #00c2a8; /* mint holds in both modes */
+    --color-primary-content: #08201c;
+    --color-accent: #8a63ff; /* violet lifted, so it clears charcoal */
+    --color-accent-content: #0b0716;
 
-  --depth: 0;
-  --noise: 1;
-  --duration: 120ms;
+    --depth: 1;
+    --noise: 1;
+    --duration: 120ms;
+
+    --radius-field: 0.5rem;
+    --radius-box: 0.75rem;
 }
 
 @theme {
-  /* Agent ink. Indigo: cool against washi's warmth, unmistakable against the
-   * vermillion seal, so agent content reads as VISITING the page. ADR-011. */
-  --color-agent: oklch(52% 0.09 265);
+    /* Agent ink is the brand's violet. design.md §11 gives violet the "AI/agent
+   * association", which is the job this token already had. ADR-072. */
+    --color-agent: #6a39ff;
 
-  --font-sans: Inter, ui-sans-serif, system-ui, sans-serif;
-  --font-head: Fraunces, ui-serif, Georgia, serif;
-  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+    /* One elevation scale, used by the site. Warm-tinted rather than neutral
+   * grey, so a lifted card still reads as paper. ADR-077. */
+    --shadow-lift: 0 1px 2px rgb(60 46 24 / 0.05), 0 6px 16px -6px rgb(60 46 24 / 0.1);
+    --shadow-raise: 0 2px 4px rgb(60 46 24 / 0.06), 0 14px 32px -12px rgb(60 46 24 / 0.16);
+
+    /* No `--color-mint` / `--color-violet` here on purpose. Mint is `primary` and
+   * violet is `accent` and `agent`; a second name for the same hue would let
+   * somebody write `btn-mint`, which Silica does not generate a variant for and
+   * which then renders silently in the default colour. */
+
+    --font-sans: 'DM Sans', Inter, ui-sans-serif, system-ui, sans-serif;
+    --font-head: Nunito, 'DM Sans', ui-sans-serif, system-ui, sans-serif;
+    --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+    /* The handwritten accent. design.md §10: annotations and napkin moments
+     * only -- never navigation, and never a string somebody needs in order to
+     * operate the product. Today that is one jot on the marketing page. */
+    --font-hand: Caveat, ui-rounded, cursive;
+}
+
+/* Every icon in the product. ADR-083.
+ *
+ * One em tall, and as wide as its own artwork -- the width comes inline from
+ * the glyph's viewBox, because a Whiteboard icon is rarely square. Size one by
+ * setting `font-size` on it; setting `width` and `height` squashes it. */
+.jd-icon {
+    display: inline-block;
+    height: 1em;
+    flex: none;
+    vertical-align: -0.125em;
 }
 
 /* The canvas fills the viewport and never scrolls the document itself --
  * chrome floats above it. `dvh` rather than `vh` so the iOS URL bar
  * collapsing does not shift the writing surface mid-stroke. */
-html, body { height: 100%; overscroll-behavior: none; }
+html {
+    height: 100%;
+}
+
+/* `min-height`, not `height`. ADR-081.
+ *
+ * `height: 100%` capped the body's background BOX at one viewport while its
+ * content ran on for thousands of pixels -- so on any long page the background
+ * stopped a screen down and the white canvas showed through the rest. It was
+ * invisible until the body carried a colour of its own.
+ *
+ * The canvas does not need it: `.jd-canvas-shell` is `100dvh` outright, and the
+ * ink layer sizes from that rather than from this chain. */
+body {
+    min-height: 100%;
+    overscroll-behavior: none;
+}

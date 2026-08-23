@@ -15,7 +15,7 @@
  *      nothing else here would notice.
  */
 import { sql } from "drizzle-orm";
-import { withActor } from "@jotdojo/db";
+import { withActor } from "@jotacular/db";
 import {
   upsertUserFromGoogle, asUser, createNote, defaultSpaceId, getNote,
   listNotes, searchNotes, listChanges, commentOnNote, nextCursor,
@@ -142,7 +142,7 @@ console.log("\nwhat changed");
   check("a transcript arriving is in the feed", has("note.transcript.ready"),
     feed.map((c) => c.action).join(", "));
   check("...attributed to nobody in particular",
-    feed.find((c) => c.action === "note.transcript.ready")?.who === "jotdojo");
+    feed.find((c) => c.action === "note.transcript.ready")?.who === "jotacular");
   check("a person overruling it is in the feed", has("note.transcript.correct"));
   check("...attributed to them", feed.find((c) => c.action === "note.transcript.correct")?.who === "you");
   check("note.create is in the feed", has("note.create"));

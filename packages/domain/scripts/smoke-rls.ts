@@ -8,7 +8,7 @@
  * empty or refused.
  */
 import { sql } from "drizzle-orm";
-import { withoutActor, checkNotOwner } from "@jotdojo/db";
+import { withoutActor, checkNotOwner } from "@jotacular/db";
 import {
   upsertUserFromGoogle, asUser, createNote, getNote, listNotes, searchNotes,
   defaultSpaceId, listSpaces,

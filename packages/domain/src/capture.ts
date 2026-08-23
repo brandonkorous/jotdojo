@@ -2,7 +2,7 @@ import { createHash, randomBytes } from "node:crypto";
 import { and, desc, eq, gt, isNull, sql } from "drizzle-orm";
 import {
   withActor, withoutActor, captureTokens, captureRequests, spaces, type Tx,
-} from "@jotdojo/db";
+} from "@jotacular/db";
 import type { Actor } from "./actor";
 import { Forbidden, NotFound } from "./errors";
 import { assertMember } from "./spaces";

@@ -1,5 +1,5 @@
 import { and, eq, sql } from "drizzle-orm";
-import { withActor, withoutActor, spaces, spaceMembers, users, type Tx } from "@jotdojo/db";
+import { withActor, withoutActor, spaces, spaceMembers, users, type Tx } from "@jotacular/db";
 import { canReachSpace, type Actor } from "./actor";
 import { Forbidden } from "./errors";
 
@@ -73,7 +73,7 @@ export type ToolbarSide = "auto" | "left" | "right";
  * Which side the tool rail sits on. ADR-012.
  *
  * Lives here rather than being read from the db in a page component: only the
- * domain layer talks to @jotdojo/db, so that the web app, the REST API and the
+ * domain layer talks to @jotacular/db, so that the web app, the REST API and the
  * MCP server all reach the same rule through the same door.
  */
 export async function getToolbarSide(actor: Actor): Promise<ToolbarSide> {

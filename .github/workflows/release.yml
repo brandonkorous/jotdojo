@@ -10,7 +10,7 @@
 #
 # Everything this needs from Azure — the database, the Key Vault, the blob
 # account, and the identity this workflow assumes — is Terraform in the SPARX
-# repo at `terraform/envs/azure/jotdojo.tf`. This workflow creates no
+# repo at `terraform/envs/azure/jotacular.tf`. This workflow creates no
 # infrastructure; it only deploys onto it. See docs/17-shared-infrastructure.md.
 name: Release
 
@@ -23,7 +23,7 @@ on:
 permissions:
   # OIDC. There is no stored Azure credential anywhere in this repo — the runner
   # exchanges a short-lived GitHub token for an Azure one, and the trust is
-  # pinned to `repo:brandonkorous/jotdojo:ref:refs/heads/main` on the Azure side.
+  # pinned to `repo:brandonkorous/jotacular:ref:refs/heads/main` on the Azure side.
   id-token: write
   contents: read
   # Push images to GHCR.
@@ -38,7 +38,7 @@ concurrency:
 
 env:
   REGISTRY: ghcr.io/${{ github.repository }}
-  NAMESPACE: jotdojo
+  NAMESPACE: jotacular
   RESOURCE_GROUP: rg-sparx-prod-cus
   CLUSTER: aks-sparx-prod-cus
 
@@ -79,6 +79,11 @@ jobs:
           file: infra/docker/${{ matrix.service }}.Dockerfile
           push: true
           tags: ${{ env.REGISTRY }}/${{ matrix.service }}:${{ github.sha }}
+          # Only web mounts this -- its icon kit comes from npm.fontawesome.com.
+          # Passed to all four because the step is shared; the three that never
+          # mount it never see it. ADR-083.
+          secrets: |
+            fontawesome_npm_token=${{ secrets.FONTAWESOME_NPM_TOKEN }}
           # GitHub Actions layer cache. Without it every release reinstalls the
           # workspace four times over.
           cache-from: type=gha,scope=${{ matrix.service }}
@@ -139,12 +144,12 @@ jobs:
           VAULT: ${{ vars.AZURE_KEY_VAULT_NAME }}
         run: |
           set -euo pipefail
-          : > /tmp/jotdojo.env
+          : > /tmp/jotacular.env
 
           required=(
             DATABASE_URL
             DATABASE_ADMIN_URL
-            JOTDOJO_APP_PASSWORD
+            JOTACULAR_APP_PASSWORD
             AUTH_SECRET
             AUTH_GOOGLE_ID
             AUTH_GOOGLE_SECRET
@@ -161,7 +166,7 @@ jobs:
           # is simply off in production while the vault looks right -- which is
           # the same silent-green failure the required list above exists to
           # refuse, arriving through the back door.
-          # NEVER ADD `JOTDOJO_FAKE_PROVIDERS_OK` TO EITHER LIST. It exempts the
+          # NEVER ADD `JOTACULAR_FAKE_PROVIDERS_OK` TO EITHER LIST. It exempts the
           # fake drivers from their refusal to run in production, and CI sets it
           # so it can test a production build (ADR-052). A name absent from both
           # lists cannot reach a container, and that absence is the whole
@@ -200,7 +205,7 @@ jobs:
             kv_name="${name//_/-}"
             if value=$(az keyvault secret show --vault-name "$VAULT" --name "$kv_name" \
                          --query value -o tsv 2>/dev/null); then
-              printf '%s=%s\n' "$name" "$value" >> /tmp/jotdojo.env
+              printf '%s=%s\n' "$name" "$value" >> /tmp/jotacular.env
             else
               missing+=("$kv_name")
             fi
@@ -216,7 +221,7 @@ jobs:
             kv_name="${name//_/-}"
             if value=$(az keyvault secret show --vault-name "$VAULT" --name "$kv_name" \
                          --query value -o tsv 2>/dev/null); then
-              printf '%s=%s\n' "$name" "$value" >> /tmp/jotdojo.env
+              printf '%s=%s\n' "$name" "$value" >> /tmp/jotacular.env
               echo "optional secret present: $name"
             fi
           done
@@ -224,11 +229,11 @@ jobs:
       - name: Apply the Secret
         run: |
           set -euo pipefail
-          kubectl create secret generic jotdojo-secrets \
+          kubectl create secret generic jotacular-secrets \
             -n "$NAMESPACE" \
-            --from-env-file=/tmp/jotdojo.env \
+            --from-env-file=/tmp/jotacular.env \
             --dry-run=client -o yaml | kubectl apply -f -
-          rm -f /tmp/jotdojo.env
+          rm -f /tmp/jotacular.env
 
       # -----------------------------------------------------------------------
       # DATA — migrations, as a Job INSIDE the cluster.
@@ -297,7 +302,7 @@ jobs:
                     env:
                       - name: DATABASE_ADMIN_URL
                         valueFrom:
-                          secretKeyRef: { name: jotdojo-secrets, key: DATABASE_ADMIN_URL }
+                          secretKeyRef: { name: jotacular-secrets, key: DATABASE_ADMIN_URL }
           YAML
 
           # Wait, and FAIL THE RELEASE if it fails. A migration whose result is
@@ -314,7 +319,7 @@ jobs:
       # -----------------------------------------------------------------------
       # The application role's password.
       #
-      # `0001_app_role.sql` creates `jotdojo_app` with NO PASSWORD, on purpose —
+      # `0001_app_role.sql` creates `jotacular_app` with NO PASSWORD, on purpose —
       # a credential does not belong in a migration that is replayed everywhere.
       # Local development sets one with `pnpm db:dev-role`; production sets it
       # here, from Key Vault.
@@ -358,16 +363,16 @@ jobs:
                     # Postgres literally and fails with `syntax error at or near
                     # ":"`. Verified against postgres:18-alpine both ways.
                     args:
-                      - echo "ALTER ROLE jotdojo_app LOGIN PASSWORD :'app_password';"
+                      - echo "ALTER ROLE jotacular_app LOGIN PASSWORD :'app_password';"
                         | psql "$DATABASE_ADMIN_URL" -v ON_ERROR_STOP=1
-                        -v app_password="$JOTDOJO_APP_PASSWORD"
+                        -v app_password="$JOTACULAR_APP_PASSWORD"
                     env:
                       - name: DATABASE_ADMIN_URL
                         valueFrom:
-                          secretKeyRef: { name: jotdojo-secrets, key: DATABASE_ADMIN_URL }
-                      - name: JOTDOJO_APP_PASSWORD
+                          secretKeyRef: { name: jotacular-secrets, key: DATABASE_ADMIN_URL }
+                      - name: JOTACULAR_APP_PASSWORD
                         valueFrom:
-                          secretKeyRef: { name: jotdojo-secrets, key: JOTDOJO_APP_PASSWORD }
+                          secretKeyRef: { name: jotacular-secrets, key: JOTACULAR_APP_PASSWORD }
           YAML
 
           if ! kubectl wait --for=condition=complete job/db-role-password \
@@ -418,7 +423,7 @@ jobs:
         if: always()
         run: |
           {
-            echo "### jotDOJO release"
+            echo "### Jotacular release"
             echo
             echo "Commit \`${GITHUB_SHA:0:7}\` -> namespace \`$NAMESPACE\` on \`$CLUSTER\`."
             echo

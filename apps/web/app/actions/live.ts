@@ -3,7 +3,7 @@
 import {
   heartbeat, leave, applyInkDelta, strokesSince, noteBody,
   type Presence, type InkDelta,
-} from "@jotdojo/domain";
+} from "@jotacular/domain";
 import { requireActor, captureActor } from "@/lib/session";
 
 /**

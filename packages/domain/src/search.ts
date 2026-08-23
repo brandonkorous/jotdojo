@@ -1,6 +1,6 @@
 import { sql } from "drizzle-orm";
-import { withActor, type Tx } from "@jotdojo/db";
-import { embedder, EmbeddingError } from "@jotdojo/embeddings";
+import { withActor, type Tx } from "@jotacular/db";
+import { embedder, EmbeddingError } from "@jotacular/embeddings";
 import { canReachSpace, type Actor } from "./actor";
 import { Forbidden } from "./errors";
 import { assertMember } from "./spaces";

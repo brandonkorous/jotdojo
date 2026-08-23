@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { InkEngine, SelectionSummary, Tool } from "@/lib/ink-engine";
+import type { InkEngine, SelectionSummary } from "@/lib/ink-engine";
+import { canReachText, inkToolFor, type CanvasTool } from "@/lib/canvas-tool";
 import { NO_SELECTION } from "@/lib/ink-selection";
 import type { InkSync, SyncState } from "@/lib/ink-sync";
 import type { InkCatchup } from "@/lib/ink-catchup";
@@ -29,7 +30,14 @@ export function InkCanvas({
   noteId, tool, style, onReady, onDraw, onTextPlaced, live = false,
 }: {
   noteId: string;
-  tool: Tool;
+  /**
+   * The tool the PERSON picked, spine included.
+   *
+   * Not the engine's narrower `InkTool`. The engine has no concept of the
+   * spine, but the plane needs one -- so the collapse happens here, where both
+   * answers can still be taken from the same source. ADR-085.
+   */
+  tool: CanvasTool;
   /** Colour and width for THIS tool. Held per tool by the caller. ADR-045. */
   style: InkStyle;
   onReady?: (blockId: string) => void;
@@ -67,6 +75,9 @@ export function InkCanvas({
   const ready = useRef(onReady);
   ready.current = onReady;
 
+  const ink = inkToolFor(tool);
+  const reachable = canReachText(tool);
+
   const [state, setState] = useState<SyncState>("idle");
   const [selected, setSelected] = useState<SelectionSummary>(NO_SELECTION);
   const [error, setError] = useState<string | null>(null);
@@ -101,7 +112,7 @@ export function InkCanvas({
       grid: gridRef, plane: planeRef,
     },
     held: { engine: engineRef, sync: syncRef, catchup: catchupRef },
-    initial: { tool, style },
+    initial: { tool: ink, style, textReachable: reachable },
     onState: setState,
     onSelection: setSelected,
     onView: setView,
@@ -136,7 +147,8 @@ export function InkCanvas({
 
   useInkTrouble(state, error);
 
-  useEffect(() => { engineRef.current?.setTool(tool); }, [tool]);
+  useEffect(() => { engineRef.current?.setTool(ink); }, [ink]);
+  useEffect(() => { engineRef.current?.setTextReachable(reachable); }, [reachable]);
   useEffect(() => { engineRef.current?.setStyle(style); }, [style]);
 
   /**

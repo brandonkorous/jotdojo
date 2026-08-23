@@ -1,4 +1,4 @@
-# @jotdojo/worker — the async half
+# @jotacular/worker — the async half
 
 Drains the `outbox` table and runs everything the capture path is forbidden from
 doing. **The synchronous capture path never calls a model.** If a model is in the
@@ -21,7 +21,7 @@ and none of them can stop capture (ADR-007).
 
 ## How it reaches the database
 
-As `jotdojo_app` — the same restricted, RLS-bound role as every other process — through a
+As `jotacular_app` — the same restricted, RLS-bound role as every other process — through a
 handful of narrow `SECURITY DEFINER` functions, one per thing the worker is allowed to do:
 claim a job, store a result, meter it, close the job. They are in
 `0009_embedding_jobs.sql`, `0011_recognition_jobs.sql`, `0015_recognition_metering.sql` and
@@ -39,7 +39,7 @@ only do three things.
 ## Running it
 
 ```sh
-pnpm --filter @jotdojo/worker dev     # or just `pnpm dev` at the root
+pnpm --filter @jotacular/worker dev     # or just `pnpm dev` at the root
 pnpm worker:smoke                     # embeddings, including the failure paths
 pnpm recognize:smoke                  # handwriting
 pnpm media:smoke                      # photos and voice

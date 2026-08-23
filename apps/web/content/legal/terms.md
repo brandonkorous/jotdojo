@@ -1,15 +1,15 @@
 ---
 title: Terms
-description: What you can expect from jotdojo, what we expect from you, and what happens with agents, billing and limits.
+description: What you can expect from Jotacular, what we expect from you, and what happens with agents, billing and limits.
 updated: 2026-08-22
-summary: Your notes stay yours and you can take them out whenever you like. In return, do not use jotdojo to break the law or to get at anyone else's notes, and understand what you are handing an agent when you connect one.
+summary: Your notes stay yours and you can take them out whenever you like. In return, do not use Jotacular to break the law or to get at anyone else's notes, and understand what you are handing an agent when you connect one.
 ---
 
 These terms are the agreement between you and WizeWorks LLC, of
-Visalia, California, for the use of jotdojo. By writing a note here, with or
+Visalia, California, for the use of Jotacular. By writing a note here, with or
 without an account, you accept them.
 
-## What jotdojo is
+## What Jotacular is
 
 A place to write things down quickly — typed, handwritten, spoken or
 photographed — which can then be read by an AI agent you connect yourself. We
@@ -36,7 +36,7 @@ people you have shared a space with, show them to an agent you have granted
 access to, and send handwriting, voice and photographs to the recognition
 providers named in our [privacy policy](/privacy) so they can be turned into text.
 
-That permission is limited to operating jotdojo for you. It ends when you delete
+That permission is limited to operating Jotacular for you. It ends when you delete
 the content. It does not let us publish your notes, sell them, share them with
 anyone else, or use them to train a model — ours or anybody's.
 
@@ -48,7 +48,7 @@ anyone else, or use them to train a model — ours or anybody's.
   boundary between accounts.
 - Attack the service: overwhelm it, scrape it, or work around the limits on
   writing before you have an account.
-- Resell jotdojo, or use it as the storage layer for a product of your own,
+- Resell Jotacular, or use it as the storage layer for a product of your own,
   without a written agreement with us.
 - Upload malware, or content designed to attack whoever reads it next.
 
@@ -65,7 +65,7 @@ You should also know that **note content can influence an agent that reads it.**
 Text in a note — including a note somebody else put in a shared space, or text
 inside a photograph — can be written specifically to redirect an AI agent into
 doing something you did not intend. This is a real and unsolved problem across
-the whole industry, not a jotdojo defect, and we cannot prevent it.
+the whole industry, not a Jotacular defect, and we cannot prevent it.
 
 What we do about it: agent access defaults to reading and commenting rather than
 editing, every agent action is recorded, nothing an agent does is permanent, and
@@ -107,7 +107,7 @@ limit.
 
 ## What we do not promise
 
-jotdojo is provided as it is. We work hard to keep it up and we do not offer a
+Jotacular is provided as it is. We work hard to keep it up and we do not offer a
 service level agreement, guarantee uninterrupted availability, or promise that
 recognition will read every word correctly — handwriting is hard, and a
 transcript is a best effort you can always correct yourself.
@@ -117,7 +117,7 @@ goes, and your export will still work.
 
 ## Not for regulated data
 
-jotdojo has no HIPAA compliance, no business associate agreement, no SOC 2
+Jotacular has no HIPAA compliance, no business associate agreement, no SOC 2
 report, no data residency guarantee and no single sign-on. Do not use it for
 clinical records, legally privileged material, or any other data you are legally
 obliged to protect. If you do so anyway, that is on you rather than on us.
@@ -132,7 +132,7 @@ or other people at risk, or where we are required to. Except where something is
 seriously or repeatedly wrong, we will tell you first and give you a chance to
 export.
 
-If we ever shut jotdojo down, we will give you at least 60 days' notice and your
+If we ever shut Jotacular down, we will give you at least 60 days' notice and your
 export will keep working for the whole of that time.
 
 ## Liability
@@ -157,7 +157,7 @@ These terms are governed by the laws of the State of California, without regard
 to its conflict-of-laws principles.
 
 **Talk to us first.** Before filing anything, email
-[legal@jotdojo.com](mailto:legal@jotdojo.com) describing the problem, and give us
+[legal@jotacular.com](mailto:legal@jotacular.com) describing the problem, and give us
 30 days to put it right. Most things end here.
 
 If that does not resolve it, any dispute arising out of these terms or the
@@ -172,8 +172,8 @@ local courts where that law says you can.
 
 ## Contact
 
-**[hello@jotdojo.com](mailto:hello@jotdojo.com)** for anything about your
-account, or [legal@jotdojo.com](mailto:legal@jotdojo.com) for these terms and
+**[hello@jotacular.com](mailto:hello@jotacular.com)** for anything about your
+account, or [legal@jotacular.com](mailto:legal@jotacular.com) for these terms and
 anything about your privacy.
 
 WizeWorks LLC, Visalia, California.

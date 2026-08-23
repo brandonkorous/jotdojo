@@ -1,5 +1,5 @@
-import type { Stroke } from "@jotdojo/domain";
-import { strokeBounds, intersects, type Bounds } from "@jotdojo/ink-render";
+import type { Stroke } from "@jotacular/domain";
+import { strokeBounds, intersects, type Bounds } from "@jotacular/ink-render";
 
 /**
  * Which strokes are worth painting. ADR-053.
@@ -8,7 +8,7 @@ import { strokeBounds, intersects, type Bounds } from "@jotdojo/ink-render";
  * cannot: the work per frame would grow with the size of the board rather than
  * the size of the window.
  *
- * The boxes come from `@jotdojo/ink-render` rather than a second copy here, so
+ * The boxes come from `@jotacular/ink-render` rather than a second copy here, so
  * the browser and the recognition pipeline can never disagree about where a
  * stroke is.
  */

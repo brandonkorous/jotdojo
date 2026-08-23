@@ -4,7 +4,7 @@ import { useTransition } from "react";
 import {
   Drawer, DrawerClose, DrawerContent, DrawerHeader, DrawerTitle,
 } from "@wizeworks/silicaui-react";
-import type { CommentView } from "@jotdojo/domain";
+import type { CommentView } from "@jotacular/domain";
 import { resolveCommentAction } from "@/app/actions";
 import { useRemarks } from "@/lib/remarks";
 
@@ -41,7 +41,7 @@ export function RemarksDrawer() {
 
         {all.length === 0 && (
           <p className="jd-remark-empty">
-            Your agent has not said anything about this page yet.
+            Nothing from your agent on this page yet.
           </p>
         )}
 

@@ -6,10 +6,10 @@
  * concentrates on the failure paths -- a queue is only as good as what it does
  * when the thing it calls is broken.
  */
-import { fakeEmbedder, EmbeddingError, type Embedder } from "@jotdojo/embeddings";
+import { fakeEmbedder, EmbeddingError, type Embedder } from "@jotacular/embeddings";
 import {
   upsertUserFromGoogle, asUser, createNote, defaultSpaceId, searchNotes, claimEmbedJobs,
-} from "@jotdojo/domain";
+} from "@jotacular/domain";
 import { runCycle } from "../src/embed";
 
 let failures = 0;
@@ -86,7 +86,7 @@ await runCycle(good, 64);
 
 const repeat = await createNote(actor, space,
   "A note that will be saved repeatedly before the worker ever wakes up");
-const { saveNote } = await import("@jotdojo/domain");
+const { saveNote } = await import("@jotacular/domain");
 let rev = repeat.revision;
 for (let i = 0; i < 5; i++) {
   rev = (await saveNote(actor, repeat.id, `Revision ${i} of a note saved over and over`, rev)).revision;

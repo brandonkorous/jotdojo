@@ -1,4 +1,4 @@
-import type { Point, Stroke } from "@jotdojo/domain";
+import type { Point, Stroke } from "@jotacular/domain";
 
 /** Squared distance. Comparisons never need the square root. */
 export const dist2 = (ax: number, ay: number, bx: number, by: number) =>

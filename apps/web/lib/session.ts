@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { currentDraft } from "@/lib/draft";
-import { asUser, type Actor, type AnonSession } from "@jotdojo/domain";
+import { asUser, type Actor, type AnonSession } from "@jotacular/domain";
 
 /** The signed-in actor, or a redirect to sign-in. */
 export async function requireActor(): Promise<Actor> {

@@ -46,7 +46,7 @@ export function SaveIndicator({ state }: { state: SaveState }) {
 
   usePublish(
     "save",
-    settled === 0 ? null : { tone: "transient", line: "Saved" },
+    settled === 0 ? null : { tone: "transient", line: "Jot saved." },
     [settled],
   );
 

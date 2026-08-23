@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { withActor, withoutActor, type Tx } from "@jotdojo/db";
+import { withActor, withoutActor, type Tx } from "@jotacular/db";
 import { canReachSpace, type Actor } from "./actor";
 import { Forbidden } from "./errors";
 import { assertMember } from "./spaces";
@@ -23,7 +23,7 @@ export type Change = {
   action: string;
   noteId: string | null;
   noteTitle: string | null;
-  /** Who, in words: "you", "an agent", or "jotdojo". Never a uuid. */
+  /** Who, in words: "you", "an agent", or "jotacular". Never a uuid. */
   who: string;
   /** The MCP tool used, when a tool was used. */
   toolName: string | null;
@@ -95,7 +95,7 @@ function shape(r: Record<string, unknown>, actor: Actor): Change {
  * truth for something the members list already owns.
  */
 function describe(actorType: string, actorUserId: string | null, actor: Actor): string {
-  if (actorType === "system") return "jotdojo";
+  if (actorType === "system") return "jotacular";
   if (actorType === "agent") return "an agent";
   if (actorUserId && actorUserId === actor.userId) return "you";
   return "someone else in this space";

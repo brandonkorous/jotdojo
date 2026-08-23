@@ -37,7 +37,7 @@ const refused = async (fn: () => Promise<unknown>) => {
   }
 };
 
-const RESOURCE = "https://mcp.jotdojo.com/mcp";
+const RESOURCE = "https://mcp.jotacular.com/mcp";
 const OTHER_RESOURCE = "https://mcp.kanninja.com/mcp";
 const REDIRECT = "https://claude.ai/api/mcp/auth_callback";
 
@@ -73,7 +73,7 @@ check("mismatched redirect_uri is rejected", await refused(async () => exchangeA
 })));
 
 // RFC 8707. With a live sibling product this is not hypothetical.
-check("a code for jotdojo cannot be exchanged for a kanninja token",
+check("a code for jotacular cannot be exchanged for a kanninja token",
   await refused(async () => exchangeAuthCode({
     code: await mint(), codeVerifier: verifier,
     clientId: client.client_id, redirectUri: REDIRECT, resource: OTHER_RESOURCE,
@@ -95,7 +95,7 @@ const agent = await verifyAccessToken(tokens.access_token, RESOURCE);
 check("access token resolves to an agent actor", agent?.type === "agent");
 check("agent carries its granted scopes",
   agent?.type === "agent" && agent.scopes.includes("notes:read"));
-check("token minted for jotdojo is REJECTED at kanninja's audience",
+check("token minted for jotacular is REJECTED at kanninja's audience",
   (await verifyAccessToken(tokens.access_token, OTHER_RESOURCE)) === null);
 check("a garbage token resolves to nothing",
   (await verifyAccessToken("nonsense", RESOURCE)) === null);

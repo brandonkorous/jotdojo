@@ -11,7 +11,7 @@
  * enforces the same signature contract as Stripe, deliberately, so the suite
  * cannot pass against a driver that skips the one check worth making.
  */
-import { fakeBilling, signFake, BillingError } from "@jotdojo/billing";
+import { fakeBilling, signFake, BillingError } from "@jotacular/billing";
 import {
   upsertUserFromGoogle, asUser, createSpace, inviteToSpace, acceptInvite,
   billingStatus, startCheckout, billingPortal, applyBillingEvent, spaceUsage,
@@ -40,7 +40,7 @@ const threw = (fn: () => unknown): string => {
 
 const SECRET = "billing-smoke-secret";
 const provider = fakeBilling({ webhookSecret: SECRET });
-const URLS = { successUrl: "https://app.jotdojo.com/ok", cancelUrl: "https://app.jotdojo.com/no" };
+const URLS = { successUrl: "https://app.jotacular.com/ok", cancelUrl: "https://app.jotacular.com/no" };
 
 const stamp = Date.now();
 const mk = async (tag: string) => {
@@ -68,11 +68,11 @@ await refused("a member cannot start a checkout", "forbidden",
 await refused("a member cannot read the billing state", "forbidden",
   () => billingStatus(member.actor, space));
 await refused("...nor open the portal", "forbidden",
-  () => billingPortal(provider, member.actor, space, "https://app.jotdojo.com"));
+  () => billingPortal(provider, member.actor, space, "https://app.jotacular.com"));
 await refused("with no provider configured, checkout is refused cleanly", "forbidden",
   () => startCheckout(null, owner.actor, space, "family", URLS));
 await refused("a space that never paid has no portal", "not_found",
-  () => billingPortal(provider, owner.actor, space, "https://app.jotdojo.com"));
+  () => billingPortal(provider, owner.actor, space, "https://app.jotacular.com"));
 
 const session = await startCheckout(provider, owner.actor, space, "family", URLS);
 check("an owner gets a checkout url", session.url.includes("checkout"));
@@ -112,7 +112,7 @@ check("a member sees the new allowance too",
   (await spaceUsage(member.actor, space)).allowance === allowance.allowance);
 
 console.log("\nan owner can now reach the portal");
-const portal = await billingPortal(provider, owner.actor, space, "https://app.jotdojo.com");
+const portal = await billingPortal(provider, owner.actor, space, "https://app.jotacular.com");
 check("the portal url carries the customer", portal.url.includes("cus_smoke"));
 
 console.log("\na failing card does not take the plan away");
@@ -163,7 +163,7 @@ check("free is still a usable allowance -- notes are never taken away",
 
 console.log("\nthe fake refuses production");
 check("BILLING_PROVIDER=fake is refused when NODE_ENV=production", await (async () => {
-  const { resolveBilling } = await import("@jotdojo/billing");
+  const { resolveBilling } = await import("@jotacular/billing");
   try {
     resolveBilling({ BILLING_PROVIDER: "fake", NODE_ENV: "production", AUTH_SECRET: "x" } as NodeJS.ProcessEnv);
     return false;
@@ -172,7 +172,7 @@ check("BILLING_PROVIDER=fake is refused when NODE_ENV=production", await (async 
   }
 })());
 check("an unset provider simply means billing is off", await (async () => {
-  const { resolveBilling } = await import("@jotdojo/billing");
+  const { resolveBilling } = await import("@jotacular/billing");
   return resolveBilling({} as NodeJS.ProcessEnv) === null;
 })());
 

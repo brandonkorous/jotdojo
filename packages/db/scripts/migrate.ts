@@ -13,7 +13,7 @@ import postgres from "postgres";
 
 const dir = join(dirname(fileURLToPath(import.meta.url)), "..", "migrations");
 // Migrations are DDL, so they run as the owner -- not as the restricted
-// jotdojo_app role the application uses. See migrations/0001_app_role.sql.
+// jotacular_app role the application uses. See migrations/0001_app_role.sql.
 const url = process.env.DATABASE_ADMIN_URL ?? process.env.DATABASE_URL;
 if (!url) throw new Error("DATABASE_ADMIN_URL is not set. Copy .env.example to .env.");
 

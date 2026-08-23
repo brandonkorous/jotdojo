@@ -1,5 +1,5 @@
 import sharp from "sharp";
-import type { InkDocument } from "@jotdojo/domain";
+import type { InkDocument } from "@jotacular/domain";
 import { toSvg, type RenderOptions } from "./svg";
 
 /**
@@ -9,7 +9,7 @@ import { toSvg, type RenderOptions } from "./svg";
  * (ink-framing, ink-index, ink-viewport), so putting sharp behind the main
  * export would drag a platform-specific `.node` into every consumer for the
  * sake of two lines the browser can never run. Reach it as
- * `@jotdojo/ink-render/raster`, and only from somewhere with a filesystem.
+ * `@jotacular/ink-render/raster`, and only from somewhere with a filesystem.
  *
  * PNG rather than JPEG, everywhere: handwriting is thin high-contrast lines,
  * and JPEG ringing around them is exactly the artefact that turns an l into a 1.

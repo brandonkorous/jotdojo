@@ -1,6 +1,6 @@
 # 18 — App directories
 
-How jotdojo reaches the people who will never learn the word "MCP", and the checklist any
+How Jotacular reaches the people who will never learn the word "MCP", and the checklist any
 of our products can reuse to do the same.
 
 Researched 2026-08-22 against Anthropic's Software Directory Policy, the Claude connector
@@ -11,7 +11,7 @@ more than a quarter old.**
 ## The problem this solves
 
 [01-audience-and-pricing.md](01-audience-and-pricing.md) names three buyers. Exactly one of
-them — the founder with a napkin — will read a blog post, copy `https://mcp.jotdojo.com/mcp`,
+them — the founder with a napkin — will read a blog post, copy `https://mcp.jotacular.com/mcp`,
 find the right settings screen in their client, and paste it. The family logistics hub and
 the six-person startup will not, and they are the two the per-space pricing was designed for.
 
@@ -19,7 +19,7 @@ The pricing table sells the feature as **"read-only MCP"** and **"full MCP (writ
 Those are unreadable to the people they are aimed at, and they break the rule in
 [11-copy-and-tone.md](11-copy-and-tone.md): write to the reader's life, not our engineering.
 
-A directory listing fixes both halves at once. The user finds jotdojo inside the client they
+A directory listing fixes both halves at once. The user finds Jotacular inside the client they
 already pay for, taps install, signs in with Google, and is done. No URL, no vocabulary.
 
 ## What a listing actually is
@@ -107,7 +107,7 @@ and advertising or promotional vehicles. OpenAI additionally bars digital produc
 subscriptions, tokens and credits, **promoting upgrades or initiating new subscriptions**, and
 requires external checkout on our own domain.
 
-None of this blocks jotdojo, but one thing follows from it directly: **the `plan_read_only`
+None of this blocks Jotacular, but one thing follows from it directly: **the `plan_read_only`
 refusal must state the fact and must not sell.** The message in
 [plans.ts](../packages/domain/src/plans.ts) — "This space is on the free plan, where an agent
 can read but not write" — is correct as written. Do not turn it into an upsell.
@@ -123,8 +123,8 @@ A directory listing needs a Team org and a review queue. **Removing the URL from
 path needs neither.** Custom connectors take a prefilled install link:
 
     https://claude.ai/customize/connectors?modal=add-custom-connector
-      &connectorName=jotdojo
-      &connectorUrl=https%3A%2F%2Fmcp.jotdojo.com%2Fmcp
+      &connectorName=Jotacular
+      &connectorUrl=https%3A%2F%2Fmcp.jotacular.com%2Fmcp
 
 A **Connect to Claude** button pointing at that opens Claude's add-connector dialog with the
 name and URL already filled in. The person confirms, signs in with Google, and is connected.
@@ -133,7 +133,7 @@ user has not confirmed, and it works for a signed-out visitor, who is prompted t
 lands back on the dialog.
 
 What it does not buy is discovery: directory browse and search, and **Suggested Connectors** —
-Claude recommending jotdojo in-chat when it is relevant, which every directory entry gets
+Claude recommending Jotacular in-chat when it is relevant, which every directory entry gets
 automatically and no custom connector ever does. That is the acquisition win, and it is what
 the Team seat is actually for.
 

@@ -1,5 +1,5 @@
 {
-  "name": "@jotdojo/web",
+  "name": "@jotacular/web",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -26,11 +26,11 @@
   },
   "dependencies": {
     "@auth/core": "^0.41.3",
-    "@jotdojo/billing": "workspace:*",
-    "@jotdojo/domain": "workspace:*",
-    "@jotdojo/ink-render": "workspace:*",
+    "@awesome.me/kit-2fb7fafdba": "^1.0.2",
+    "@jotacular/billing": "workspace:*",
+    "@jotacular/domain": "workspace:*",
+    "@jotacular/ink-render": "workspace:*",
     "@wizeworks/silicaui-react": "^0.55.0",
-    "lucide-react": "^1.33.0",
     "marked": "^15.0.12",
     "next": "^15.1.6",
     "next-auth": "^5.0.0-beta.25",

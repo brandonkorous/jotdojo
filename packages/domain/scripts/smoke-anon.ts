@@ -63,7 +63,7 @@ check("starting again with the same token does NOT mint a second space",
 check("a token nobody issued resolves to nothing",
   (await resumeAnonSession("jd_anon_never-issued")) === null);
 check("a token that is not ours is not treated as one",
-  (await resumeAnonSession("not-a-jotdojo-token")) === null);
+  (await resumeAnonSession("not-a-jotacular-token")) === null);
 
 console.log("\na draft is not a back door");
 const other = await upsertUserFromGoogle({

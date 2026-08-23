@@ -4,7 +4,6 @@ import { useRef, useState } from "react";
 import type { Align } from "@/lib/toolbar-side";
 import { isInk, type CanvasTool } from "@/lib/canvas-tool";
 import { DEFAULT_STYLES, styleFor, type InkStyles } from "@/lib/ink-style";
-import { inkToolFor } from "./ToolRail";
 import { ToolOptions } from "./ToolOptions";
 import { useMarks } from "@/lib/use-marks";
 import { SaveIndicator } from "./SaveIndicator";
@@ -157,8 +156,8 @@ export function Canvas({
         <div className="jd-ink-mount" data-active={isInk(tool)}>
           <InkCanvas
             noteId={noteId}
-            tool={inkToolFor(tool)}
-            style={styleFor(inkToolFor(tool), styles)}
+            tool={tool}
+            style={styleFor(tool, styles)}
             onReady={setInkBlockId}
             onDraw={writing}
             onTextPlaced={() => setTool("text")}

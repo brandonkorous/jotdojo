@@ -4,7 +4,7 @@ import { db } from "./client";
 
 /**
  * The live channel: one Postgres LISTEN/NOTIFY topic the whole product shares.
- * ADR-058. What an event MEANS lives in @jotdojo/domain; this file only knows
+ * ADR-058. What an event MEANS lives in @jotacular/domain; this file only knows
  * how to get a string from one process to all the others.
  *
  * NOTIFY and not a broker, for the same reason the outbox is not Kafka (ADR-002):
@@ -28,7 +28,7 @@ import { db } from "./client";
  * packages/domain/src/events.ts, which is ids and counters and nothing else.
  */
 
-const CHANNEL = "jotdojo_live";
+const CHANNEL = "jotacular_live";
 
 /** Postgres caps a notification payload at 8000 bytes. Ours are ids and
  *  counters, so this guards a future field rather than a present risk. */
@@ -101,7 +101,7 @@ function startListening(): Promise<void> {
   const client = postgres(url, {
     max: 1,
     idle_timeout: 0,
-    connection: { application_name: "jotdojo-live" },
+    connection: { application_name: "jotacular-live" },
   });
 
   // postgres.js re-issues LISTEN after a dropped connection. Events sent during

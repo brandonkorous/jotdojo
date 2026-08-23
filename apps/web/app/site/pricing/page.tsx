@@ -68,7 +68,10 @@ export default function Pricing() {
   return (
     <main className="jd-site-main">
       <section className="jd-band">
-        <h1 className="font-head">Pricing</h1>
+        <h1 className="font-head">
+          Simple pricing.{" "}
+          <span className="jd-ul jd-ul-keep">No notebook math</span>.
+        </h1>
         <p className="jd-lede">
           One price for the space, however many people are in it. Free is a real plan
           rather than a trial, and it does not run out.
@@ -94,7 +97,7 @@ export default function Pricing() {
             no checkout without an account, so a "buy" button per card would be
             a door into a sign-in screen wearing a price tag. */}
         <p className="jd-plan-cta">
-          <a className="btn btn-primary" href={appOrigin()}>Start writing</a>
+          <a className="btn btn-primary" href={appOrigin()}>Start jotting</a>
           <span>Free, no card. Pick a plan from your account whenever you want one.</span>
         </p>
 

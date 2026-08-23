@@ -1,4 +1,4 @@
-import { DomainError, type Change, type TimeWindow } from "@jotdojo/domain";
+import { DomainError, type Change, type TimeWindow } from "@jotacular/domain";
 
 /**
  * Dates, as an agent supplies them. ADR-063.

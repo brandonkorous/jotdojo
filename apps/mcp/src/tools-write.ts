@@ -1,7 +1,7 @@
 import { z } from "zod";
 import {
   createNote, appendToNote, commentOnNote, defaultSpaceId, type Actor,
-} from "@jotdojo/domain";
+} from "@jotacular/domain";
 import { asText, writes, type Register } from "./tool-kit.js";
 
 /**
@@ -22,7 +22,7 @@ export function registerWriteTools(t: Register, actor: Actor) {
     title: "Comment on a note",
     annotations: writes("Comment on a note", false),
     description:
-      "Leave a comment on a jotdojo note. The note's own content is untouched -- a comment " +
+      "Leave a comment on a Jotacular note. The note's own content is untouched -- a comment " +
       "is how something gets said about a page without changing what the person wrote. It " +
       "is attributed to this connection and sits alongside comments left by people.",
     inputSchema: {
@@ -38,7 +38,7 @@ export function registerWriteTools(t: Register, actor: Actor) {
     title: "Create a note",
     annotations: writes("Create a note", false),
     description:
-      "Create a new jotdojo note from markdown. Nothing existing is affected. The new note " +
+      "Create a new Jotacular note from markdown. Nothing existing is affected. The new note " +
       "is attributed to this connection.",
     inputSchema: {
       text: z.string().describe("The note body, as markdown"),
@@ -54,7 +54,7 @@ export function registerWriteTools(t: Register, actor: Actor) {
     title: "Append to a note",
     annotations: writes("Append to a note", false),
     description:
-      "Add text to the end of a jotdojo note. Nothing already in the note is read, moved " +
+      "Add text to the end of a Jotacular note. Nothing already in the note is read, moved " +
       "or overwritten; the note gains a revision and the addition is attributed to this " +
       "connection.",
     inputSchema: {

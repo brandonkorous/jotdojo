@@ -14,13 +14,13 @@
  * queued and which are left alone -- nothing here claims anything about how
  * well any model reads.
  */
-import { fakeRecognizer } from "@jotdojo/vision";
+import { fakeRecognizer } from "@jotacular/vision";
 import {
   upsertUserFromGoogle, asUser, createNote, defaultSpaceId,
   createInkBlock, appendStrokes, getNote, correctTranscript,
   countStale, listStale, requeueRecognition,
   type Stroke,
-} from "@jotdojo/domain";
+} from "@jotacular/domain";
 import { runRecognitionCycle } from "../src/recognize";
 import { sourceFor } from "../src/sources";
 import { plannedKinds } from "../src/reread";
@@ -44,7 +44,7 @@ const scrawl = (row: number): Stroke => ({
 });
 
 async function releaseQuietPeriod() {
-  const { db } = await import("@jotdojo/db");
+  const { db } = await import("@jotacular/db");
   await db.execute(
     `UPDATE outbox SET available_at = now()
       WHERE topic = 'block.recognize' AND completed_at IS NULL`,
@@ -61,7 +61,7 @@ async function releaseQuietPeriod() {
  * so it never leaves the queue by being worked.
  */
 async function clearForeignJobs(mine: string) {
-  const { db } = await import("@jotdojo/db");
+  const { db } = await import("@jotacular/db");
   await db.execute(
     `UPDATE outbox o SET completed_at = now()
       WHERE o.topic = 'block.recognize' AND o.completed_at IS NULL
@@ -86,7 +86,7 @@ async function drainAll() {
 
 /** Read until THIS page has been read, rather than hoping it was in the batch. */
 async function readUntilDone(blockId: string, text: string) {
-  const { db } = await import("@jotdojo/db");
+  const { db } = await import("@jotacular/db");
   for (let i = 0; i < 20; i++) {
     await releaseQuietPeriod();
     await runRecognitionCycle(fakeRecognizer(text), null, 16);

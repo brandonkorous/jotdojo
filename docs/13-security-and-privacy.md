@@ -15,7 +15,7 @@ Everything below follows from those two facts.
 |---|---|
 | Prompt injection via note content | We cannot stop it. We refuse to amplify it: tool descriptions and error strings are static, never interpolated from user content. Agent writes are non-destructive and reviewable |
 | Confused deputy — agent acts with server privilege | Every MCP call executes with the **granting user's** authority. Workers are the only cross-space component and are unreachable from MCP |
-| Token replay against a sibling service | RFC 8707 resource indicators, audience-bound tokens. A jotdojo token must not work at kanninja |
+| Token replay against a sibling service | RFC 8707 resource indicators, audience-bound tokens. A Jotacular token must not work at kanninja |
 | Leaked capture token | Scope is `capture:write` on one space. Cannot read, list, or search. Blast radius is "a stranger can add notes" |
 | Over-broad agent grant | Per client, per space. Consent screen defaults to personal space only, never pre-selects a shared space |
 | Agent silently destroying content | **Impossible: no MCP tool can replace a note's content** (ADR-070). Comment by default; every agent write adds a revision; review inbox; soft delete only |

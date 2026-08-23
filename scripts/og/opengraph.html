@@ -1,0 +1,119 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Jotacular — Open Graph</title>
+<!--
+  The Open Graph card. docs/10-design-system.md, ADR-078.
+
+  Rendered once at 1200x630 in a real browser and committed as
+  apps/web/app/opengraph-image.png. A browser rather than sharp because the card
+  is typeset -- Nunito for the headline, Caveat for the jot -- and rasterising
+  text with librsvg needs those fonts installed on whichever machine ran it.
+  This file is the source; the PNG is the artifact.
+-->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800&family=Caveat:wght@500;600&display=swap">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { width: 1200px; height: 630px; overflow: hidden; }
+
+  .card {
+    width: 1200px; height: 630px;
+    display: grid;
+    grid-template-columns: 1fr 460px;
+    align-items: center;
+    gap: 40px;
+    padding: 64px 60px;
+    background-color: #F7F3EA;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24'%3E%3Ccircle cx='2' cy='2' r='1.4' fill='%23111418' fill-opacity='0.13'/%3E%3C/svg%3E");
+    font-family: Nunito, sans-serif;
+    color: #111418;
+  }
+
+  .wordmark { height: 40px; margin-bottom: 40px; }
+
+  h1 { font-size: 76px; font-weight: 800; line-height: 0.98; letter-spacing: -0.035em; }
+  h1 .u {
+    display: inline-block;
+    padding-bottom: 0.16em;
+    background: no-repeat 0 100% / 100% 0.19em
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 12' preserveAspectRatio='none'%3E%3Cpath d='M3,4.5 Q34,11 63,7.5 T97,5' fill='none' stroke='%236A39FF' stroke-width='3.4' stroke-linecap='round'/%3E%3C/svg%3E");
+  }
+
+  /* The jot: a sheet taped to a board, tilted the way one lands on a desk. */
+  .board {
+    position: relative;
+    transform: rotate(2.2deg);
+    background: #111418;
+    border-radius: 26px;
+    padding: 22px;
+    box-shadow: 0 30px 60px -28px rgb(60 46 24 / 0.45);
+  }
+  .sheet {
+    position: relative;
+    background: #FBF8F2;
+    border-radius: 10px;
+    padding: 44px 30px 30px;
+    min-height: 400px;
+  }
+  .tape {
+    position: absolute;
+    top: -14px; left: 50%;
+    width: 132px; height: 30px;
+    transform: translateX(-50%) rotate(-1.5deg);
+    background: #7FD9C4;
+    opacity: 0.9;
+  }
+  .jot { font-family: Caveat, cursive; color: #111418; }
+  .jot .title { font-size: 40px; font-weight: 600; }
+  .jot .rule { width: 208px; height: 3px; background: #111418; border-radius: 2px; margin: 2px 0 16px; }
+  .jot ul { list-style: none; font-size: 32px; line-height: 1.55; }
+  .jot li::before { content: "•"; margin-right: 12px; }
+  .heart { position: absolute; right: 34px; bottom: 30px; }
+</style>
+
+<div class="card">
+  <div>
+    <img class="wordmark" src="wordmark.svg" alt="Jotacular">
+    <h1>Don't organize it.<br><span class="u">Just jot it.</span></h1>
+  </div>
+
+  <div class="board">
+    <div class="sheet">
+      <div class="tape"></div>
+
+      <!-- A few confident strokes, not a rendering. design.md §16. -->
+      <!-- A few confident strokes, not a rendering. design.md §16: simple black
+           ink lines, and fewer objects drawn properly beats four drawn badly. -->
+      <svg width="100%" height="160" viewBox="0 0 320 168" fill="none"
+           stroke="#111418" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round">
+        <!-- armchair -->
+        <path d="M36 140 V80 Q36 60 58 60 H124 Q146 60 146 80 V140"/>
+        <path d="M36 110 H146"/>
+        <path d="M62 106 q28 -13 56 0"/>
+        <path d="M46 140 v14 M136 140 v14"/>
+        <!-- a stack of three -->
+        <path d="M168 154 h48 v-11 h-48 z"/>
+        <path d="M172 143 h42 v-11 h-42 z"/>
+        <path d="M177 132 h34 v-10 h-34 z"/>
+        <!-- arc lamp -->
+        <path d="M262 154 h44"/>
+        <path d="M284 154 V76 C284 42 246 34 228 46"/>
+        <path d="M210 44 h38 l-10 26 h-18 z"/>
+      </svg>
+
+      <div class="jot">
+        <div class="title">reading nook</div>
+        <div class="rule"></div>
+        <ul>
+          <li>soft light</li>
+          <li>good books</li>
+          <li>favorite mug</li>
+        </ul>
+      </div>
+
+      <svg class="heart" width="46" height="42" viewBox="0 0 46 42" fill="none"
+           stroke="#6A39FF" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M23 38C10 29 3 22 3 14A10 10 0 0 1 23 10 10 10 0 0 1 43 14c0 8-7 15-20 24z"/>
+      </svg>
+    </div>
+  </div>
+</div>

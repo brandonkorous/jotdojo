@@ -1,8 +1,15 @@
 # 11 — Copy and tone
 
+> **Rewritten 2026-08-23 for the rebrand (ADR-072).** Until then this doc built a house
+> register on kanninja's martial-arts vocabulary — the register the word *dojo* anchored.
+> Jotacular does not inherit it. The tests, the Never table and the microcopy below all
+> survive unchanged; what changed is the personality they serve.
+
 ## Voice
 
-**Calm, plain, brief.** Confident without being clever. The product is for someone with a thought they are about to lose — every word we add is friction between them and capturing it.
+**Calm, plain, brief — and warm.** Confident without being clever. The product is for
+someone with a thought they are about to lose, so every word we add is friction between
+them and capturing it.
 
 Three tests before any string ships:
 
@@ -10,32 +17,51 @@ Three tests before any string ships:
 2. **Does it survive being cut in half?** Usually yes. Cut it.
 3. **Is it about the user's thought, or about our software?** Their thought wins.
 
-## The house register
+## The mix
 
-**Corrected after reading kanninja's live copy.** An earlier draft of this doc said the martial-arts reference lives in the name and the mark and nowhere else. That is wrong for this house: kanninja uses the vocabulary deliberately and well — boards are *dojo*, cards are *kata*, the disciplines are "Honed Reflexes" and "Honest Signal," and the mark carries 忍. jotdojo should sound like its sibling, not like a different company.
+design.md §6 sets the dial, and it is worth stating as a ratio because it is easy to drift
+to either end:
 
-The real rule is narrower and more useful:
+- **70%** capable, modern, polished
+- **20%** playful, energetic
+- **10%** weird, memorable
 
-**The register is allowed as structural framing in marketing. It is banned in product microcopy, and banned as wordplay.**
+The 70% is the default and the floor. The other 30% shows up in *small moments* — a
+confirmation, an empty state, the odd aside — and never in a string somebody needs in order
+to operate the product. An error message is 100% the first number.
 
 | Allowed | Banned |
 |---|---|
-| A section headed "Practice" or "Discipline" on the marketing site | A button labelled "Unleash your inner ninja" |
-| A domain noun with real meaning, used consistently | A pun. Ever |
-| The seal, the character, the restraint | Belts, shuriken bullets, a "sensei" onboarding character |
-| kanninja's "The model suggests. You decide. In that order." | "Slice through your notes" |
+| "Jot saved. Nice one." on a save confirmation | Personality in an error, a limit, or a consent screen |
+| "Nothing here. Go have a thought." on an empty canvas | A joke that costs the reader a second read |
+| A short human aside in marketing prose | Cuteness anywhere near billing or privacy |
+| Warmth | Exclamation marks. Still no |
 
-The distinction: kanninja's vocabulary **names things and states principles**. It never makes a joke. That is why it reads as confident rather than corny, and it is the line jotdojo holds too.
+The line: **the product is playful about itself, never about the user's situation.** Losing
+a note, hitting a limit, or handing an agent access are not moments for character.
 
-Inherit kanninja's principle line verbatim where it applies — **"The model suggests. You decide. In that order."** is a plain statement of our agent write policy (ADR-004), already in the house voice, already proven on a live product.
+### What the old register was, and why it is gone
+
+kanninja names its objects in a domain vocabulary — boards are *dojo*, cards are *kata* —
+and does it well, because that vocabulary names things and states principles rather than
+making jokes. Jotacular used to borrow the frame. It no longer does: the name that anchored
+it is gone, and the personality design.md asks for is friendly rather than disciplined.
+
+The narrower rule that outlived it is still worth keeping: **a pun is never the answer.**
+That was true when the register was martial and it is true now that it is warm.
 
 ### Do we rename "note"?
 
-kanninja renamed its core objects (board to *dojo*, card to *kata*). jotdojo **does not.** A note is a note and a space is a space.
+**No.** A note is a note and a space is a space.
 
-Reason: capture must be frictionless, and vocabulary is friction. Someone reaching for a phone at cheer practice should not have to translate. kanninja can afford domain nouns because using a kanban board is a deliberate, seated act; jotting is not.
+Reason, unchanged by the rebrand and the most durable thing in this doc: capture must be
+frictionless, and vocabulary is friction. Someone reaching for a phone at cheer practice
+should not have to translate. A product can afford invented nouns when using it is a
+deliberate, seated act; jotting is not.
 
-The register lives in the *marketing* voice and the mark instead. If this ever gets revisited, 覚え (*oboe*, a note or memory) is the candidate — but the default answer is no.
+The one word we do own is **jot**, and we own it because it is already English and already
+a verb for exactly this. That is the opposite of an invented noun, which is why it costs
+the reader nothing.
 
 ## Never
 
@@ -62,7 +88,9 @@ The register lives in the *marketing* voice and the mark instead. If this ever g
 | **capture** | save, sync, upload |
 | **handwriting** | ink (internally ink is fine; to users it is handwriting) |
 
-Lowercase `jotdojo` always, even sentence-initial.
+**Jotacular** in prose, sentence-case, like any other proper noun. The *wordmark* is
+lowercase `jotacular` — that is artwork, not text, and the distinction matters: writing the
+brand lowercase mid-sentence reads as a typo to everyone who is not us.
 
 ## Microcopy
 
@@ -71,7 +99,7 @@ Lowercase `jotdojo` always, even sentence-initial.
     (canvas, first ever visit)
     Start jotting.
 
-That is the whole thing. Three syllables and a full stop. No illustration, no tour, no "welcome to jotdojo" — the cursor is already blinking and the user already knows what a blank page is for.
+That is the whole thing. Three syllables and a full stop. No illustration, no tour, no "welcome to Jotacular" — the cursor is already blinking and the user already knows what a blank page is for.
 
     (no search results)
     Nothing matches "quarterly margins" yet.

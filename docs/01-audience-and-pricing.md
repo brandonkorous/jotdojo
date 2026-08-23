@@ -142,6 +142,6 @@ carries the iPad case for free in the meantime.
 
 ## Positioning line
 
-> **jotdojo — where the thought lands.**
+> **Jotacular — where the thought lands.**
 
 Not "AI-powered." Not "supercharge your notes." See [11-copy-and-tone.md](11-copy-and-tone.md).

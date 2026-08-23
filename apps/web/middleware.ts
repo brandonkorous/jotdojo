@@ -6,19 +6,28 @@ import { isMarketingHost, requestHost } from "@/lib/hosts";
  * both. ADR-040.
  *
  * Marketing pages live under `/site` in the route tree and are rewritten onto
- * the apex's bare paths, so `jotdojo.com/pricing` renders `app/site/pricing`
+ * the apex's bare paths, so `jotacular.com/pricing` renders `app/site/pricing`
  * without the prefix ever appearing in a URL.
  */
 
 /**
- * Next's own output, and the app's own endpoints.
+ * Next's own output, the app's own endpoints, and everything in `public/`.
  *
  * Rewriting `/_next` would 404 every page that loads it. `/api` is shared
  * rather than duplicated under `/site`: the capture beacon that saves a
  * half-typed thought when a tab closes is the same endpoint for a visitor and
  * for a signed-in person, because the promise is the same one.
+ *
+ * `/brand` and `/img` are static files, and without them here the apex rewrote
+ * `/brand/wordmark.svg` to `/site/brand/wordmark.svg` and served a 404 -- the
+ * wordmark in the site bar was a broken image. Nothing caught it because the
+ * site had no images at all until the rebrand. ADR-076.
+ *
+ * `robots.txt` and `sitemap.xml` are deliberately NOT here: the apex has its
+ * own under `/site`, and they must keep being rewritten.
  */
-const PASSTHROUGH = /^\/(_next|api|favicon\.ico)/;
+const PASSTHROUGH =
+  /^\/(_next|api|brand|img|favicon\.ico|icon-|apple-icon|opengraph-image|manifest\.webmanifest)/;
 
 const SITE_PREFIX = "/site";
 

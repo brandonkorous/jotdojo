@@ -54,9 +54,9 @@ for (const seam of SEAMS) {
 console.log("\n...and CI is the one exemption, so it can test what ships");
 for (const seam of SEAMS) {
   const got = attempt(seam.resolve as (e: Env) => unknown, {
-    ...seam.env, NODE_ENV: "production", JOTDOJO_FAKE_PROVIDERS_OK: "1",
+    ...seam.env, NODE_ENV: "production", JOTACULAR_FAKE_PROVIDERS_OK: "1",
   });
-  check(`${seam.name} builds with JOTDOJO_FAKE_PROVIDERS_OK`, got === "built", got);
+  check(`${seam.name} builds with JOTACULAR_FAKE_PROVIDERS_OK`, got === "built", got);
 }
 
 console.log("\nnothing changed for a developer");
@@ -71,7 +71,7 @@ console.log("\nthe flag is exact, not truthy");
 for (const value of ["0", "true", "yes", ""]) {
   const got = attempt(resolveBilling as (e: Env) => unknown, {
     BILLING_PROVIDER: "fake", AUTH_SECRET: "x",
-    NODE_ENV: "production", JOTDOJO_FAKE_PROVIDERS_OK: value,
+    NODE_ENV: "production", JOTACULAR_FAKE_PROVIDERS_OK: value,
   });
   check(`billing still refuses when the flag is ${JSON.stringify(value)}`, got === "threw", got);
 }

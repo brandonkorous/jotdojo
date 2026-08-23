@@ -13,10 +13,10 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: worker
-  namespace: jotdojo
+  namespace: jotacular
   labels:
     app: worker
-    app.kubernetes.io/part-of: jotdojo
+    app.kubernetes.io/part-of: jotacular
 spec:
   replicas: 1
   # RECREATE, NOT ROLLINGUPDATE, and this is the one strategy difference in the
@@ -33,7 +33,7 @@ spec:
     metadata:
       labels:
         app: worker
-        app.kubernetes.io/part-of: jotdojo
+        app.kubernetes.io/part-of: jotacular
     spec:
       # A recognition cycle is a vision call over a whole page and can legitimately
       # take a while. This lets an in-flight batch finish rather than being killed
@@ -42,11 +42,11 @@ spec:
       terminationGracePeriodSeconds: 120
       containers:
         - name: worker
-          image: ghcr.io/brandonkorous/jotdojo/worker:latest
+          image: ghcr.io/brandonkorous/jotacular/worker:latest
           imagePullPolicy: Always
           envFrom:
-            - configMapRef: { name: jotdojo-config }
-            - secretRef: { name: jotdojo-secrets }
+            - configMapRef: { name: jotacular-config }
+            - secretRef: { name: jotacular-secrets }
           env:
             # The smallest share. The worker processes one batch at a time, and a
             # batch is a loop over blocks rather than parallel queries.

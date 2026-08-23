@@ -10,7 +10,7 @@
  * So: decode the PNG and look at it.
  */
 import sharp from "sharp";
-import type { InkDocument, Point, Stroke, TextBox } from "@jotdojo/domain";
+import type { InkDocument, Point, Stroke, TextBox } from "@jotacular/domain";
 import { toPng } from "../src/raster";
 import { toSvg } from "../src/svg";
 import { strokesBounds, bounds, contentBounds } from "../src/geometry";

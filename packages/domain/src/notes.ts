@@ -1,5 +1,5 @@
 import { and, eq, isNull } from "drizzle-orm";
-import { withActor, notes, blocks } from "@jotdojo/db";
+import { withActor, notes, blocks } from "@jotacular/db";
 import { canReachSpace, hasScope, type Actor } from "./actor";
 import { assertAgentMayWrite } from "./plans";
 import { Forbidden, NotFound, RevisionConflict } from "./errors";

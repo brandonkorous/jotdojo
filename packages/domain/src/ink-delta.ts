@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { withActor } from "@jotdojo/db";
+import { withActor } from "@jotacular/db";
 import { canReachSpace, hasScope, type Actor } from "./actor";
 import { Forbidden, NotFound, DomainError } from "./errors";
 import { validateStrokes, MAX_STROKES, MAX_BATCH, type Stroke } from "./ink-doc";

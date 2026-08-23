@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ChevronDown } from "lucide-react";
+import { Icon } from "@/components/Icon";
 import { useLine, useStanding } from "@/lib/live-feed";
 
 /**
@@ -52,9 +52,8 @@ export function LiveFeed() {
             onClick={() => setOpen((was) => !was)}
           >
             {more > 0 && !open ? `+${more}` : null}
-            <ChevronDown
-              aria-hidden
-              strokeWidth={1.75}
+            <Icon
+              name="collapse"
               className={open ? "jd-live-chevron jd-live-chevron-open" : "jd-live-chevron"}
             />
             <span className="sr-only">{open ? "Hide what is waiting" : "Show what is waiting"}</span>

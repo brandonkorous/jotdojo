@@ -16,7 +16,7 @@ export {};
 import { createHmac } from "node:crypto";
 import {
   upsertUserFromGoogle, asUser, defaultSpaceId, spaceUsage,
-} from "@jotdojo/domain";
+} from "@jotacular/domain";
 
 const WEB = process.env.APP_URL ?? "http://localhost:3400";
 const HOOK = `${WEB}/api/billing/webhook`;

@@ -1,72 +1,123 @@
-/* The hero canvas. ADR-010, ADR-040.
+/* The hero. ADR-010, ADR-040, ADR-076.
  *
  * Split out of site.css at the size limit, and it belongs apart: everything
  * here is about ONE element that is not really marketing at all -- it is the
- * product, running, on the front page. The rest of that file styles a
- * brochure.
+ * product, running, on the front page. The rest of that file styles a brochure.
  */
 
-/* The hero IS the canvas: full width, and as tall as the screen allows. A
-   headline above a small demo box says "here is a picture of the product". A
-   headline written ON the writing surface says "this is it, go on".
+/* Two columns: the pitch, and the product running beside it in a Silica
+ * mockup frame. It used to be one full-bleed canvas with the headline lying on
+ * top of it. That was honest and it was also a wall of cream -- the page had
+ * no shape above the fold and nothing to look AT. ADR-076.
+ *
+ * What survives from ADR-010 is the part that mattered: the thing on the right
+ * is not a screenshot. It is the canvas, writable, saving to Postgres. */
+.jd-hero {
+  --gutter: clamp(1rem, 4vw, 3rem);
+  --foot: 3rem;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: clamp(2.5rem, 5vw, 4rem);
+  align-items: center;
+  max-width: 78rem;
+  margin-inline: auto;
+  padding: clamp(2rem, 4.5vh, 3.5rem) var(--gutter) clamp(2.5rem, 5vh, 4rem);
+}
+@media (min-width: 62rem) {
+  .jd-hero { grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.08fr); }
+}
 
-   --stage is a named length rather than 100dvh inline because the headline is
-   translated by it when it drops to the foot, and the two must agree exactly. */
-.jd-hero-stage {
-  --gutter: clamp(1rem, 6vw, 5rem);
-  --pad-block: clamp(1.25rem, 5vh, 3rem);
-  /* The room reserved for the headline in either resting place. */
-  --titles: clamp(9rem, 32vh, 15rem);
-  --foot: 3.25rem;
-  /* The whole viewport under the bar. No upper bound: capping it left a
-     third of a tall screen as dead paper below the writing. */
-  --stage: max(26rem, calc(100dvh - 4.25rem));
+/* --- the pitch ---------------------------------------------------------- */
 
-  position: relative;
-  height: var(--stage);
-  overflow: hidden;
+.jd-hero-titles h1 {
+  font-size: clamp(2.5rem, 6.4vw, 4.5rem);
+  line-height: 0.98;
+  letter-spacing: -0.035em;
+  font-weight: 800;
+  text-wrap: balance;
+}
+/* The second line carries the colour. design.md §6 asks for 20% playful, and
+   this is where that budget is best spent -- one line, once, above the fold. */
+.jd-hero-titles h1 .jd-hero-turn {
+  color: var(--color-agent);
+  display: inline-block;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 12' preserveAspectRatio='none'%3E%3Cpath d='M3,4.5 Q34,11 63,7.5 T97,5' fill='none' stroke='%2300C2A8' stroke-width='3.2' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: 0 100%;
+  background-size: 100% 0.26em;
+  padding-bottom: 0.2em;
+}
+.jd-hero-titles .jd-lede {
+  margin-block: 1.5rem 0;
+  font-size: clamp(1.05rem, 1.4vw, 1.25rem);
+  max-width: 40ch;
+}
+
+.jd-hero-cta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem 1.25rem;
+  margin-top: 2rem;
+}
+.jd-hero-cta .btn { border-radius: 999px; margin-top: 0; }
+.jd-hero-note { font-size: 0.9rem; font-weight: 500; text-decoration: underline;
+  text-underline-offset: 0.3em; text-decoration-color: var(--color-base-300); }
+
+/* --- the frame ---------------------------------------------------------- */
+
+/* A slight tilt to the RIGHT, straightened the moment somebody engages.
+ * Clockwise reads as a page laid down and opened toward you; anticlockwise
+ * reads as something that slipped.
+ *
+ * The tilt is not decoration-only: a rotated ancestor breaks the ink layer,
+ * which maps pointers with `clientX - rect.left` (lib/ink-pointer.ts) and would
+ * read a rotated bounding box. Straightening on engagement means every stroke
+ * is drawn at 0deg. Choosing a pen is itself an engagement and happens on the
+ * rail, so the frame is already square by the time a pointer reaches the paper. */
+.jd-hero-frame {
+  transform: rotate(1.8deg);
+  transition: transform 320ms cubic-bezier(0.4, 0, 0.2, 1);
+  transform-origin: 50% 60%;
+}
+.jd-hero[data-engaged="true"] .jd-hero-frame { transform: rotate(0deg); }
+
+/* Silica's window frame, in paper rather than a bezel. A charcoal slab on a
+   cream page is a hole in the middle of the design; the frame should read as a
+   sheet lifted off the desk. The one shadow on the site lives here.
+
+   The titlebar is an absolutely-positioned 36px strip drawn by Silica's
+   ::before -- without room reserved for it the writing surface sits underneath
+   the traffic lights. */
+.jd-hero-mock {
+  border-radius: 1.1rem;
   background: var(--color-base-200);
-  border-block: 1px solid var(--color-base-300);
+  border: 1px solid var(--color-base-300);
+  padding: 2.75rem 0.5rem 0.5rem;
+  box-shadow: var(--shadow-raise);
 }
 
-/* Transparent to pointers, so a click anywhere on the headline lands on the
-   canvas underneath and the headline gets out of its own way. */
-.jd-hero-titles {
-  position: absolute;
-  top: var(--pad-block);
-  left: 0;
-  right: 0;
-  z-index: 6;
-  padding-inline: var(--gutter);
-  pointer-events: none;
-  transition: transform 520ms var(--ease, cubic-bezier(0.4, 0, 0.2, 1)),
-              opacity 300ms var(--ease, ease);
-}
-.jd-hero-stage[data-engaged="true"] .jd-hero-titles {
-  transform: translateY(calc(var(--stage) - var(--pad-block) - var(--titles) - var(--foot)));
-  opacity: 0.55;
-}
-.jd-hero-titles .jd-lede { margin-bottom: 0; }
+.jd-hero-stage {
+  --pad-block: 1rem;
+  position: relative;
+  height: clamp(21rem, 52vh, 30rem);
+  overflow: hidden;
+  border-radius: 0.7rem;
+  background: var(--color-base-100);
 
-/* The rail and the formatting pill are centred over the writing surface and
-   reach ~106px down it. Below this width the headline is wide enough to run
-   under both, so start the titles beneath the chrome instead. */
-@media (max-width: 75rem) {
-  .jd-hero-stage { --pad-block: 7.5rem; }
+  /* The writing surface is dot-gridded paper, the same as the app's canvas.
+     Its absence was the single loudest thing missing from the hero. */
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='22' height='22'%3E%3Ccircle cx='1.4' cy='1.4' r='1' fill='%23111418' fill-opacity='0.10'/%3E%3C/svg%3E");
 }
 
 .jd-hero-input {
   position: absolute;
   inset: 0;
   z-index: 1;
-  padding: calc(var(--pad-block) + var(--titles)) var(--gutter) calc(var(--foot) + 1rem);
-  transition: padding 520ms var(--ease, cubic-bezier(0.4, 0, 0.2, 1));
+  padding: calc(var(--pad-block) + 2.75rem) 1.25rem calc(var(--foot) + 0.75rem);
+  background: transparent;
 }
-.jd-hero-stage[data-engaged="true"] .jd-hero-input {
-  padding-top: calc(var(--pad-block) + 3rem);
-  padding-bottom: calc(var(--titles) + var(--foot));
-}
-.jd-hero-input::placeholder { opacity: 0.4; }
+.jd-hero-input::placeholder { opacity: 0.5; }
 
 /* The same pill as the app, in the same place on the surface. */
 .jd-hero-rail { gap: 0.125rem; }
@@ -82,12 +133,11 @@
   justify-content: space-between;
   gap: 1rem;
   min-height: var(--foot);
-  padding: 0.6rem var(--gutter);
+  padding: 0.5rem 0.9rem;
   border-top: 1px solid var(--color-base-300);
-  background: color-mix(in oklch, var(--color-base-200) 90%, transparent);
-  backdrop-filter: blur(8px);
+  background: var(--color-base-200);
 }
-.jd-hero-status { font-size: 0.8rem; opacity: 0.6; margin: 0; }
+.jd-hero-status { font-size: 0.8rem; color: var(--ink-2); margin: 0; }
 
 /* The selection bar anchors to the bottom of the ink layer, which on the hero
    is exactly where the status bar is. Lift it clear. The app has nothing along
@@ -95,6 +145,5 @@
 .jd-hero-stage .jd-selection-bar { bottom: calc(var(--foot) + 0.75rem); }
 
 @media (prefers-reduced-motion: reduce) {
-  .jd-hero-titles, .jd-hero-input { transition: none; }
+  .jd-hero-frame { transition: none; transform: none; }
 }
-

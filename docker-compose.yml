@@ -1,20 +1,24 @@
+# The project name is pinned rather than taken from the directory, which is
+# still `jotDOJO` -- otherwise every volume keeps the old prefix. ADR-086.
+name: jotacular
+
 services:
   postgres:
     image: pgvector/pgvector:pg17
-    container_name: jotdojo-postgres
+    container_name: jotacular-postgres
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: jotdojo
+      POSTGRES_DB: jotacular
     ports:
       - "5433:5432"
     volumes:
-      - jotdojo-pgdata:/var/lib/postgresql/data
+      - jotacular-pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d jotdojo"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d jotacular"]
       interval: 5s
       timeout: 5s
       retries: 20
 
 volumes:
-  jotdojo-pgdata:
+  jotacular-pgdata:

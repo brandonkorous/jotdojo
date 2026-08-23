@@ -1,6 +1,6 @@
 "use client";
 
-import type { Presence as Who } from "@jotdojo/domain";
+import type { Presence as Who } from "@jotacular/domain";
 
 /**
  * Who else is in this note, and whether they are writing right now. ADR-058.

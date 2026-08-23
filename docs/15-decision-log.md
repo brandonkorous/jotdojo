@@ -5,13 +5,13 @@ Decisions that are settled, with the reasoning. Reopening one is fine; doing it 
 ---
 
 ### ADR-001 — Hosted remote MCP, not local
-**Settled.** The MCP server is hosted at `mcp.jotdojo.com`. A stdio shim exists for convenience but is a proxy, not the real thing.
+**Settled.** The MCP server is hosted at `mcp.jotacular.com`. A stdio shim exists for convenience but is a proxy, not the real thing.
 
 **Why:** every competitor's agent access is local — Amplenote's desktop app, Obsidian's REST plugin, the Apple Notes AppleScript servers — and all of them require a computer that is on. If your notes live on your phone, that entire ecosystem is unavailable. Hosted MCP is the only shape that serves a phone-first user, and it is the whole wedge.
 
 ---
 
-### ADR-002 — jotdojo and kanninja stay separate products
+### ADR-002 — jotacular and kanninja stay separate products
 **Settled.** Not merged, not one app with two modes.
 
 **Why:**
@@ -65,7 +65,7 @@ Decisions that are settled, with the reasoning. Reopening one is fine; doing it 
 ---
 
 ### ADR-008 — Canvas-first app shell
-**Settled.** `app.jotdojo.com` opens a live writable canvas. No dashboard, no note list on load, no create button.
+**Settled.** `app.jotacular.com` opens a live writable canvas. No dashboard, no note list on load, no create button.
 
 **Why:** the capture contract. Every click between opening the app and writing is a click during which a thought can be lost.
 
@@ -79,7 +79,7 @@ Decisions that are settled, with the reasoning. Reopening one is fine; doing it 
 ---
 
 ### ADR-010 — Marketing at the apex, app at `app.`, hero is a live canvas
-**Settled.** `jotdojo.com` is the crawlable marketing site and its hero is a real working canvas. `app.jotdojo.com` is the app and never shows marketing. The PWA installs from `app.`.
+**Settled.** `jotacular.com` is the crawlable marketing site and its hero is a real working canvas. `app.jotacular.com` is the app and never shows marketing. The PWA installs from `app.`.
 
 **Why:** an app shell at the root wastes our highest-authority URL and will never rank, while serving crawlers different content than users is cloaking. Making the hero a live canvas satisfies both requirements honestly — and letting someone capture something is the best marketing a capture app has.
 
@@ -90,7 +90,7 @@ Decisions that are settled, with the reasoning. Reopening one is fine; doing it 
 
 An earlier draft chose Silica's `dune` preset. That is superseded: kanninja already publishes exact house values, and "close enough" is the wrong standard when the sibling has real ones.
 
-**The house palette:** Vermillion `#E0432F` (the seal — *one per screen*), Sumi `#0E0F12` (the ink), Washi `#F8F4EC` (cream paper, the page), Snow `#FBFAF6` (elevated surfaces). Fraunces display, Inter body, JetBrains Mono. jotdojo declares these as a Silica theme named `washi` rather than picking a preset.
+**The house palette:** Vermillion `#E0432F` (the seal — *one per screen*), Sumi `#0E0F12` (the ink), Washi `#F8F4EC` (cream paper, the page), Snow `#FBFAF6` (elevated surfaces). Fraunces display, Inter body, JetBrains Mono. jotacular declares these as a Silica theme named `washi` rather than picking a preset.
 
 **Why:** two products from one workshop should look like it — and the palette happens to be exactly right for a product about napkins and notepads, since washi is literally paper and sumi is literally ink. `--depth: 0` because ink casts no shadow; `--noise: 1` for paper grain.
 
@@ -124,7 +124,7 @@ The flip also moves the nav bar to the opposite corner, anchors popovers **away 
 
 ---
 
-### ADR-013 — Google OAuth for humans; jotdojo is its own OAuth 2.1 server for agents
+### ADR-013 — Google OAuth for humans; jotacular is its own OAuth 2.1 server for agents
 **Settled.**
 
 **Why:** every target audience is already on Google, which removes passwords, resets, and account recovery from the roadmap entirely. Separately, MCP clients run OAuth **against us**, not against Google — so we must be an Authorization Server and a Protected Resource, with Google federated behind as the upstream IdP. Support both DCR and Client ID Metadata Documents, since DCR has been downgraded to MAY and now carries a deprecation warning.
@@ -145,19 +145,19 @@ The flip also moves the nav bar to the opposite corner, anchors popovers **away 
 
 ---
 
-### ADR-016 — jotdojo MCP tool names are namespaced against kanninja
+### ADR-016 — jotacular MCP tool names are namespaced against kanninja
 **Settled.**
 
-**Rule:** every jotdojo tool name ends in `_note`, `_notes`, or `_spaces`. No bare verbs.
+**Rule:** every jotacular tool name ends in `_note`, `_notes`, or `_spaces`. No bare verbs.
 
 **Why:** kanninja is live and exposes 42 tools, including the generic names `search`, `list_comments`, and `add_comment`. An agent doing the flow we care about holds *both* servers, so a bare `search` on our side is a coin flip the agent will sometimes lose.
 
-This also sharpens ADR-002. The agent already carries 42 tools from kanninja before jotdojo speaks; a merged server would ship 50+ and be worse at both jobs. jotdojo holds to ten.
+This also sharpens ADR-002. The agent already carries 42 tools from kanninja before jotacular speaks; a merged server would ship 50+ and be worse at both jobs. jotacular holds to ten.
 
 ---
 
 ### ADR-017 — API key path alongside OAuth
-**Settled.** Support `JOTDOJO_API_KEY` for terminal agents, matching kanninja's `KANNINJA_API_KEY`, with OAuth for web clients.
+**Settled.** Support `JOTACULAR_API_KEY` for terminal agents, matching kanninja's `KANNINJA_API_KEY`, with OAuth for web clients.
 
 **Why:** house consistency. Someone already running both from a terminal should configure them the same way. Same identity model underneath — the key is another credential resolving to a user and a grant.
 
@@ -168,7 +168,7 @@ This also sharpens ADR-002. The agent already carries 42 tools from kanninja bef
 
 **Why:** there is no traffic to convert yet, and the founder is user one. A marketing site optimises for an audience that does not exist while the thing it advertises is unproven. ADR-010 still stands as the *shape* — apex for marketing, `app.` for the app, live-canvas hero — it is simply built later.
 
-**The one part that cannot wait:** deploy the app to `app.jotdojo.com` from the first deploy, with the apex parked on a static page. The PWA install origin is baked into every installed home-screen icon; changing it later forces every user to reinstall. An hour now avoids a migration.
+**The one part that cannot wait:** deploy the app to `app.jotacular.com` from the first deploy, with the apex parked on a static page. The PWA install origin is baked into every installed home-screen icon; changing it later forces every user to reinstall. An hour now avoids a migration.
 
 ---
 
@@ -188,7 +188,7 @@ would have shipped:
 
 **Decisions:**
 
-- **The application connects as `jotdojo_app`** — no DDL, no `BYPASSRLS`, not the owner.
+- **The application connects as `jotacular_app`** — no DDL, no `BYPASSRLS`, not the owner.
   Migrations run separately as the owner via `DATABASE_ADMIN_URL`. This applies to every
   environment; an admin connection string in production would silently disable tenancy.
 - **Account creation goes through one `SECURITY DEFINER` function**,
@@ -301,7 +301,7 @@ build and every smoke suite were green while the entire chrome sat off screen.
 The question was whether to put retrieval behind a dedicated search engine. The answer
 is no, and the deciding argument is not performance or cost.
 
-**Tenancy.** Every guarantee jotdojo makes about who can read a note is a row-level
+**Tenancy.** Every guarantee jotacular makes about who can read a note is a row-level
 security policy in Postgres, enforced by the database on a connection that cannot bypass
 it. A search engine has no idea what a space is. Tenancy there becomes a `filter_by`
 clause the application must remember to attach to every query — and we have already
@@ -341,7 +341,7 @@ complain about. None of those are true, and the first two may never be.
 ### ADR-024 — The worker gets three narrow doors, not a BYPASSRLS role
 **Settled. Reverses part of 0000_init.sql.**
 
-`0000_init.sql` created a `jotdojo_worker` role with `BYPASSRLS`, reasoning that
+`0000_init.sql` created a `jotacular_worker` role with `BYPASSRLS`, reasoning that
 embedding legitimately operates across spaces. `0009_embedding_jobs.sql` deletes that
 role.
 
@@ -354,7 +354,7 @@ reason we caught it was a test that asserted the boundary rather than assuming i
 
 The replacement is three `SECURITY DEFINER` functions — `app_claim_embed_jobs`,
 `app_store_embedding`, `app_finish_embed_job` — and the worker connects as the same
-restricted `jotdojo_app` role as everything else. Point the application at the worker's
+restricted `jotacular_app` role as everything else. Point the application at the worker's
 credentials by mistake and nothing happens, because those credentials confer the ability
 to claim an embedding job and nothing more.
 
@@ -396,7 +396,7 @@ in the canvas; clicking it opens the palette and focus never leaves the note.
 **The bottom bar is gone, including on phones.** ADR-012 sent phones to a bottom bar for
 thumb reach, which was right for a drawing app and wrong for this one: a software
 keyboard covers the bottom of a phone exactly when someone is typing, which is the whole
-time they are using jotdojo. `useToolbarPlacement` and its viewport measuring went with
+time they are using jotacular. `useToolbarPlacement` and its viewport measuring went with
 it — there is nothing left to measure.
 
 **The left/right preference survives and still means what it meant** — keep the chrome
@@ -420,7 +420,7 @@ discoverable from the markup.
 **Settled.**
 
 Helm earns its keep when you are packaging software for other people to install, or
-templating one chart across many genuinely different deployments. jotdojo is four
+templating one chart across many genuinely different deployments. jotacular is four
 services we control, deployed to one cluster, with one environment. A templating
 language between us and our YAML would buy nothing and cost a layer everyone has to
 learn to read.
@@ -591,7 +591,7 @@ environments that deliberately hold no production secrets are the ones that must
 thrown by the first query instead of by the import, which is the point at which a database
 is genuinely required.
 
-**The pool size stays per-process** (`DB_POOL_MAX`, ADR-026's cluster note). jotDOJO shares
+**The pool size stays per-process** (`DB_POOL_MAX`, ADR-026's cluster note). Jotacular shares
 a Postgres Flexible Server whose tier caps `max_connections` at 50 for the whole server,
 and four services at the old default of 10 would be 40 of them. `infra/k8s` sets 5/5/3/3.
 Postgres does not degrade politely at that ceiling — it refuses with `FATAL: sorry, too
@@ -614,7 +614,7 @@ produced a clean image that started and then failed:
 - `web` copied the standalone server from `/repo/.next/standalone`, which does not exist:
   `outputFileTracingRoot` puts it under `apps/web/.next/standalone`.
 - Three services were missing a workspace manifest their dependency graph requires —
-  `@jotdojo/domain` alone pulls in db, embeddings **and** storage, so declaring `domain`
+  `@jotacular/domain` alone pulls in db, embeddings **and** storage, so declaring `domain`
   is not the same as needing only `domain`.
 
 **So every Dockerfile copies every workspace manifest and lets `--filter` narrow the
@@ -625,12 +625,12 @@ workspace.
 
 **The bar is a response, not a green build.** The API image serves `/health` and passes the
 full 16-check capture suite over real HTTP; the MCP image serves RFC 9728 metadata naming
-`https://app.jotdojo.com`; web serves RFC 8414 metadata with the same issuer; the worker
+`https://app.jotacular.com`; web serves RFC 8414 metadata with the same issuer; the worker
 states that no providers are configured rather than idling silently.
 
 **The same bar applies to the release, and it caught one.** The whole sequence was
 rehearsed locally against an empty Postgres: 14 migrations applied from the api image, the
-role password set, all four services booted as `jotdojo_app` with `NODE_ENV=production`.
+role password set, all four services booted as `jotacular_app` with `NODE_ENV=production`.
 
 `psql -c "... :'app_password'"` does not work. psql expands `:'var'` only while lexing
 input it reads; a `-c` string goes to the server verbatim, so the variable arrives literally
@@ -885,7 +885,7 @@ to surface. Fixed in 0019 by asking whether the space still exists: during a cas
 parent is already gone and there is nothing left to protect.
 
 ### ADR-040 — One deployment serves both hostnames, and the middleware chooses
-**Settled.** `jotdojo.com` and `app.jotdojo.com` are the same `apps/web` deployment. The
+**Settled.** `jotacular.com` and `app.jotacular.com` are the same `apps/web` deployment. The
 marketing pages live under `/site` in the route tree, and `apps/web/middleware.ts` rewrites
 the apex's bare paths onto them by reading the Host. Adding the apex to the shared Caddy is
 one more block pointing at the **existing** backend, not a fifth service.
@@ -935,9 +935,9 @@ disabled, with the reason in the tooltip -- a stranger sees the whole product an
 which parts need an account, rather than being shown a smaller one.
 
 **Deferred: redirecting returning visitors from the apex to the app.** docs/16 describes it
-and it would need a cookie shared across `.jotdojo.com` — the exact mechanism that document
+and it would need a cookie shared across `.jotacular.com` — the exact mechanism that document
 avoids for drafts, and one that cannot be exercised locally because `localhost` and
-`jotdojo.localhost` share no cookie parent. The nav carries "Open the app" instead, and the
+`jotacular.localhost` share no cookie parent. The nav carries "Open the app" instead, and the
 installed PWA already opens straight onto the canvas.
 
 ### ADR-041 — The anonymous draft is a server-set cookie, not localStorage
@@ -953,7 +953,7 @@ one place Safari evicts would have undone the argument.
 **It is also not readable by script**, so a cross-site scripting bug on the marketing page
 cannot walk off with somebody's draft.
 
-**The handoff still travels in a URL.** The cookie is host-only, so `app.jotdojo.com` never
+**The handoff still travels in a URL.** The cookie is host-only, so `app.jotacular.com` never
 sees it; "Keep this" reads it server-side and redirects to `/claim?t=…`. That is the same
 shape docs/16 describes, for the same reason.
 
@@ -1170,7 +1170,7 @@ week one.
 **It waits for the writing to stop.** A note is not read until it has been untouched for
 `TRIAGE_QUIET` — fifteen minutes by default. Remarking on half a sentence is the difference
 between an assistant and an interruption, and there is no event for somebody putting their
-pen down, which is why this is the one scheduled thing in jotdojo.
+pen down, which is why this is the one scheduled thing in jotacular.
 
 **The watermark moves to where the pass actually got to, not to `now()`.** Stamping the
 clock would silently drop every note past the batch limit. Because the scan is ordered
@@ -1270,7 +1270,7 @@ attempts were caught: the glyph rendered off-centre, and then clipped by its own
 ### ADR-051 — The models are Azure OpenAI, provisioned by sparx, keyed from the vault
 **Settled 2026-08-22.** All four seams -- `vision`, `speech`, `embeddings`, `reason` --
 run against ONE Azure OpenAI account, created by sparx's Terraform in
-`terraform/envs/azure/jotdojo.tf`. Nothing in this repo changed to adopt it.
+`terraform/envs/azure/jotacular.tf`. Nothing in this repo changed to adopt it.
 
 **Why Azure rather than the vendors directly.** Azure startup credits pay for it, and the
 four resolvers already had an `azure` branch. This is a funding decision wearing a
@@ -1322,7 +1322,7 @@ next start`, so the CI web server is a production process holding
 EMPTY BODY, and all eighteen checks failed -- including the ones asserting a refusal,
 which "passed" as failures for the wrong reason.
 
-**The exemption is one environment variable, `JOTDOJO_FAKE_PROVIDERS_OK=1`, and what
+**The exemption is one environment variable, `JOTACULAR_FAKE_PROVIDERS_OK=1`, and what
 makes it safe is structural rather than a promise.** `release.yml` builds the
 container's environment SOLELY from Key Vault entries named in its `required` and
 `optional` lists. A name absent from both cannot reach a deployment by any path. This
@@ -1586,21 +1586,21 @@ welded shut.
 **Why every suite stayed green.** A developer's `DATABASE_ADMIN_URL` is `postgres`, a
 superuser, and superusers bypass RLS unconditionally — FORCE included. So locally the
 function worked, `db:smoke` passed, and `oauth:smoke` created users happily. Production's
-owner is `jotdojo_owner`: not a superuser, no `BYPASSRLS`. The identical schema behaved
+owner is `jotacular_owner`: not a superuser, no `BYPASSRLS`. The identical schema behaved
 differently on the only machine that mattered. (`sparx_owner` on the same server *does*
 have `rolbypassrls`; that asymmetry is the whole bug.)
 
 **Decision.** `NO FORCE ROW LEVEL SECURITY` on `users`, `spaces` and `space_members`.
 
 **What this does not weaken.** FORCE only ever applied to the table **owner**. The
-application connects as `jotdojo_app`, which does not own these tables, so every policy
+application connects as `jotacular_app`, which does not own these tables, so every policy
 still applies to it exactly as before — it holds table-level INSERT and is stopped by RLS
 alone. The tenancy boundary is untouched. What changes is that the definer functions built
 to do this one job can do it again. `notes`, `blocks` and the rest keep FORCE: they hold
 tenant content, no definer function writes to them, and the owner has no business reading
 across spaces there.
 
-**The rejected alternative was broader, not safer.** `ALTER ROLE jotdojo_owner BYPASSRLS`
+**The rejected alternative was broader, not safer.** `ALTER ROLE jotacular_owner BYPASSRLS`
 would also have worked and would have kept FORCE as documented — but it exempts the
 migration role from RLS on *every* table rather than restoring one exemption on three, and
 it needs a superuser, so it would live in another project's Terraform instead of shipping
@@ -1666,25 +1666,25 @@ that one choice, and they are why it is the choice:
 #### The transport is Postgres LISTEN/NOTIFY, and sparx's is not
 
 sparx solves the same problem with **NATS JetStream** (`EVENT_BROKER=nats`, a StatefulSet in
-the `sparx-prod` namespace of the cluster jotDOJO shares) fanned out to browsers over
+the `sparx-prod` namespace of the cluster Jotacular shares) fanned out to browsers over
 socket.io with a Redis adapter. It is in reach: same cluster, resolvable by DNS. It was not
 chosen, and the reason is not that it is unavailable.
 
 sparx has **two layers** — a durable broker for business events that must not be lost, and a
-non-durable last hop to an open tab. jotDOJO already has the first: the **Postgres outbox**,
+non-durable last hop to an open tab. Jotacular already has the first: the **Postgres outbox**,
 with `attempts`, `locked_until` and `last_error`, chosen in ADR-002 for the reason that
 still holds. What was missing was only the second, and the second wants none of what
 JetStream sells. No acks, no redelivery, no replay — a page's truth is in the database and
 the channel exists to say "go and look."
 
 So depending on it would mean a runtime dependency on **another product's namespace** for a
-feature that gains nothing from it. Today jotDOJO's outage surface is the cluster and the
+feature that gains nothing from it. Today Jotacular's outage surface is the cluster and the
 Postgres server; this would make it three, and the third would be a service sparx can
 restart without telling us. One Postgres connection per web pod is the price instead, and
 docs/17 now counts it.
 
 **What WOULD change this:** web scaling past a couple of replicas, where one connection per
-pod starts to matter against a 50-connection ceiling shared with sparx; or jotDOJO needing
+pod starts to matter against a 50-connection ceiling shared with sparx; or Jotacular needing
 events to cross a service boundary that the outbox does not already cover. The seam is one
 file — `packages/db/src/live.ts` — and no domain code knows what is underneath it.
 
@@ -1789,7 +1789,7 @@ control.
 Widths settle to hundredths below 4px and to tenths above, and that is not fussiness — the
 slider is driven by the width it produced, so two steps that settle to one width make the
 thumb stick at it and slide back under the finger. Rounding to whole pixels at the fat end
-did exactly that, twice, and `pnpm --filter @jotdojo/web smoke:pen-size` is what caught it.
+did exactly that, twice, and `pnpm --filter @jotacular/web smoke:pen-size` is what caught it.
 
 #### A drag is one edit
 
@@ -1903,8 +1903,8 @@ empty page.
 
 #### The rasteriser is a separate entry point
 
-`sharp` is a native binary. `apps/web` imports `@jotdojo/ink-render` for its geometry, so
-`toPng` lives at `@jotdojo/ink-render/raster` — a second export path — rather than behind the
+`sharp` is a native binary. `apps/web` imports `@jotacular/ink-render` for its geometry, so
+`toPng` lives at `@jotacular/ink-render/raster` — a second export path — rather than behind the
 package's main one. The four inline lines that used to do this in `apps/worker/src/recognize.ts`
 are gone; the worker, the export routes and (next) the MCP page view all call the same
 function. `sharp` is now also a dependency of `apps/web` and is named in
@@ -2004,12 +2004,12 @@ figure, for the reason ADR-056 gives: they are not "82% sure".
 
 #### Consequences
 
-- `apps/mcp` gains `@jotdojo/ink-render` and `sharp`. `mcp.Dockerfile` carries both, and its
+- `apps/mcp` gains `@jotacular/ink-render` and `sharp`. `mcp.Dockerfile` carries both, and its
   header now repeats worker.Dockerfile's warning verbatim: sharp's musl binaries are fetched
   by an install script pnpm runs *only* because of `pnpm.onlyBuiltDependencies`. Remove that
   entry and the install still succeeds; the first `view_note` in production dies.
 - **`images:check` now asserts that entry**, for every app that depends on sharp — three of
-  them now. The rule that caught `@jotdojo/reason` did not cover native packages, and this is
+  them now. The rule that caught `@jotacular/reason` did not cover native packages, and this is
   the same failure with a different shape: green everywhere, dead in the container.
 - `InkBlock` gains `transcriptSource`. The caption has to tell a person's own correction from
   a model's guess, and `findInkBlock` was not returning it.
@@ -2094,7 +2094,7 @@ list, so the migration and the check cannot drift. ADR-057.
   that with the whole notebook, which reads as a working filter returning a lot of results.
 - The feed carries the comment body inline. One that says somebody commented and makes you
   fetch the note to find out what they said is a notification, not a feed.
-- `who` is words — "you", "an agent", "jotdojo", "someone else in this space" — never a uuid.
+- `who` is words — "you", "an agent", "jotacular", "someone else in this space" — never a uuid.
   This is read by something that will paraphrase it to a person.
 - Old call signatures still work: `listNotes(actor, space, 25)` and `searchNotes(..., 25)` take
   a number as before. Chasing every caller in the same commit as the feature is how a
@@ -2167,7 +2167,7 @@ chrome carries them afterwards, and appears only once an agent has ever spoken a
 
 The risk register calls slow capture **fatal**. The share sheet is where most thoughts
 actually arrive — a link, a screenshot, a paragraph from a message — and none of them could
-reach jotdojo without opening it first.
+reach jotacular without opening it first.
 
 #### A URL had to arrive pre-formatted, and then titled the note with itself
 
@@ -2528,7 +2528,7 @@ place a suite exists to catch exactly that.** Both sides now name a shared const
 
 ### ADR-069 — The tool surface is a submission, not just an interface
 
-**2026-08-22.** jotdojo's whole competitive position is that an agent can reach your notes
+**2026-08-22.** jotacular's whole competitive position is that an agent can reach your notes
 from your phone with no computer running. That position is worth nothing to a buyer who has
 never heard of MCP, and two of our three audiences in
 [01-audience-and-pricing.md](01-audience-and-pricing.md) have not.
@@ -2629,7 +2629,7 @@ ADR-057 found this on three tables and 0028 found it on twelve more, and both ti
 the rule down as being about **writes**. The sentence 0028 used to justify leaving
 `media_assets` alone is still true and was never the whole rule:
 
-> no definer function writes to them — the application does, as `jotdojo_app`
+> no definer function writes to them — the application does, as `jotacular_app`
 
 `app_claim_recognize_jobs` is `SECURITY DEFINER` and does not write to `media_assets`. It
 **joins** it, twice, to answer "does this block still have anything on it worth reading".
@@ -2672,7 +2672,7 @@ FORCE included. Same shape as ADR-057, one verb over.
 
 ### ADR-072 — The product is called Jotacular, and the plumbing is not
 
-**2026-08-23.** The product is renamed from jotdojo to **Jotacular**, on `jotacular.com`,
+**2026-08-23.** The product is renamed from jotacular to **Jotacular**, on `jotacular.com`,
 with a new palette, a new type pairing, and a new mark. [design.md](../design.md) is
 canonical for the identity; [19-rebrand.md](19-rebrand.md) is the plan this executed.
 
@@ -2688,14 +2688,14 @@ inherit kanninja's register — that the rename made false.
 
 Renaming these would cost a migration with downtime and buy nothing a user can see:
 
-- `@jotdojo/*` package names, and every import of them
-- `jotdojo_app` / `jotdojo_owner` / `jotdojo_worker`, and the `jotdojo` database itself —
+- `@jotacular/*` package names, and every import of them
+- `jotacular_app` / `jotacular_owner` / `jotacular_worker`, and the `jotacular` database itself —
   renaming a role rewrites grants and RLS policies on a live database
-- the `jotdojo` Kubernetes namespace, and the Azure Key Vault and storage account, which
-  live in sparx's `terraform/envs/azure/jotdojo.tf` and are globally-unique immutable names
-- `token.jotdojoUserId` — a JWT claim. Renaming it invalidates every live session, logging
+- the `jotacular` Kubernetes namespace, and the Azure Key Vault and storage account, which
+  live in sparx's `terraform/envs/azure/jotacular.tf` and are globally-unique immutable names
+- `token.jotacularUserId` — a JWT claim. Renaming it invalidates every live session, logging
   out every user to change a string none of them can see
-- the `jotdojo.scribble-hint.dismissed` localStorage key, for the same reason one step down:
+- the `jotacular.scribble-hint.dismissed` localStorage key, for the same reason one step down:
   a new key re-shows a hint people already dismissed
 - the `jd-` CSS prefix, 100 classes across 36 files, invisible and high-churn
 - **the ADRs above this one.** They are a dated record of what was decided when, under the
@@ -2708,7 +2708,7 @@ the same string.
 
 - `apps/web/lib/brand.ts` holds the name, the lines and the pigments. It exists because the
   name used to be a literal in eight places, which is what made the rename large.
-- `connect-jotdojo-to-claude` became `connect-jotacular-to-claude`, with a permanent
+- `connect-jotacular-to-claude` became `connect-jotacular-to-claude`, with a permanent
   redirect in `next.config.ts`. It is our most-linked post and a 404 there costs the one
   piece of SEO we have.
 - `scripts/make-icons.mjs` now rasterizes committed artwork in `assets/brand/` instead of
@@ -2750,16 +2750,16 @@ would read as restraint the brand is not asking for.
 ### ADR-074 — The name moved before the hostnames did
 
 **2026-08-23.** The product is called Jotacular everywhere a person can read it. It is still
-served from `jotdojo.com`, and that is deliberate rather than unfinished.
+served from `jotacular.com`, and that is deliberate rather than unfinished.
 
 #### Why the hostnames lag
 
 Two of the four are load-bearing in a way the marketing apex is not:
 
-- **`app.jotdojo.com` is the PWA install origin.** It is written into every installed
+- **`app.jotacular.com` is the PWA install origin.** It is written into every installed
   home-screen icon and does not follow a redirect (ADR-010, and `16-web-presence.md` flagged
   this before the rebrand existed). Moving it forces every existing user to reinstall.
-- **`mcp.jotdojo.com/mcp` is `MCP_RESOURCE`**, and every access token is bound to that exact
+- **`mcp.jotacular.com/mcp` is `MCP_RESOURCE`**, and every access token is bound to that exact
   string as its audience. Changing it invalidates every live agent connection at once, and
   every user reconnects Claude by hand.
 
@@ -2770,11 +2770,11 @@ notices immediately.
 #### Consequences
 
 - Content prose says Jotacular. Hostnames and `legal@` / `hello@` addresses in that prose
-  still say jotdojo, because documenting a URL that does not resolve is worse than an
+  still say jotacular, because documenting a URL that does not resolve is worse than an
   inconsistency a reader will forgive.
 - Adding the new hostnames is a **two-repo change**: a Caddy site block and an allow-list
   entry in sparx, per `17-shared-infrastructure.md`. It cannot be done from this repo.
-- `siteOrigin()`'s fallback still reads `https://jotdojo.com`, which stays correct until the
+- `siteOrigin()`'s fallback still reads `https://jotacular.com`, which stays correct until the
   same commit that flips `SITE_URL`. Moving one without the other silently un-rebrands the
   site or breaks it, depending on which.
 - When the cutover happens, `isMarketingHost` must accept **both** apexes for the overlap,
@@ -3024,7 +3024,7 @@ height back. Storing the measurement would make `h` monotonic — a deleted para
 could never shrink the box again, because the floor would have swallowed it.
 
 **One implementation of `boxBounds`, imported rather than copied.** `ink-index.ts`
-already said the rule this broke: *"The boxes come from `@jotdojo/ink-render` rather
+already said the rule this broke: *"The boxes come from `@jotacular/ink-render` rather
 than a second copy here."* The 1.25/1.35 split was that sentence being violated three
 files away, so the fix is a deletion.
 
@@ -3259,9 +3259,9 @@ left orphaned. The footer keeps every internal link to them.
 That is deliberate — the app is a canvas with a different contrast problem — but
 it means a component used on both surfaces cannot reach for it.
 
-### ADR-083 — The capture glyphs are marker-drawn, and that means a Kit
+### ADR-083 — Every icon in the product is marker-drawn, and that means a Kit
 
-**Status.** Accepted, 2026-08-23. Blocked on a Font Awesome Kit.
+**Status.** Accepted and shipped, 2026-08-23.
 
 **Context.** The four capture cards — Write, Type, Speak, Snap — carried Lucide
 glyphs: even-weight outlines on a uniform grid. A design review called them
@@ -3280,24 +3280,67 @@ is no `@fortawesome/whiteboard-svg-icons` on the registry. Font Awesome 7's new
 expressive families are distributed only through a Kit, as
 `@awesome.me/kit-<code>`.
 
-**Decision.** The glyph choice moves behind `components/site/ModeIcon.tsx`,
-which owns the tile, the sizing and a four-entry map from a capture mode to its
-glyph. Callers pass `write | type | speak | snap` and know nothing else.
-Adopting Whiteboard is then one import and one map, with no change to
-`CaptureModes`, to the markup, or to `.jd-mode-ico`.
+**Decision.** One `components/Icon.tsx` and one `lib/icons.ts` map, for the
+whole product. Callers name a job — `<Icon name="remove" />` — and never an
+icon package, so changing artwork is a one-line edit in the map.
 
-Lucide holds the slot until the Kit exists. It is the honest placeholder: it is
-what is already installed, and it is visibly not the answer.
+A package-manager Kit rather than a CDN Kit. The CDN kind injects a script from
+`kit.fontawesome.com`, which would put a third-party request on a marketing page
+that currently makes none, and would flash unstyled icons before it resolves.
 
-**Consequences.** `.npmrc` will need `@awesome.me:registry` beside the
-`@fortawesome` line it already has, and `FONTAWESOME_NPM_TOKEN` must be present
-in CI as well as on a laptop — the same variable the other WizeWorks repos use.
-Until then this is the one piece of the rebrand whose finish is waiting on an
-account setting rather than on code.
+**The icons are drawn from their definitions, not through
+`@fortawesome/react-fontawesome`.** A kit icon *is* its path —
+`[width, height, ligatures, unicode, d]` — so `Drawn` in `components/Icon.tsx` renders
+one `<svg>` and one `<path>`. That keeps them server-rendered, adds no runtime,
+and skips `fontawesome-svg-core`'s CSS injection, which on the App Router needs
+its own opt-out to stop every icon flashing at full size on first paint. It also
+saved two dependencies for four glyphs.
 
-A Kit is also a subsetting decision. It should be a package-manager Kit rather
-than a CDN Kit: the CDN kind injects a script from `kit.fontawesome.com`, which
-would put a third-party request on a marketing page that currently makes none.
+Sizing follows Font Awesome's own convention: one em tall, and as wide as the
+artwork is. `pen-line` is 640x512, so a square box would squash it.
+
+**Consequences.** `.npmrc` gained `@awesome.me:registry` beside the
+`@fortawesome` line it already had, and the install now needs
+`FONTAWESOME_NPM_TOKEN` in three places rather than one:
+
+- a laptop, where it is already in the environment
+- **CI** — `pnpm install --frozen-lockfile` in `ci.yml` carries it as an `env:`
+- **the web image** — `web.Dockerfile` mounts it as a BuildKit secret rather
+  than an `ARG`, so it never lands in a layer or in `docker history`, and
+  `release.yml` passes it to the shared build step
+
+The repository secret `FONTAWESOME_NPM_TOKEN` has to exist for any of that to
+resolve. Without it the build fails at install with a 401 from
+npm.fontawesome.com, which is the right failure: loud, early, and not a page
+that silently ships without its icons.
+
+The type had to be annotated rather than inferred. pnpm keeps
+`fontawesome-common-types` at a path `apps/web` cannot name, so an inferred
+`GLYPH` is "not portable" (TS2742); `Record<ModeName, IconDefinition>`, with the
+type imported from the kit's own re-export, fixes it.
+
+**This is the whole product, not the landing page.** `lucide-react` is gone
+from the repository: nine components moved to one `Icon`, and `lib/icons.ts`
+holds the single map from a job (`remove`, `agent`, `zoomOut`) to a glyph.
+Naming keys for the job rather than the picture means swapping artwork never
+means editing a caller.
+
+Sizing moved with it. Icons used to be boxed — `.jd-tool svg { width: 1rem;
+height: 1rem }` — and a Whiteboard glyph is rarely square (`pen-line` is
+640x512), so a box squashes it. Every rule now sets `font-size`, and `.jd-icon`
+is one em tall and as wide as its own artwork.
+
+**The family does not cover everything.** Whiteboard Semibold is 492 icons, not
+Classic's tens of thousands, and it has no `eraser`, no `highlighter` and no
+`lasso` — which is three of the seven tools in the rail. `highlighter` takes
+`paintbrush` and `select` takes `arrow-pointer`; both are honest and both stay
+in one face. The eraser has no near miss at all, and `SUBSTITUTED` in
+`lib/icons.ts` names all three so the compromise is in one list rather than
+scattered across nine components.
+
+Adding a second family for those three would fix the meaning and break the
+face, which is the defect the review raised in the first place. So it is not
+done here.
 
 ### ADR-084 — A tap picks one thing up, and a menu says what can be done to it
 
@@ -3374,3 +3417,117 @@ vanishing; the invisible half was the whole feature.
 - `-webkit-touch-callout: none` on the canvas layers and deliberately **not** on
   `.jd-text-box`: inside a note a hold is the system's text-selection gesture, which is
   the right one to keep.
+
+---
+
+### ADR-085 — Whether a note can be clicked is its own question, not a reading of the tool
+
+**2026-08-23.** A note on the plane takes a pointer because something said it may, not
+because the engine happened to be holding a particular tool.
+
+#### A note could be written once and never opened again
+
+Placing a note put the caret in it, and that hid the fault: the caret was already there,
+so nobody noticed it could not be got back. Tap away and the note was finished — no
+caret, no selection, no response of any kind. Editing your own words meant going to
+Text → options → "Put a text box on the canvas" to re-arm a tool whose real job is
+placing a *new* note, then tapping the old one. Nothing on the surface says that, and
+there is no reason anybody would guess it.
+
+For a product whose whole promise is that nothing you write gets lost, a note you cannot
+re-open is close to the worst shape a bug can take. It looks like data loss and it feels
+like the app forgetting.
+
+#### One line, and the reason it was invisible
+
+`InkTextLayer.setTool` asked `tool === "textbox"`. It was never wrong about `textbox`;
+it was asking a question that could not be answered.
+
+`CanvasTool` has six values, `InkTool` has five, and `inkToolFor` collapses the missing
+one — the spine — to `"pen"` on the way into the engine. That collapse is correct and
+ADR-065 explains why: the engine routes pointers by tool and has no branch for a
+full-bleed textarea it does not own. But it means the engine can never see `"text"`, so
+a tool-derived answer says *no* on the very tool people type with. The signature even
+said `InkTool | "text"`, which reads as though the case were handled. It was dead code,
+and had been since ADR-065.
+
+The fix is not a sixth value. It is accepting that **the plane needs to know something
+the engine deliberately does not**, and giving it its own channel: `canReachText(tool)`
+in [canvas-tool.ts](../apps/web/lib/canvas-tool.ts), pushed through
+`InkEngine.setTextReachable` to `InkTextLayer.setReachable`.
+
+#### The collapse moved to where both answers are still available
+
+`InkCanvas` used to take the narrowed `InkTool`, so both its callers wrote
+`inkToolFor(tool)` at the prop and threw the spine away before the component could ask
+anything else. It now takes the whole `CanvasTool` and narrows internally, which is the
+only place both answers can be derived from one source and cannot drift apart.
+`inkToolFor` moved from `ToolRail.tsx` — a component — to `canvas-tool.ts`, beside
+`isInk` and the type it returns.
+
+#### Reachability is pushed at mount as well as on change
+
+The engine is built asynchronously, so the effect that pushes tool changes has already
+run against a null ref by the time it exists. Every other setting is handled by
+`initial`; this one has to be too, or the page opens on the default tool with every note
+on it dead — which is the original bug wearing a different hat.
+
+#### Consequences
+
+- Off for the pen, the marker, the eraser and the lasso. All four must pass THROUGH the
+  plane to the canvas underneath, and a note that swallowed the pointer would make part
+  of the page silently undrawable. Verified in a browser: on Text a click lands in the
+  note and bare paper still reaches the spine; on the pen every note is `none` and the
+  canvas takes the pointer over a card as readily as over paper; on Select a tap picks
+  the note up as ADR-084 intends.
+- A native click places the caret where you clicked, rather than at the end of the text
+  the way `focus()` does for a freshly placed note. That is the right behaviour and comes
+  for free from using a real `<textarea>` — one more entry on ADR-065's list.
+- `styleFor` widened to `CanvasTool`. It only ever asked whether the tool is the
+  highlighter, and requiring a narrowed tool forced a second `inkToolFor` at both call
+  sites purely to satisfy the signature.
+
+### ADR-086 - The hostnames moved too, because nobody was holding them yet
+
+**Status.** Accepted, 2026-08-23. Supersedes the staging in ADR-074.
+
+**Context.** ADR-074 kept `jotdojo.com` and its three subdomains while the
+product became Jotacular, on the reasoning that `app.` is the PWA install origin
+baked into every home-screen icon and `mcp.` is the audience bound into every
+access token. Moving either forces real people to reinstall an app or reconnect
+an agent by hand.
+
+That reasoning was sound and its premise was wrong. Both costs are paid *per
+existing user*, and there are none - nothing is installed and no agent is
+connected. The window in which this is free is now, and it closes the first week
+anybody uses it.
+
+**Decision.** Everything moves. 219 files, 744 occurrences: the four hostnames,
+the `legal@` and `hello@` addresses, the `@jotdojo/*` workspace scope across
+thirteen packages, the k8s namespace with its config and secret names, image
+names, the `JOTDOJO_FAKE_PROVIDERS_OK` guard, the local database, the compose
+container, and every line of prose in `docs/`.
+
+`isMarketingHost` accepts **both** apexes for the overlap. Without that branch
+the old domain would serve the app tree at its apex the moment `SITE_URL`
+flipped, which ADR-010 says can never happen.
+
+**Consequences.** Three things did not move, each for a stated reason:
+
+- **`migrations/0000`-`0033`** are a literal record of what ran and are never
+  edited (CLAUDE.md). They still create `jotdojo_app`, and `0034` renames it -
+  so a database built from scratch replays history and lands on the new name.
+- **The owner role** is not in `0034`. Migrations run *as* the owner and
+  Postgres refuses `session user cannot be renamed`, so it is a superuser step
+  paired with the Key Vault secret. `docs/20-rename-runbook.md` has the order.
+- **The repo directory** is still `jotDOJO`. Renaming a checkout that other
+  sessions and editors hold open buys nothing, and no reader sees it.
+
+The database rename is `ALTER DATABASE`, which cannot run in a transaction and
+needs no connections - so it is a runbook step rather than a migration. Role
+renames are safe on this server because it is `scram-sha-256`; on an `md5`
+server a rename silently clears the password, since the hash is salted with the
+role name.
+
+**A rename is cheap exactly once, and it is cheap because nothing is bound to
+the old name yet. That is a fact about the calendar, not about the code.**

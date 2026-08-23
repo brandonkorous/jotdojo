@@ -5,7 +5,7 @@ import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 import {
   withActor, withoutActor, oauthClients, oauthAuthCodes, oauthTokens, mcpClients, spaces,
   type Tx,
-} from "@jotdojo/db";
+} from "@jotacular/db";
 import type { Actor } from "./actor";
 import { DomainError, Forbidden } from "./errors";
 import { listSpaces } from "./spaces";
@@ -329,7 +329,7 @@ async function mintTokens(
  * Every check here is load-bearing: PKCE proves the exchanger is the same party
  * that started the flow, the redirect_uri must match exactly, and the resource
  * indicator must match what the code was minted for -- that last one is what
- * stops a jotdojo code becoming a kanninja token, which with a live sibling on
+ * stops a jotacular code becoming a kanninja token, which with a live sibling on
  * the same account is not hypothetical.
  */
 export async function exchangeAuthCode(input: {

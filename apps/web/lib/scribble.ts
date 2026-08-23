@@ -3,7 +3,7 @@
  * on the web. docs/08-ink.md, ADR-034.
  */
 
-const KEY = "jotdojo.scribble-hint.dismissed";
+const KEY = "jotacular.scribble-hint.dismissed";
 
 /**
  * iPadOS 13 and later report themselves as macOS, deliberately. The only

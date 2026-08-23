@@ -2,7 +2,7 @@
 
 import { useTransition } from "react";
 import { startCheckoutAction, billingPortalAction } from "@/app/actions";
-import type { PaidPlan } from "@jotdojo/billing";
+import type { PaidPlan } from "@jotacular/billing";
 import type { PlanView } from "@/lib/plans-view";
 
 /**

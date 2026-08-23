@@ -1,4 +1,4 @@
-import { saveNote, RevisionConflict, asUser, type Actor } from "@jotdojo/domain";
+import { saveNote, RevisionConflict, asUser, type Actor } from "@jotacular/domain";
 import { auth } from "@/auth";
 import { currentDraft } from "@/lib/draft";
 

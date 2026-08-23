@@ -16,8 +16,8 @@ import {
   createInkBlock, appendStrokes, storeTranscript, getStructure,
   enqueueStructureNow, meteredKinds,
   type Point, type Stroke,
-} from "@jotdojo/domain";
-import { fakeRecognizer, parseStructure, readStructure, RecognitionError } from "@jotdojo/vision";
+} from "@jotacular/domain";
+import { fakeRecognizer, parseStructure, readStructure, RecognitionError } from "@jotacular/vision";
 import { runStructureCycle } from "../src/structure";
 
 let failures = 0;

@@ -1,4 +1,4 @@
-import type { Stroke, TextBox } from "@jotdojo/domain";
+import type { Stroke, TextBox } from "@jotacular/domain";
 import { getInkAction } from "@/app/actions";
 import { strokesSinceAction } from "@/app/actions/live";
 import { needsFullRead } from "./ink-merge";

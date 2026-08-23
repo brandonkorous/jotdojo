@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import {
   getNote, getToolbarSide, hasInk, listNoteComments, NotFound,
-} from "@jotdojo/domain";
+} from "@jotacular/domain";
 import { requireActor, currentUser } from "@/lib/session";
 import { Canvas } from "@/components/Canvas";
 import { CanvasStage } from "@/components/CanvasStage";

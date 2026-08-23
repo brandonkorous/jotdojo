@@ -1,7 +1,7 @@
 import { createServer } from "node:http";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
-import { verifyAccessToken, DomainError } from "@jotdojo/domain";
+import { verifyAccessToken, DomainError } from "@jotacular/domain";
 import { registerTools } from "./tools.js";
 
 const PORT = Number(process.env.MCP_PORT ?? 3402);
@@ -65,10 +65,10 @@ const server = createServer(async (req, res) => {
   if (!actor) return unauthorized("That token is not valid for this server");
 
   const mcp = new McpServer(
-    { name: "jotdojo", version: "0.1.0" },
+    { name: "jotacular", version: "0.1.0" },
     {
       instructions:
-        "jotdojo holds the user's captured notes -- typed, handwritten, spoken and " +
+        "Jotacular holds the user's captured notes -- typed, handwritten, spoken and " +
         "photographed. A note is the user's own words, and handwriting is kept as " +
         "strokes, so a page can be looked at as well as read. Comments are the record " +
         "of anything said about a note; every agent write is attributed and revertible.",
@@ -94,5 +94,5 @@ const server = createServer(async (req, res) => {
 });
 
 server.listen(PORT, () => {
-  console.log(`jotdojo mcp listening on http://localhost:${PORT}/mcp (resource: ${RESOURCE})`);
+  console.log(`jotacular mcp listening on http://localhost:${PORT}/mcp (resource: ${RESOURCE})`);
 });

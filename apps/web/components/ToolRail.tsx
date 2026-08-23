@@ -1,9 +1,8 @@
 "use client";
 
-import {
-  Type, PenLine, Highlighter, Eraser, Lasso, Mic, Camera, type LucideIcon,
-} from "lucide-react";
-import { isInk, type CanvasTool, type InkTool } from "@/lib/canvas-tool";
+import { Icon } from "@/components/Icon";
+import type { IconName } from "@/lib/icons";
+import type { CanvasTool } from "@/lib/canvas-tool";
 
 /**
  * The tools, once, so the app and the marketing hero cannot drift apart.
@@ -15,31 +14,30 @@ import { isInk, type CanvasTool, type InkTool } from "@/lib/canvas-tool";
  * These were Unicode characters until Inter turned out to serve none of them:
  * every glyph fell through to a system font, and U+270E has an emoji
  * presentation variant, so the pen rendered in colour on Apple platforms. ADR-044.
+ *
+ * They are now Font Awesome Whiteboard, drawn with a marker rather than ruled.
+ * Three of these seven are substitutions -- see `lib/icons.ts`. ADR-083.
  */
 
 type Spec = {
   id: CanvasTool | "mic" | "cam";
   label: string;
-  Icon: LucideIcon;
+  icon: IconName;
   /** An action opens something. A mode changes what the canvas does, and only
    *  a mode can be `aria-pressed`. */
   action?: boolean;
 };
 
 const TOOLS: Spec[] = [
-  { id: "text", label: "Text", Icon: Type },
-  { id: "pen", label: "Handwriting", Icon: PenLine },
-  { id: "highlighter", label: "Highlighter", Icon: Highlighter },
-  { id: "eraser", label: "Eraser", Icon: Eraser },
+  { id: "text", label: "Text", icon: "text" },
+  { id: "pen", label: "Handwriting", icon: "pen" },
+  { id: "highlighter", label: "Highlighter", icon: "highlighter" },
+  { id: "eraser", label: "Eraser", icon: "eraser" },
   // A lasso, not a marquee: the tool selects whole strokes by enclosing them.
-  { id: "select", label: "Select", Icon: Lasso },
-  { id: "mic", label: "Voice", Icon: Mic, action: true },
-  { id: "cam", label: "Photo", Icon: Camera, action: true },
+  { id: "select", label: "Select", icon: "select" },
+  { id: "mic", label: "Voice", icon: "voice", action: true },
+  { id: "cam", label: "Photo", icon: "photo", action: true },
 ];
-
-/** Lucide draws at 24px with a 2px stroke. At the size these actually render,
- *  that reads as a marker pen next to Inter; 1.75 sits with the text. */
-const STROKE = 1.75;
 
 export function ToolRail({
   tool, onTool, onAction, unavailable = [], unavailableHint,
@@ -54,7 +52,7 @@ export function ToolRail({
 }) {
   return (
     <nav aria-label="Tools" className="flex items-center gap-0.5">
-      {TOOLS.map(({ id, label, Icon, action }) => {
+      {TOOLS.map(({ id, label, icon, action }) => {
         const off = unavailable.includes(id);
         const hint = off && unavailableHint ? `${label} — ${unavailableHint}` : label;
         return (
@@ -72,14 +70,10 @@ export function ToolRail({
             }}
             className={`jd-tool ${id === tool ? "jd-tool-active" : ""}`}
           >
-            <Icon aria-hidden strokeWidth={STROKE} />
+            <Icon name={icon} />
           </button>
         );
       })}
     </nav>
   );
 }
-
-/** Which ink tool the engine should hold. `text` is not one, but unmounting the
- *  ink layer to say so would orphan everything already drawn. */
-export const inkToolFor = (tool: CanvasTool): InkTool => (isInk(tool) ? tool : "pen");

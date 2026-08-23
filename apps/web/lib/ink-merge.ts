@@ -1,4 +1,4 @@
-import type { Stroke } from "@jotdojo/domain";
+import type { Stroke } from "@jotacular/domain";
 
 /**
  * Reconciling this device's page with the server's. ADR-058.

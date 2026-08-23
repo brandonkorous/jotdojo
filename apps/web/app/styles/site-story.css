@@ -1,0 +1,167 @@
+/* The lake story, and the jot at the middle of it. docs/10-design-system.md.
+
+   Split out of site-sections.css at the 250-line limit. It is one band, but it
+   is the band that carries the product's whole shape -- a note, the weeks it
+   sat there, and what an agent made of it -- so it is the one with drawings,
+   handwriting and tape in it. ADR-080. */
+
+/* --- the lake story ----------------------------------------------------- */
+
+.jd-story {
+    display: grid;
+    gap: 1.25rem;
+    grid-template-columns: minmax(0, 1fr);
+}
+@media (min-width: 60rem) {
+    .jd-story {
+        grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
+        align-items: start;
+        gap: 1.25rem 2.5rem;
+    }
+    /* The jot and the weeks it sat there on the left; the conversation that
+     came out of it on the right. */
+    .jd-story-note {
+        grid-column: 1;
+        grid-row: 1;
+    }
+    .jd-story-gap {
+        grid-column: 1;
+        grid-row: 2;
+    }
+    .jd-story-chat {
+        grid-column: 2;
+        grid-row: 1 / span 2;
+    }
+}
+.jd-story-note {
+    margin: 0;
+    border: 1px solid var(--color-base-300);
+    border-radius: var(--radius-box, 0.75rem);
+    padding: 1.25rem;
+    background: var(--color-base-100);
+    box-shadow: var(--shadow-lift);
+}
+.jd-story-note figcaption {
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+    font-size: 0.85rem;
+    color: var(--ink-2);
+    margin-bottom: 0.75rem;
+}
+/* A jotted list is tight, not a column of prose, so the band's paragraph
+   rhythm has to let go inside these cards. */
+.jd-story p {
+    max-width: none;
+}
+/* The weeks between capture and use are the whole product, so the layout gives
+   them room rather than butting the two cards together. */
+.jd-story-gap {
+    font-size: 0.95rem;
+    color: var(--ink-2);
+    text-align: center;
+    padding: 0.25rem 0;
+    max-width: none;
+}
+@media (min-width: 60rem) {
+    .jd-story-gap {
+        text-align: left;
+        padding: 0.5rem 0 0 1.25rem;
+        border-left: 2px solid var(--color-base-300);
+    }
+}
+
+.jd-footnote {
+    margin-top: 1.25rem;
+    font-size: 0.95rem;
+}
+.jd-turn {
+    margin-top: 1rem;
+    font-weight: 600;
+}
+
+/* --- the jot itself ------------------------------------------------------ */
+
+/* Paper, taped down, at a slight angle -- it landed on the desk, it was not
+   placed there. design.md §16. */
+.jd-story-note {
+  position: relative;
+  transform: rotate(-1.1deg);
+  padding-top: 2rem;
+}
+.jd-tape {
+  position: absolute;
+  top: -0.7rem;
+  left: 50%;
+  width: 6.5rem;
+  height: 1.5rem;
+  transform: translateX(-50%) rotate(-1.6deg);
+  background: color-mix(in oklch, var(--color-primary) 55%, #FFFFFF);
+}
+.jd-note-doodle {
+  display: block;
+  width: 11rem;
+  max-width: 100%;
+  margin: 0 auto 0.9rem;
+  color: var(--color-base-content);
+}
+.jd-note-hand {
+  font-family: var(--font-hand, Caveat), cursive;
+  font-size: 1.5rem;
+  line-height: 1.45;
+}
+.jd-note-hand p { max-width: none; margin: 0; }
+.jd-note-hand p + p { margin-top: 0; }
+.jd-note-title {
+  font-size: 1.75rem;
+  font-weight: 600;
+  border-bottom: 2px solid currentColor;
+  display: inline-block;
+  margin-bottom: 0.4rem;
+}
+/* A pen rings the word it came back to. */
+.jd-note-ringed {
+  position: relative;
+  display: inline-block;
+  padding: 0.15rem 0.7rem;
+  margin-top: 0.2rem;
+}
+.jd-ring {
+  position: absolute;
+  inset: -0.45rem -0.75rem;
+  width: auto;
+  height: auto;
+  color: var(--color-agent);
+  pointer-events: none;
+}
+.jd-story-note figcaption { margin: 1.1rem 0 0; }
+
+/* --- the conversation ---------------------------------------------------- */
+
+.jd-story-chat { display: grid; gap: 0.75rem; }
+/* Silica's default bubble is base-200, and this band IS base-200 -- the
+   person's message had no visible bubble at all. Give it paper and a hairline;
+   the agent's bubble carries its own colour and needs neither. */
+.jd-story-chat .chat-bubble:not([class*="chat-bubble-"]) {
+  background: var(--color-base-100);
+  border: 1px solid var(--color-base-300);
+}
+.jd-story-chat .chat-bubble { box-shadow: var(--shadow-lift); }
+.jd-story-chat .chat-bubble p { max-width: none; }
+.jd-story-chat .chat-bubble p + p { margin-top: 0.6rem; }
+.jd-story-chat .chat-header {
+  font-size: 0.85rem;
+  color: var(--ink-2);
+  margin-bottom: 0.3rem;
+}
+/* The agent's own colour, on the avatar as well as the bubble, so the two read
+   as one speaker. */
+.jd-chat-avatar {
+  display: grid;
+  place-items: center;
+  width: 1.9rem;
+  height: 1.9rem;
+  border-radius: 50%;
+  border: 1px solid var(--color-agent);
+  color: var(--color-agent);
+}

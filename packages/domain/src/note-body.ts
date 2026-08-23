@@ -1,5 +1,5 @@
 import { and, eq, isNull, sql } from "drizzle-orm";
-import { blocks, noteRevisions, auditLog, type Tx } from "@jotdojo/db";
+import { blocks, noteRevisions, auditLog, type Tx } from "@jotacular/db";
 import { attribution, type Actor } from "./actor";
 import { publish } from "./events";
 

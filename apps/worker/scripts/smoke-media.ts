@@ -16,13 +16,13 @@ process.env.API_URL = "http://127.0.0.1:3403";
 import { rm } from "node:fs/promises";
 import Fastify from "fastify";
 import sharp from "sharp";
-import { fakeRecognizer } from "@jotdojo/vision";
-import { fakeTranscriber, confidenceFromLogprob } from "@jotdojo/speech";
+import { fakeRecognizer } from "@jotacular/vision";
+import { fakeTranscriber, confidenceFromLogprob } from "@jotacular/speech";
 import { registerMediaRoutes } from "../../api/src/media";
 import {
   upsertUserFromGoogle, asUser, createNote, defaultSpaceId, searchNotes, getNote,
   createMediaBlock, finalizeMedia, mediaUrl,
-} from "@jotdojo/domain";
+} from "@jotacular/domain";
 import { runRecognitionCycle } from "../src/recognize";
 
 let failures = 0;

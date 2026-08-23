@@ -1,5 +1,5 @@
 /**
- * The only place in jotdojo that sends TEXT to a model.
+ * The only place in jotacular that sends TEXT to a model.
  *
  * `vision` reads pictures and `speech` hears recordings; this one reads what a
  * note already says. It exists for the triage agent (docs/07) and it is the

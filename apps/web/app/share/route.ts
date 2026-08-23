@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import {
   createNote, defaultSpaceId, asUser, captureText, createMediaBlock, finalizeMedia,
   type Actor,
-} from "@jotdojo/domain";
+} from "@jotacular/domain";
 import { auth } from "@/auth";
 
 /**

@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import {
   createCaptureTokenAction, revokeCaptureTokenAction,
 } from "@/app/actions";
-import type { CaptureTokenSummary } from "@jotdojo/domain";
+import type { CaptureTokenSummary } from "@jotacular/domain";
 
 /**
  * Capture token management. docs/09-shortcuts.md.
@@ -27,7 +27,7 @@ export function CaptureTokens({
     <section>
       <h2 className="font-head text-xl">One-tap capture</h2>
       <p className="mb-4 mt-1 text-sm opacity-60">
-        A capture token lets an iOS Shortcut add notes without opening jotdojo. It can
+        A capture token lets an iOS Shortcut add notes without opening Jotacular. It can
         create a note in one space and nothing else — it cannot read, list, or search.
       </p>
 

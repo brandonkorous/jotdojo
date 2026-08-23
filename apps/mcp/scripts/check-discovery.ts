@@ -1,7 +1,7 @@
 /**
  * Walk the discovery chain exactly as an MCP client does, against any origin.
  *
- * The chain that has to hold before Claude can reach jotdojo is five hops long
+ * The chain that has to hold before Claude can reach Jotacular is five hops long
  * and every hop is a URL one service asserts about another:
  *
  *   1. GET /mcp with no token       -> 401 + WWW-Authenticate: resource_metadata=...
@@ -22,7 +22,7 @@
  * evening of reading client logs that do not contain the reason.
  *
  *   pnpm mcp:check                             # whatever .env points at
- *   pnpm mcp:check https://mcp.jotdojo.com     # a deployed origin
+ *   pnpm mcp:check https://mcp.jotacular.com     # a deployed origin
  */
 // Nothing is imported here on purpose -- this script must behave exactly like
 // an outside client, so it uses only fetch. `export {}` makes it a module so

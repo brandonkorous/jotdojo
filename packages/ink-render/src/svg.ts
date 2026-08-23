@@ -1,4 +1,4 @@
-import type { InkDocument, Stroke, TextBox } from "@jotdojo/domain";
+import type { InkDocument, Stroke, TextBox } from "@jotacular/domain";
 import { bounds, contentBounds, control, medianWidth, widthAt, type Bounds } from "./geometry";
 import { cardBounds, inkOn } from "./text-geometry";
 

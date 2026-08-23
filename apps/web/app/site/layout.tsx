@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import Link from "next/link";
 import { appOrigin, siteOrigin } from "@/lib/hosts";
+import { brand } from "@/lib/brand";
+import { Wordmark } from "@/components/Brand";
 import { SiteFooter } from "@/components/site/SiteFooter";
 
 /**
@@ -12,13 +14,10 @@ import { SiteFooter } from "@/components/site/SiteFooter";
 export const metadata: Metadata = {
   metadataBase: new URL(siteOrigin()),
   title: {
-    default: "jotdojo — the notes app Claude can read",
-    template: "%s — jotdojo",
+    default: `${brand.name} — the notes app Claude can read`,
+    template: `%s — ${brand.name}`,
   },
-  description:
-    "Write a note in a second on the phone already in your hand — typed, "
-    + "handwritten or spoken. Then ask Claude what you said. Nothing to install, and "
-    + "no computer left running at home.",
+  description: brand.blurb,
   /**
    * The apex must never be installable. A PWA's install origin is written into
    * the home-screen icon and does not follow a redirect, so an icon installed
@@ -26,7 +25,7 @@ export const metadata: Metadata = {
    */
   manifest: null,
   appleWebApp: null,
-  openGraph: { type: "website", siteName: "jotdojo", locale: "en_US" },
+  openGraph: { type: "website", siteName: brand.name, locale: "en_US" },
   twitter: { card: "summary_large_image" },
 };
 
@@ -36,6 +35,7 @@ export const viewport: Viewport = { maximumScale: 5, userScalable: true };
 
 const NAV = [
   { href: "/#how", label: "How it works" },
+  { href: "/#ai", label: "For your AI" },
   { href: "/pricing", label: "Pricing" },
   { href: "/blog", label: "Writing" },
 ];
@@ -45,8 +45,7 @@ export default function SiteLayout({ children }: { children: React.ReactNode }) 
     <div className="jd-site">
       <header className="jd-site-bar">
         <Link href="/" className="jd-site-mark">
-          <span aria-hidden className="jd-site-seal">覚</span>
-          <span className="font-head text-lg">jotdojo</span>
+          <Wordmark />
         </Link>
 
         <nav aria-label="Main">
@@ -55,7 +54,7 @@ export default function SiteLayout({ children }: { children: React.ReactNode }) 
           ))}
         </nav>
 
-        <a className="btn btn-primary btn-sm" href={appOrigin()}>Open the app</a>
+        <a className="btn btn-primary" href={appOrigin()}>Start jotting</a>
       </header>
 
       {children}

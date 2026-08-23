@@ -7,7 +7,7 @@
  * adopting the server's page loses the upload queue, and trusting a stroke
  * count loses an erase.
  */
-import type { Stroke } from "@jotdojo/domain";
+import type { Stroke } from "@jotacular/domain";
 import { mergePages, needsFullRead, newcomers } from "../lib/ink-merge";
 
 let failures = 0;

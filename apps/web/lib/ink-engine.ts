@@ -1,4 +1,4 @@
-import type { InkDelta, Stroke, TextBox } from "@jotdojo/domain";
+import type { InkDelta, Stroke, TextBox } from "@jotacular/domain";
 import type { InkTool } from "./canvas-tool";
 import { StrokeCapture } from "./ink-capture";
 import type { Bounds } from "./ink-geometry";
@@ -103,11 +103,11 @@ export class InkEngine implements InputHost {
     if (tool !== "select") this.dropSelection();
     this.currentTool = tool;
     this.strokeCapture.setStyle(tool, this.style.color, this.style.width);
-    // Only the text tool lets a box take the pointer. Everything else has to
-    // pass through the plane to the canvas underneath, or half the surface
-    // stops being drawable without showing why. ADR-065.
-    this.texts?.setTool(tool);
   }
+
+  /** Whether a note takes a tap. Separate from the tool because the spine
+   *  reaches this engine as `pen` -- `canReachText` says why. ADR-085. */
+  setTextReachable(on: boolean) { this.texts?.setReachable(on); }
 
   /** Colour and width for the CURRENT tool. React owns one of these per tool
    *  and pushes whichever applies, so the marker keeps its own. ADR-045. */

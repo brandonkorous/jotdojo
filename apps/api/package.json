@@ -1,5 +1,5 @@
 {
-  "name": "@jotdojo/api",
+  "name": "@jotacular/api",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -12,10 +12,10 @@
     "smoke:share": "dotenv -e ../../.env -- tsx scripts/smoke-share.ts"
   },
   "dependencies": {
-    "@jotdojo/domain": "workspace:*",
+    "@jotacular/domain": "workspace:*",
     "fastify": "^5.2.1",
     "tsx": "^4.19.2",
-    "@jotdojo/storage": "workspace:*"
+    "@jotacular/storage": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^22.10.5",

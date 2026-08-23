@@ -15,7 +15,7 @@ export function resolveTranscriber(env = process.env): Transcriber | null {
     // ADR-052. The CI flag is the ONLY exemption, and release.yml cannot
     // forward it: the container env is built solely from vault entries on
     // its allow-lists, and this name is deliberately absent from both.
-    if (env.NODE_ENV === "production" && env.JOTDOJO_FAKE_PROVIDERS_OK !== "1") {
+    if (env.NODE_ENV === "production" && env.JOTACULAR_FAKE_PROVIDERS_OK !== "1") {
       throw new Error(
         "SPEECH_PROVIDER=fake is a test double and must never run in production",
       );

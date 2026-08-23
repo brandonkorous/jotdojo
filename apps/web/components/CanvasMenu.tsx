@@ -6,7 +6,7 @@ import {
   ContextMenu, ContextMenuContent, ContextMenuItem,
   ContextMenuSeparator, ContextMenuTrigger,
 } from "@wizeworks/silicaui-react";
-import { Download, Minus, Plus, Sparkles, Trash2, Type } from "lucide-react";
+import { Icon } from "@/components/Icon";
 import { CARD_COLORS } from "@/lib/ink-cards";
 import type { SelectionSummary } from "@/lib/ink-engine";
 import type { ShapeKind } from "@/lib/ink-shapes";
@@ -111,7 +111,7 @@ function Selected({
       {selection.shape && (
         <>
           <ContextMenuItem onClick={actions.onTidy}>
-            <Sparkles aria-hidden strokeWidth={1.75} />
+            <Icon name="agent" />
             Make this {SHAPE_NAME[selection.shape]}
           </ContextMenuItem>
           <ContextMenuSeparator />
@@ -143,22 +143,22 @@ function Selected({
       )}
 
       <ContextMenuItem onClick={() => actions.onResize(true)}>
-        <Plus aria-hidden strokeWidth={1.75} />
+        <Icon name="zoomIn" />
         Bigger
       </ContextMenuItem>
       <ContextMenuItem onClick={() => actions.onResize(false)}>
-        <Minus aria-hidden strokeWidth={1.75} />
+        <Icon name="zoomOut" />
         Smaller
       </ContextMenuItem>
 
       <ContextMenuSeparator />
 
       <ContextMenuItem onClick={actions.onExport}>
-        <Download aria-hidden strokeWidth={1.75} />
+        <Icon name="download" />
         Save as an image
       </ContextMenuItem>
       <ContextMenuItem onClick={actions.onDelete}>
-        <Trash2 aria-hidden strokeWidth={1.75} />
+        <Icon name="remove" />
         Delete
       </ContextMenuItem>
     </>
@@ -178,7 +178,7 @@ function Empty({
 }: { at: () => { x: number; y: number }; actions: CanvasMenuActions }) {
   return (
     <ContextMenuItem onClick={() => { const p = at(); actions.onTextBoxHere(p.x, p.y); }}>
-      <Type aria-hidden strokeWidth={1.75} />
+      <Icon name="text" />
       Put a note here
     </ContextMenuItem>
   );

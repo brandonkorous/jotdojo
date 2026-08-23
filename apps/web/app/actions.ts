@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { billing, type PaidPlan } from "@jotdojo/billing";
+import { billing, type PaidPlan } from "@jotacular/billing";
 import {
   createNote, saveNote, listNotes, searchNotes, defaultSpaceId, setToolbarSide,
   createCaptureToken, listCaptureTokens, revokeCaptureToken, listSpaces,
@@ -11,7 +11,7 @@ import {
   assertAnonRoom, assertAnonInkRoom, AnonLimit, ANON_MAX_CHARS,
   startCheckout, billingPortal,
   RevisionConflict, type NoteSummary, type CaptureTokenSummary,
-} from "@jotdojo/domain";
+} from "@jotacular/domain";
 import { requireActor, captureActor } from "@/lib/session";
 import { appOrigin } from "@/lib/hosts";
 

@@ -1,4 +1,4 @@
-# @jotdojo/mcp — MCP server + OAuth 2.1 authorization server
+# @jotacular/mcp — MCP server + OAuth 2.1 authorization server
 
 **Lands in M1. This is the hardest work in the project — budget generously.**
 
@@ -7,8 +7,8 @@ See [docs/05-mcp-server.md](../../docs/05-mcp-server.md) and
 
 ## Two jobs
 
-1. **MCP server** — streamable HTTP at `https://mcp.jotdojo.com/mcp`, nine tools, thin
-   adapter over `@jotdojo/domain`.
+1. **MCP server** — streamable HTTP at `https://mcp.jotacular.com/mcp`, nine tools, thin
+   adapter over `@jotacular/domain`.
 2. **OAuth 2.1 authorization server** — because when Claude connects it runs an OAuth
    flow against *us*, not against Google. Google is federated behind as the upstream IdP.
 
@@ -17,14 +17,14 @@ Required endpoints: `/.well-known/oauth-protected-resource` (RFC 9728),
 *and* Client ID Metadata Documents), `/oauth/authorize`, `/oauth/token`, `/oauth/revoke`,
 `/oauth/jwks`.
 
-Non-negotiable: PKCE S256 on every flow, **RFC 8707 resource indicators** (a jotdojo
+Non-negotiable: PKCE S256 on every flow, **RFC 8707 resource indicators** (a Jotacular
 token must not work at kanninja — with a live sibling this is not hypothetical), exact
 redirect URI matching, rotating refresh tokens.
 
 ## Tool names are namespaced — ADR-016
 
 kanninja exposes 42 tools and owns the generic names (`search`, `list_comments`,
-`add_comment`). An agent doing our flow holds both servers. **Every jotdojo tool name
+`add_comment`). An agent doing our flow holds both servers. **Every Jotacular tool name
 carries one of our nouns** — a note or a space. No bare verbs.
 
     search_notes  get_note  list_notes  list_spaces  list_note_comments

@@ -1,6 +1,6 @@
 import { and, eq, sql } from "drizzle-orm";
-import { withActor, withoutActor, spaceBilling, spaceMembers, spaces } from "@jotdojo/db";
-import type { BillingEvent, BillingProvider, PaidPlan } from "@jotdojo/billing";
+import { withActor, withoutActor, spaceBilling, spaceMembers, spaces } from "@jotacular/db";
+import type { BillingEvent, BillingProvider, PaidPlan } from "@jotacular/billing";
 import type { Actor } from "./actor";
 import { Forbidden, NotFound } from "./errors";
 

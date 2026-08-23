@@ -1,42 +1,42 @@
 import type { Metadata } from "next";
 import { HeroCanvas } from "@/components/site/HeroCanvas";
-import { Problem, Cost, Closing } from "@/components/site/ProseBands";
-import { Beats } from "@/components/site/Beats";
-import { AgentDemo } from "@/components/site/AgentDemo";
+import { Cost, Closing } from "@/components/site/ProseBands";
+import { CaptureModes } from "@/components/site/CaptureModes";
+import { LakeStory } from "@/components/site/LakeStory";
+import { ConnectAI } from "@/components/site/ConnectAI";
 import { Objection } from "@/components/site/Objection";
 import { Promises } from "@/components/site/Promises";
-import { PostList } from "@/components/site/PostList";
-import { listPosts } from "@/lib/posts";
-import { siteOrigin } from "@/lib/hosts";
+import { Examples } from "@/components/site/Examples";
+import { appOrigin, siteOrigin } from "@/lib/hosts";
+import { brand } from "@/lib/brand";
 
 export const metadata: Metadata = {
   alternates: { canonical: "/" },
 };
 
 export default async function Home() {
-  const posts = (await listPosts()).slice(0, 3);
-
   return (
     <main className="jd-site-main">
       {/* The headline lives INSIDE the canvas and drops to the foot once
           somebody engages with it. The hero is the writing surface. */}
-      <HeroCanvas>
-        <h1 className="font-head">Where the thought lands.</h1>
-        <p className="jd-lede">
-          It turns up in the car, at the school gate, three minutes before a meeting.
-          Get it down in a second — typed, handwritten, or spoken. Then, later, ask
-          Claude what you said.
-        </p>
+      <HeroCanvas appHref={appOrigin()}>
+        <h1 className="font-head">
+          Don&apos;t organize it.{" "}
+          <span className="jd-hero-turn">Just jot it.</span>
+        </h1>
+        <p className="jd-lede">{brand.support}</p>
       </HeroCanvas>
 
-      <Problem />
-      <Beats />
-      <AgentDemo />
+      {/* design.md §18: capture, then the story, then the agent, then the
+          objection, then who else can read it, then real life, then the ask. */}
+      <CaptureModes />
+      <LakeStory />
+      <ConnectAI />
       <Objection />
       <Promises />
+      <Examples />
       <Cost />
       <Closing />
-      <PostList posts={posts} />
 
       <script
         type="application/ld+json"
@@ -52,14 +52,11 @@ function schema() {
   return {
     "@context": "https://schema.org",
     "@type": "SoftwareApplication",
-    name: "jotdojo",
+    name: brand.name,
     url: siteOrigin(),
     applicationCategory: "ProductivityApplication",
     operatingSystem: "Web, iOS, Android",
-    description:
-      "Write a note in a second on any phone — typed, handwritten or spoken — "
-      + "then ask Claude or ChatGPT what you said. Nothing to install and no computer "
-      + "left running.",
+    description: brand.blurb,
     offers: [
       { "@type": "Offer", name: "Free", price: "0", priceCurrency: "USD" },
       { "@type": "Offer", name: "Solo", price: "5", priceCurrency: "USD" },

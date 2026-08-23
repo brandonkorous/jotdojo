@@ -8,12 +8,12 @@
  * "this will never happen", and telling someone that about their own
  * handwriting when we simply have not billed them yet would be a lie.
  */
-import { fakeRecognizer } from "@jotdojo/vision";
+import { fakeRecognizer } from "@jotacular/vision";
 import {
   upsertUserFromGoogle, asUser, createNote, defaultSpaceId,
   createInkBlock, appendStrokes, getInk, spaceUsage, recordRecognition,
   type Stroke,
-} from "@jotdojo/domain";
+} from "@jotacular/domain";
 import { runRecognitionCycle } from "../src/recognize";
 
 let failures = 0;
@@ -37,7 +37,7 @@ const scrawl = (row: number): Stroke => ({
 /** Skip the 30s quiet period for one block, without releasing anyone else's.
  *  A page someone is still writing must not be read forty times. */
 async function release(blockId: string) {
-  const { db } = await import("@jotdojo/db");
+  const { db } = await import("@jotacular/db");
   await db.execute(
     `UPDATE outbox SET available_at = now() WHERE topic = 'block.recognize'
        AND completed_at IS NULL AND payload->>'blockId' = '${blockId}'`,
@@ -75,7 +75,7 @@ const ours: string[] = [];
  * yet claimable when a drain runs -- and is claimable by the time we assert.
  */
 async function clearForeign() {
-  const { db } = await import("@jotdojo/db");
+  const { db } = await import("@jotacular/db");
   const mine = ours.map((id) => `'${id}'`).join(",");
   await db.execute(
     `UPDATE outbox SET completed_at = now(), locked_until = NULL

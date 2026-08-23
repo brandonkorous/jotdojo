@@ -1,6 +1,6 @@
 import { createHash, randomBytes } from "node:crypto";
 import { sql } from "drizzle-orm";
-import { withActor, withoutActor } from "@jotdojo/db";
+import { withActor, withoutActor } from "@jotacular/db";
 import { asUser, type Actor } from "./actor";
 import { DomainError, NotFound } from "./errors";
 

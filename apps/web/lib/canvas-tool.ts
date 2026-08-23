@@ -27,3 +27,17 @@ export const isInk = (tool: CanvasTool): tool is InkTool => tool !== "text";
 /** Whether this tool draws strokes. `select`, `eraser` and `textbox` are all on
  *  the ink surface and none of them lays down ink. */
 export const isDrawing = (tool: CanvasTool) => tool === "pen" || tool === "highlighter";
+
+/** Which ink tool the engine should hold. `text` is not one, but unmounting the
+ *  ink layer to say so would orphan everything already drawn. */
+export const inkToolFor = (tool: CanvasTool): InkTool => (isInk(tool) ? tool : "pen");
+
+/**
+ * Whether a note on the plane may take a pointer.
+ *
+ * Deliberately NOT derived from the tool the engine holds. `inkToolFor`
+ * collapses the spine to `pen`, so a tool-derived answer says "no" on the very
+ * tool people type with -- and a note, once placed, could never be opened
+ * again. ADR-085.
+ */
+export const canReachText = (tool: CanvasTool) => tool === "text" || tool === "textbox";

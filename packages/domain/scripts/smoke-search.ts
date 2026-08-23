@@ -12,7 +12,7 @@
  * one thing the fake cannot prove is retrieval *quality*; nothing here claims
  * to.
  */
-import { fakeEmbedder } from "@jotdojo/embeddings";
+import { fakeEmbedder } from "@jotacular/embeddings";
 import {
   upsertUserFromGoogle, asUser, createNote, defaultSpaceId,
   searchNotes, claimEmbedJobs, storeEmbedding, finishJob,

@@ -1,5 +1,5 @@
 import { auth } from "@/auth";
-import { asUser, subscribeToNote, getNote, type LiveEvent } from "@jotdojo/domain";
+import { asUser, subscribeToNote, getNote, type LiveEvent } from "@jotacular/domain";
 
 /**
  * The live stream for one note. ADR-058.

@@ -51,7 +51,7 @@ Camera straight to a note. The photo runs through the image recognizer and becom
 
 Send `text` with it — "van hire receipt" — and the photo is findable before the recognizer has read it.
 
-### 3. Send to jotdojo (share sheet)
+### 3. Send to Jotacular (share sheet)
 
     Accept: text, URLs, images  ->  POST  ->  Show Notification
 
@@ -61,13 +61,13 @@ Turns every app on the phone into a capture source. Reading an article, seeing a
 
 ## The endpoint
 
-    POST https://api.jotdojo.com/v1/capture
+    POST https://api.jotacular.com/v1/capture
     Authorization: Bearer <capture token>
     Content-Type: application/json | multipart/form-data
 
     { "text": "...", "space_id": "...", "source": "shortcut:jot" }
 
-    -> 201 { "note_id": "...", "url": "https://app.jotdojo.com/n/..." }
+    -> 201 { "note_id": "...", "url": "https://app.jotacular.com/n/..." }
 
 Requirements:
 - **Fast.** Target under 300ms. A Shortcut that hangs feels broken and gets deleted.
@@ -104,7 +104,7 @@ Consider shipping the shortcut file itself in the repo (`assets/shortcuts/`) wit
 
 Better story, less work:
 
-- **Web Share Target actually works** in installed PWAs on Android. Declare it in the manifest and jotdojo appears in the system share sheet with no Shortcut equivalent needed.
+- **Web Share Target actually works** in installed PWAs on Android. Declare it in the manifest and Jotacular appears in the system share sheet with no Shortcut equivalent needed.
 - Google Assistant can open a shortcut URL.
 - Tasker and similar can POST to the same endpoint for power users.
 

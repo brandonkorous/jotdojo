@@ -1,6 +1,6 @@
-import { findInkBlock, getInk, type Actor } from "@jotdojo/domain";
-import { contentBounds } from "@jotdojo/ink-render";
-import { toPng } from "@jotdojo/ink-render/raster";
+import { findInkBlock, getInk, type Actor } from "@jotacular/domain";
+import { contentBounds } from "@jotacular/ink-render";
+import { toPng } from "@jotacular/ink-render/raster";
 
 /**
  * Handing an agent the page itself. ADR-068.

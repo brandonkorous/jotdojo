@@ -1,6 +1,7 @@
 "use client";
 
-import { Bold, Italic, SquarePlus, Underline, X } from "lucide-react";
+import { Icon } from "@/components/Icon";
+import type { IconName } from "@/lib/icons";
 import type { CanvasTool } from "@/lib/canvas-tool";
 import type { Block, Mark } from "@/lib/markdown-marks";
 import { MARKER_COLORS, PEN_COLORS, type InkStyles } from "@/lib/ink-style";
@@ -29,10 +30,10 @@ const BLOCKS: { id: Block; label: string; hint: string }[] = [
   { id: "h2", label: "H2", hint: "Subheading" },
 ];
 
-const MARKS: { id: Mark; label: string; Icon: typeof Bold; key: string }[] = [
-  { id: "bold", label: "Bold", Icon: Bold, key: "B" },
-  { id: "italic", label: "Italic", Icon: Italic, key: "I" },
-  { id: "underline", label: "Underline", Icon: Underline, key: "U" },
+const MARKS: { id: Mark; label: string; icon: IconName; key: string }[] = [
+  { id: "bold", label: "Bold", icon: "bold", key: "B" },
+  { id: "italic", label: "Italic", icon: "italic", key: "I" },
+  { id: "underline", label: "Underline", icon: "underline", key: "U" },
 ];
 
 export function ToolOptions({
@@ -67,7 +68,7 @@ export function ToolOptions({
       {tool === "text" && (
         <>
           <nav aria-label="Formatting" className="flex items-center gap-0.5">
-            {MARKS.map(({ id, label, Icon, key }) => (
+            {MARKS.map(({ id, label, icon, key }) => (
               <button
                 key={id}
                 type="button"
@@ -76,7 +77,7 @@ export function ToolOptions({
                 aria-label={label}
                 onClick={() => onMark?.(id)}
               >
-                <Icon aria-hidden strokeWidth={1.75} />
+                <Icon name={icon} />
               </button>
             ))}
           </nav>
@@ -104,7 +105,7 @@ export function ToolOptions({
             aria-label="Add a text box"
             onClick={onTextBox}
           >
-            <SquarePlus aria-hidden strokeWidth={1.75} />
+            <Icon name="addBox" />
           </button>
         </>
       )}
@@ -145,7 +146,7 @@ export function ToolOptions({
         aria-label="Hide these options"
         onClick={onClose}
       >
-        <X aria-hidden strokeWidth={1.75} />
+        <Icon name="close" />
       </button>
     </div>
   );

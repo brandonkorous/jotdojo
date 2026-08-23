@@ -1,5 +1,5 @@
 import { and, eq, sql } from "drizzle-orm";
-import { withActor, notes, blocks, mediaAssets, type Tx } from "@jotdojo/db";
+import { withActor, notes, blocks, mediaAssets, type Tx } from "@jotacular/db";
 import { canReachSpace, hasScope, type Actor } from "./actor";
 import { Forbidden, NotFound, DomainError } from "./errors";
 import { assertMember } from "./spaces";

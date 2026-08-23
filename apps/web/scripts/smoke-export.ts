@@ -12,7 +12,7 @@ import { encode } from "@auth/core/jwt";
 import {
   upsertUserFromGoogle, asUser, createNote, defaultSpaceId,
   createInkBlock, appendStrokes, createMediaBlock, type Point, type Stroke,
-} from "@jotdojo/domain";
+} from "@jotacular/domain";
 
 let failures = 0;
 const check = (label: string, ok: boolean, detail?: string) => {
@@ -27,7 +27,7 @@ const secret = process.env.AUTH_SECRET;
 if (!secret) throw new Error("AUTH_SECRET is not set; the session cookie cannot be signed");
 
 const sessionFor = (id: string) =>
-  encode({ salt: COOKIE, secret, token: { jotdojoUserId: id, sub: id } });
+  encode({ salt: COOKIE, secret, token: { jotacularUserId: id, sub: id } });
 
 const point = (x: number, y: number): Point => [x, y, 0, 0.5, 0, 0];
 const stroke = (id: string, from: number): Stroke => ({
@@ -112,7 +112,7 @@ console.log("\neverything in the space");
   const zip = await get(`/export/space/${spaceId}`);
   const bytes = Buffer.from(await zip.arrayBuffer());
   check("the archive comes back", zip.status === 200 && type(zip) === "application/zip");
-  check("...dated in its name", /filename="jotdojo-\d{4}-\d{2}-\d{2}\.zip"/.test(disposition(zip)),
+  check("...dated in its name", /filename="jotacular-\d{4}-\d{2}-\d{2}\.zip"/.test(disposition(zip)),
     disposition(zip));
   check("...holding both notes",
     bytes.includes(Buffer.from("notes/0001-")) && bytes.includes(Buffer.from("notes/0002-")));

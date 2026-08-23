@@ -1,5 +1,5 @@
-import type { TextBox } from "@jotdojo/domain";
-import { CARD_PAD, inkOn } from "@jotdojo/ink-render";
+import type { TextBox } from "@jotacular/domain";
+import { CARD_PAD, inkOn } from "@jotacular/ink-render";
 import { isEmpty } from "./ink-objects";
 
 /**

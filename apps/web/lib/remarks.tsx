@@ -3,7 +3,7 @@
 import {
   createContext, useCallback, useContext, useMemo, useState, type ReactNode,
 } from "react";
-import type { CommentView } from "@jotdojo/domain";
+import type { CommentView } from "@jotacular/domain";
 
 /**
  * Everything an agent has ever said about this note. ADR-061.

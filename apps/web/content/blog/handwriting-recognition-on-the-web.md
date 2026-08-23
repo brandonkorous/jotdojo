@@ -117,6 +117,6 @@ cannot. The two deserve different amounts of paranoia.
 
 ---
 
-jotdojo keeps every stroke you draw, so a page you wrote by hand is searchable by
+Jotacular keeps every stroke you draw, so a page you wrote by hand is searchable by
 what it says — and gets better as the models do, without you doing anything.
 [Draw something on the home page](/) without signing up.

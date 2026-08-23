@@ -1,7 +1,7 @@
-import { publishRaw, subscribeRaw } from "@jotdojo/db";
+import { publishRaw, subscribeRaw } from "@jotacular/db";
 
 /**
- * What a live event means. ADR-058. The wire is @jotdojo/db's `live.ts`.
+ * What a live event means. ADR-058. The wire is @jotacular/db's `live.ts`.
  *
  * Every event is a POINTER: which note, which block, and how far along it now
  * is. None of them carries content. That is the property the whole feature

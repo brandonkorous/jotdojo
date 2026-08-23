@@ -1,4 +1,4 @@
-import type { LiveEvent } from "@jotdojo/domain";
+import type { LiveEvent } from "@jotacular/domain";
 
 /**
  * The browser end of the live stream. ADR-058.

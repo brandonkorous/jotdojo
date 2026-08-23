@@ -2,7 +2,7 @@ import { siteOrigin } from "@/lib/hosts";
 
 /**
  * The apex is meant to be crawled. Served through the `/site` rewrite, so this
- * answers `jotdojo.com/robots.txt`. The app host has its own, at app/robots.ts,
+ * answers `jotacular.com/robots.txt`. The app host has its own, at app/robots.ts,
  * and it says the opposite.
  */
 export const dynamic = "force-static";

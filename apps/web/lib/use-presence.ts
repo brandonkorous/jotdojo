@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { Presence } from "@jotdojo/domain";
+import type { Presence } from "@jotacular/domain";
 import { heartbeatAction, leaveNoteAction } from "@/app/actions/live";
 import { deviceId } from "./device";
 

@@ -100,6 +100,6 @@ The wire format is a weekend. The other three are the work.
 
 ---
 
-We built jotdojo because we wanted this working from a phone rather than from a
+We built Jotacular because we wanted this working from a phone rather than from a
 desk. Write a note — typed or by hand — and Claude can read it from anywhere.
 [Try it](/), no account needed.

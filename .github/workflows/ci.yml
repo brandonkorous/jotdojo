@@ -30,7 +30,7 @@ env:
   # The one thing that lets a FAKE provider run under NODE_ENV=production, and
   # the reason this job can test the artifact that actually ships. ADR-052.
   #
-  # `next start` sets NODE_ENV=production, and `pnpm --filter @jotdojo/web start`
+  # `next start` sets NODE_ENV=production, and `pnpm --filter @jotacular/web start`
   # loads .env -- so the web server here is a production process holding
   # BILLING_PROVIDER=fake, which every provider deliberately refuses. Without
   # this flag the billing webhook answers an opaque 500 to all eighteen checks.
@@ -39,7 +39,7 @@ env:
   # environment SOLELY from Key Vault entries named in its required/optional
   # lists, so a name absent from both cannot reach a deployment. That is the
   # property making this safe, and it is structural rather than a promise.
-  JOTDOJO_FAKE_PROVIDERS_OK: '1'
+  JOTACULAR_FAKE_PROVIDERS_OK: '1'
 
 jobs:
   verify:
@@ -56,11 +56,11 @@ jobs:
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: jotdojo
+          POSTGRES_DB: jotacular
         ports:
           - 5433:5432
         options: >-
-          --health-cmd "pg_isready -U postgres -d jotdojo"
+          --health-cmd "pg_isready -U postgres -d jotacular"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 20
@@ -75,7 +75,12 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
 
+      # `.npmrc` points @awesome.me and @fortawesome at npm.fontawesome.com and
+      # reads this token, so the install cannot resolve the icon kit without it.
+      # ADR-083.
       - run: pnpm install --frozen-lockfile
+        env:
+          FONTAWESOME_NPM_TOKEN: ${{ secrets.FONTAWESOME_NPM_TOKEN }}
 
       # The db scripts and every smoke suite read ../../.env through dotenv-cli,
       # so CI writes one. DATABASE_URL is the RESTRICTED role and ADMIN is the
@@ -84,15 +89,15 @@ jobs:
       - name: Write .env
         run: |
           cat > .env <<'ENV'
-          DATABASE_URL=postgresql://jotdojo_app:jotdojo@localhost:5433/jotdojo
-          DATABASE_ADMIN_URL=postgresql://postgres:postgres@localhost:5433/jotdojo
+          DATABASE_URL=postgresql://jotacular_app:jotacular@localhost:5433/jotacular
+          DATABASE_ADMIN_URL=postgresql://postgres:postgres@localhost:5433/jotacular
           AUTH_SECRET=ci-only-not-a-real-secret-ci-only-not-a-real
           ALLOW_DEV_LOGIN=true
           AUTH_GOOGLE_ID=ci-unused
           AUTH_GOOGLE_SECRET=ci-unused
           AUTH_URL=http://localhost:3400
           APP_URL=http://localhost:3400
-          SITE_URL=http://jotdojo.localhost:3400
+          SITE_URL=http://jotacular.localhost:3400
           API_PORT=3401
           API_URL=http://localhost:3401
           MCP_PORT=3402
@@ -177,13 +182,13 @@ jobs:
         run: pnpm mcp:tools
 
       - name: Build web
-        run: pnpm --filter @jotdojo/web build
+        run: pnpm --filter @jotacular/web build
 
       - name: Start api, mcp and web
         run: |
-          pnpm --filter @jotdojo/api  start > /tmp/api.log  2>&1 &
-          pnpm --filter @jotdojo/mcp  start > /tmp/mcp.log  2>&1 &
-          pnpm --filter @jotdojo/web  start > /tmp/web.log  2>&1 &
+          pnpm --filter @jotacular/api  start > /tmp/api.log  2>&1 &
+          pnpm --filter @jotacular/mcp  start > /tmp/mcp.log  2>&1 &
+          pnpm --filter @jotacular/web  start > /tmp/web.log  2>&1 &
           # An explicit readiness PATH per service, not a guess at `/`. The api
           # answers 404 at the root and the mcp server only speaks on its own
           # endpoints, so "the port accepts a connection" and "the service is
@@ -207,7 +212,7 @@ jobs:
         env:
           # `start` is `tsx src/index.ts` with no dotenv wrapper, so the values
           # the servers need are passed explicitly rather than read from .env.
-          DATABASE_URL: postgresql://jotdojo_app:jotdojo@localhost:5433/jotdojo
+          DATABASE_URL: postgresql://jotacular_app:jotacular@localhost:5433/jotacular
           AUTH_SECRET: ci-only-not-a-real-secret-ci-only-not-a-real
           ALLOW_DEV_LOGIN: 'true'
           AUTH_URL: http://localhost:3400
@@ -215,7 +220,7 @@ jobs:
           # The apex. site:smoke sends it as x-forwarded-host, the way Caddy
           # does, so the host routing in apps/web/middleware.ts is exercised
           # rather than assumed. ADR-040.
-          SITE_URL: http://jotdojo.localhost:3400
+          SITE_URL: http://jotacular.localhost:3400
           API_PORT: '3401'
           MCP_PORT: '3402'
           MCP_RESOURCE: http://localhost:3402/mcp

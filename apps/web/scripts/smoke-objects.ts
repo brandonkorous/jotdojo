@@ -6,14 +6,14 @@
  * if strokes and boxes are caught by the same standard, and ADR-033 already
  * settled what that standard is.
  */
-import type { Point, TextBox } from "@jotdojo/domain";
-import { textBounds } from "@jotdojo/ink-render";
+import type { Point, TextBox } from "@jotacular/domain";
+import { textBounds } from "@jotacular/ink-render";
 import { boxAt, boxBounds, boxesBounds, boxInPolygon, drawnBox, isEmpty, newBox, translateBoxes }
   from "../lib/ink-objects";
 import { MIN_SIZE } from "../lib/ink-plane";
 import { TextDrag } from "../lib/ink-text-drag";
 import { InkSelection } from "../lib/ink-selection";
-import type { Stroke } from "@jotdojo/domain";
+import type { Stroke } from "@jotacular/domain";
 
 let failures = 0;
 const check = (label: string, ok: boolean, detail?: string) => {

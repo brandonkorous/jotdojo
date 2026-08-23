@@ -57,7 +57,7 @@ export async function assertNotOwner(): Promise<void> {
     `DATABASE_URL connects as "${result.role}", which owns ${result.owns.join(", ")}. `
     + "A table owner is exempt from row-level security, so every tenancy policy "
     + "would be inert while still reading as though it were enforced. Point "
-    + "DATABASE_URL at the restricted application role (jotdojo_app) and keep "
+    + "DATABASE_URL at the restricted application role (jotacular_app) and keep "
     + "the owner for DATABASE_ADMIN_URL and migrations only. ADR-057.",
   );
 }

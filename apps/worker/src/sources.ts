@@ -1,4 +1,4 @@
-import type { ReadKind } from "@jotdojo/domain";
+import type { ReadKind } from "@jotacular/domain";
 
 /**
  * What read a transcript, and how. docs/04.

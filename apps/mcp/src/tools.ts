@@ -1,4 +1,4 @@
-import type { Actor } from "@jotdojo/domain";
+import type { Actor } from "@jotacular/domain";
 import { registerReadTools } from "./tools-read.js";
 import { registerWriteTools } from "./tools-write.js";
 import type { Registrar } from "./tool-kit.js";

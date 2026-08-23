@@ -2,7 +2,7 @@ import { z } from "zod";
 import {
   searchNotes, getNote, listNotes, listSpaces, listNoteComments,
   renderNote, listChanges, defaultSpaceId, type Actor,
-} from "@jotdojo/domain";
+} from "@jotacular/domain";
 import { viewNote } from "./view.js";
 import { parseWhen, describeWhen, renderChange, WHEN_HINT } from "./when.js";
 import { asText, reads, type Register } from "./tool-kit.js";
@@ -20,7 +20,7 @@ export function registerReadTools(t: Register, actor: Actor) {
     title: "Search notes",
     annotations: reads("Search notes"),
     description:
-      "Search the user's jotdojo notes by meaning and by keyword at once, across every " +
+      "Search the user's Jotacular notes by meaning and by keyword at once, across every " +
       "note in a space. Returns ranked matches with note ids, dates, a preview, and how " +
       "each one was matched.",
     inputSchema: {
@@ -57,7 +57,7 @@ export function registerReadTools(t: Register, actor: Actor) {
     title: "Get a note",
     annotations: reads("Get a note"),
     description:
-      "Read one jotdojo note in full, as markdown, with the provenance of every block: " +
+      "Read one Jotacular note in full, as markdown, with the provenance of every block: " +
       "whether it was typed, handwritten, spoken or photographed, and how confident the " +
       "reading of it is.",
     inputSchema: { note_id: z.string().describe("The note id, from search_notes or list_notes") },
@@ -67,7 +67,7 @@ export function registerReadTools(t: Register, actor: Actor) {
     title: "List recent notes",
     annotations: reads("List recent notes"),
     description:
-      "The user's jotdojo notes in reverse-chronological order, newest first, with a " +
+      "The user's Jotacular notes in reverse-chronological order, newest first, with a " +
       "preview of each. Answers what somebody captured over a period.",
     inputSchema: {
       space_id: z.string().optional().describe("Restrict to one space; omit for the default space"),
@@ -98,7 +98,7 @@ export function registerReadTools(t: Register, actor: Actor) {
     title: "Look at a note's handwriting",
     annotations: reads("Look at a note's handwriting"),
     description:
-      "Render a jotdojo note's handwriting as an image, so the page can be looked at " +
+      "Render a Jotacular note's handwriting as an image, so the page can be looked at " +
       "rather than only read. This carries what a transcript cannot: diagrams, sketches, " +
       "tables, arrows, crossings-out and layout. It suits any page whose transcript is " +
       "empty, unhelpful or low confidence. The drawing is the record and the transcript " +
@@ -116,7 +116,7 @@ export function registerReadTools(t: Register, actor: Actor) {
     title: "What has changed",
     annotations: reads("What has changed"),
     description:
-      "An event feed for a jotdojo space, newest first: notes created and edited, comments " +
+      "An event feed for a Jotacular space, newest first: notes created and edited, comments " +
       "left by people and by agents, handwriting that has finished being read. It reports " +
       "what happened and when, which is a different question from which notes are recent.",
     inputSchema: {
@@ -139,7 +139,7 @@ export function registerReadTools(t: Register, actor: Actor) {
     title: "List spaces",
     annotations: reads("List spaces"),
     description:
-      "The jotdojo spaces this connection was granted, with the id every other tool takes. " +
+      "The Jotacular spaces this connection was granted, with the id every other tool takes. " +
       "A space is one person, a family, or a team.",
     inputSchema: {},
   }, async () => {
@@ -151,7 +151,7 @@ export function registerReadTools(t: Register, actor: Actor) {
     title: "List comments on a note",
     annotations: reads("List comments on a note"),
     description:
-      "Comments on a jotdojo note, oldest first, each attributed to the person or the " +
+      "Comments on a Jotacular note, oldest first, each attributed to the person or the " +
       "agent that left it.",
     inputSchema: { note_id: z.string().describe("The note id, from search_notes or list_notes") },
   }, async ({ note_id }: { note_id: string }) => {

@@ -1,4 +1,4 @@
-import { DomainError } from "@jotdojo/domain";
+import { DomainError } from "@jotacular/domain";
 
 /**
  * How a download leaves the building. ADR-067.

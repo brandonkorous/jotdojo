@@ -1,10 +1,10 @@
-# @jotdojo/api — REST v1
+# @jotacular/api — REST v1
 
 **Lands in M1.** See [docs/09-shortcuts.md](../../docs/09-shortcuts.md).
 
 Fastify. Its whole reason to exist in M1 is one endpoint:
 
-    POST https://api.jotdojo.com/v1/capture
+    POST https://api.jotacular.com/v1/capture
     Authorization: Bearer <capture token>
 
 - Under 300ms, or a Shortcut feels broken and gets deleted.
@@ -14,4 +14,4 @@ Fastify. Its whole reason to exist in M1 is one endpoint:
   capture token means a stranger can add notes to one space — annoying, not
   catastrophic, and that asymmetry is the whole design.
 
-Calls `@jotdojo/domain`. No SQL here, ever.
+Calls `@jotacular/domain`. No SQL here, ever.

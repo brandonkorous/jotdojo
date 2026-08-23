@@ -12,11 +12,11 @@ Implementation: Auth.js in the Next.js app, session cookie, `google_sub` as the 
 
 If a second provider is ever needed, Apple is next — Sign in with Apple matters for an iOS-heavy audience. Not v1.
 
-## Agents: jotdojo is its own OAuth 2.1 server
+## Agents: Jotacular is its own OAuth 2.1 server
 
-**This is the part that surprises people.** When Claude connects to our MCP server, it runs an OAuth flow **against jotdojo**, not against Google. Google logging users into our website does nothing for MCP.
+**This is the part that surprises people.** When Claude connects to our MCP server, it runs an OAuth flow **against Jotacular**, not against Google. Google logging users into our website does nothing for MCP.
 
-So jotdojo must be both:
+So Jotacular must be both:
 
 - an **OAuth 2.1 Authorization Server** that MCP clients talk to, and
 - a **Protected Resource** that validates the tokens it issued,
@@ -25,7 +25,7 @@ with **Google federated behind it** as the upstream identity provider.
 
 ### The flow
 
-    Claude                    jotdojo AS                  Google
+    Claude                    Jotacular AS                  Google
       |                           |                          |
       |-- discover PRM ---------->|                          |
       |<- AS metadata ------------|                          |
@@ -56,7 +56,7 @@ with **Google federated behind it** as the upstream identity provider.
 ### Non-negotiables
 
 - **PKCE on every flow**, S256 only. No plain, no implicit grant, no password grant.
-- **RFC 8707 resource indicators.** Clients must send `resource` on both the authorization and token request, and we must bind the token audience to it. This is the mechanism that stops a jotdojo token from being replayed at kanninja — and with a sibling product, that is not hypothetical.
+- **RFC 8707 resource indicators.** Clients must send `resource` on both the authorization and token request, and we must bind the token audience to it. This is the mechanism that stops a Jotacular token from being replayed at kanninja — and with a sibling product, that is not hypothetical.
 - **Short access tokens** (1 hour), rotating refresh tokens, refresh reuse detection.
 - **Exact redirect URI matching.** No wildcards, no prefix matching.
 

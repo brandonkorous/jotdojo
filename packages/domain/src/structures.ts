@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { withActor, withoutActor, type Tx } from "@jotdojo/db";
+import { withActor, withoutActor, type Tx } from "@jotacular/db";
 import { canReachSpace, type Actor } from "./actor";
 import { NotFound } from "./errors";
 import type { InkDocument } from "./ink-doc";
@@ -8,7 +8,7 @@ import type { InkDocument } from "./ink-doc";
  * What is DRAWN on a page. ADR-066.
  *
  * The domain side of the structural pass: queue it, claim it, store it, read it
- * back. The model call is `@jotdojo/vision`; the pipeline is 0031, which
+ * back. The model call is `@jotacular/vision`; the pipeline is 0031, which
  * follows 0024's worked precedent.
  *
  * Deliberately NOT part of `blocks`. That table has one transcript slot and

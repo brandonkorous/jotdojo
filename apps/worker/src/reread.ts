@@ -1,6 +1,6 @@
-import { countStale, requeueRecognition, type ReadKind } from "@jotdojo/domain";
-import { resolveRecognizer } from "@jotdojo/vision";
-import { resolveTranscriber } from "@jotdojo/speech";
+import { countStale, requeueRecognition, type ReadKind } from "@jotacular/domain";
+import { resolveRecognizer } from "@jotacular/vision";
+import { resolveTranscriber } from "@jotacular/speech";
 import { sourceFor } from "./sources";
 
 /**

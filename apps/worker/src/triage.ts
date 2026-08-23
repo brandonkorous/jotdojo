@@ -1,7 +1,7 @@
 import {
   claimTriageJobs, commentAsAgent, recordTriage, finishJob, type TriageJob,
-} from "@jotdojo/domain";
-import { ReasoningError, type Reasoner } from "@jotdojo/reason";
+} from "@jotacular/domain";
+import { ReasoningError, type Reasoner } from "@jotacular/reason";
 
 /**
  * The triage agent. M5, docs/07-capture-pipeline.md, ADR-048.

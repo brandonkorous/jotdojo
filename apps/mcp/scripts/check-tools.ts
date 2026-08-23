@@ -13,7 +13,7 @@
  *   pnpm mcp:tools
  */
 import { registerTools } from "../src/tools.js";
-import type { Actor } from "@jotdojo/domain";
+import type { Actor } from "@jotacular/domain";
 
 type Declared = {
   name: string;

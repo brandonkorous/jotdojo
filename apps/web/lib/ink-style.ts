@@ -1,5 +1,5 @@
 import { HIGHLIGHTER_WIDTH, PEN_WIDTH } from "./ink-paint";
-import type { InkTool } from "./canvas-tool";
+import type { CanvasTool } from "./canvas-tool";
 
 /**
  * What each ink tool is currently set to. docs/08-ink.md, ADR-045.
@@ -20,15 +20,15 @@ export type Swatch = { name: string; color: string };
  * can never be baked into a stored colour and lost to a re-render.
  */
 export const PEN_COLORS: Swatch[] = [
-  { name: "Sumi", color: "#1A1817" },
-  { name: "Vermillion", color: "#E0432F" },
-  { name: "Indigo", color: "#4B5FA8" },
+  { name: "Charcoal", color: "#1A1817" },
+  { name: "Violet", color: "#6A39FF" },
+  { name: "Mint", color: "#00A38D" },
   { name: "Moss", color: "#3F6B4A" },
   { name: "Clay", color: "#A2593B" },
 ];
 
-/** Tuned to multiply onto washi cream rather than onto white. A highlighter
- *  that looks right on #FFFFFF goes muddy on #F8F4EC. */
+/** Tuned to multiply onto warm paper rather than onto white. A highlighter
+ *  that looks right on #FFFFFF goes muddy on #F7F3EA. */
 export const MARKER_COLORS: Swatch[] = [
   { name: "Yellow", color: "#F2D648" },
   { name: "Mint", color: "#6FD6A8" },
@@ -81,9 +81,9 @@ export type InkStyles = { pen: InkStyle; highlighter: InkStyle };
 
 export const DEFAULT_STYLES: InkStyles = { pen: DEFAULT_PEN, highlighter: DEFAULT_MARKER };
 
-/** Which style a tool draws with. Eraser and select draw no strokes, but the
- *  engine still wants an answer, and the pen is the harmless one. */
-export function styleFor(tool: InkTool, styles: InkStyles): InkStyle {
+/** Which style a tool draws with. The spine, the eraser and select draw no
+ *  strokes, but callers still want an answer, and the pen is the harmless one. */
+export function styleFor(tool: CanvasTool, styles: InkStyles): InkStyle {
   return tool === "highlighter" ? styles.highlighter : styles.pen;
 }
 

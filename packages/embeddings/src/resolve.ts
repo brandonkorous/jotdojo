@@ -36,7 +36,7 @@ export function resolveEmbedder(env = process.env): Embedder | null {
     // ADR-052. The CI flag is the ONLY exemption, and release.yml cannot
     // forward it: the container env is built solely from vault entries on
     // its allow-lists, and this name is deliberately absent from both.
-    if (env.NODE_ENV === "production" && env.JOTDOJO_FAKE_PROVIDERS_OK !== "1") {
+    if (env.NODE_ENV === "production" && env.JOTACULAR_FAKE_PROVIDERS_OK !== "1") {
       // Loud, not silent. A production deployment running the hash embedder
       // would return confident nonsense from search forever, and nothing about
       // its behaviour would look broken.

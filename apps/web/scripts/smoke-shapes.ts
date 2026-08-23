@@ -9,7 +9,7 @@
  * Pure, so this needs no browser. Snapping needs a device to judge; being
  * SILENT does not, and being silent is most of the job.
  */
-import type { Point } from "@jotdojo/domain";
+import type { Point } from "@jotacular/domain";
 import { classify, snap } from "../lib/ink-shapes";
 
 let failures = 0;

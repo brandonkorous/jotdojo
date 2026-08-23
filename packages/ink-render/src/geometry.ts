@@ -1,4 +1,4 @@
-import type { InkDocument, Point, Stroke } from "@jotdojo/domain";
+import type { InkDocument, Point, Stroke } from "@jotacular/domain";
 import { cardBounds } from "./text-geometry";
 
 /**

@@ -3,12 +3,12 @@
  *
  * The capture path is the product's most important surface (docs/09) and its
  * credential is the weakest one we issue, so both the happy path and every
- * refusal get exercised. Requires the API running: pnpm --filter @jotdojo/api dev
+ * refusal get exercised. Requires the API running: pnpm --filter @jotacular/api dev
  */
 import {
   upsertUserFromGoogle, asUser, createCaptureToken, revokeCaptureToken,
   defaultSpaceId, listNotes, listCaptureTokens,
-} from "@jotdojo/domain";
+} from "@jotacular/domain";
 
 const API = `http://localhost:${process.env.API_PORT ?? 3401}`;
 

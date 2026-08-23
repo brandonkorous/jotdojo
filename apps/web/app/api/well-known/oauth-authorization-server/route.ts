@@ -1,4 +1,4 @@
-import { SCOPES } from "@jotdojo/domain";
+import { SCOPES } from "@jotacular/domain";
 
 /**
  * OAuth 2.0 Authorization Server Metadata (RFC 8414).

@@ -1,6 +1,6 @@
 import { createHash, randomBytes } from "node:crypto";
 import { and, desc, eq, isNull, sql } from "drizzle-orm";
-import { withActor, spaceInvites, spaceMembers, users, type Tx } from "@jotdojo/db";
+import { withActor, spaceInvites, spaceMembers, users, type Tx } from "@jotacular/db";
 import type { Actor } from "./actor";
 import { DomainError, Forbidden, NotFound } from "./errors";
 

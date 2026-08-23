@@ -2,25 +2,25 @@
 
 ## Transport and shape
 
-Streamable HTTP at `https://mcp.jotdojo.com/mcp` — matching the sibling's shape (`https://mcp.kanninja.com/mcp`). OAuth 2.1 protected resource; see [06-auth.md](06-auth.md).
+Streamable HTTP at `https://mcp.jotacular.com/mcp` — matching the sibling's shape (`https://mcp.kanninja.com/mcp`). OAuth 2.1 protected resource; see [06-auth.md](06-auth.md).
 
 The server is a **thin adapter**. Each handler resolves the actor from the token, calls one domain method, and formats the result. No SQL, no permission logic, no business rules live here.
 
-For consistency with kanninja, also support an **API key** path for terminal agents (`JOTDOJO_API_KEY`) alongside OAuth for web clients. Same identity model underneath; the key is simply another credential resolving to a user and a grant.
+For consistency with kanninja, also support an **API key** path for terminal agents (`JOTACULAR_API_KEY`) alongside OAuth for web clients. Same identity model underneath; the key is simply another credential resolving to a user and a grant.
 
 ## Tool surface discipline
 
-**jotdojo ships under a dozen tools.** This is a hard budget.
+**Jotacular ships under a dozen tools.** This is a hard budget.
 
-The reason is sharper now that kanninja is live: **kanninja exposes 42 tools.** An agent doing the flow we care about — read a note, build a plan — is holding both servers at once. That agent already carries 42 tools before jotdojo says a word. Every tool we add is spent from a shared budget, and agents degrade measurably as that budget fills.
+The reason is sharper now that kanninja is live: **kanninja exposes 42 tools.** An agent doing the flow we care about — read a note, build a plan — is holding both servers at once. That agent already carries 42 tools before Jotacular says a word. Every tool we add is spent from a shared budget, and agents degrade measurably as that budget fills.
 
-This also strengthens ADR-002 rather than weakening it. A *merged* jotdojo + kanninja server would ship 50+ tools and be worse at both jobs. Two focused servers an agent composes is the better architecture, and the tool counts are the evidence.
+This also strengthens ADR-002 rather than weakening it. A *merged* Jotacular + kanninja server would ship 50+ tools and be worse at both jobs. Two focused servers an agent composes is the better architecture, and the tool counts are the evidence.
 
 ## Naming: namespace against the sibling
 
-Because agents commonly hold both servers, **no jotdojo tool may share a name with a kanninja tool.** kanninja already owns the generic names — `search`, `list_comments`, `add_comment`, `get_task`, `create_task`.
+Because agents commonly hold both servers, **no Jotacular tool may share a name with a kanninja tool.** kanninja already owns the generic names — `search`, `list_comments`, `add_comment`, `get_task`, `create_task`.
 
-Rule: **every jotdojo tool name ends in `_note`, `_notes`, or `_spaces`.** No bare verbs.
+Rule: **every Jotacular tool name ends in `_note`, `_notes`, or `_spaces`.** No bare verbs.
 
 ### Read
 
@@ -119,8 +119,8 @@ Confidence and coverage answer different questions. Confidence is *how sure are 
 The intended flow needs **no integration code on our side**:
 
     user: "read my note from Tuesday and build me a plan in kanninja"
-      agent -> jotdojo.search_notes("Tuesday napkin")
-      agent -> jotdojo.get_note(id)
+      agent -> jotacular.search_notes("Tuesday napkin")
+      agent -> jotacular.get_note(id)
       agent -> kanninja.create_board_with_structure(...)
       agent -> kanninja.bulk_create_tasks(...)
 
@@ -140,7 +140,7 @@ Threat model in [13-security-and-privacy.md](13-security-and-privacy.md). The MC
 3. **Writes are attributed and reversible.** Every mutation writes a `note_revisions` row with client and model; the review inbox surfaces it.
 4. **Audit everything** — one row per tool call, reads included.
 5. **Rate limits per client**, not just per user. A looping agent hits a wall before it costs real money.
-6. **Resource indicators enforced.** A jotdojo token must not work at kanninja. With a live sibling on the same account, this is not hypothetical.
+6. **Resource indicators enforced.** A Jotacular token must not work at kanninja. With a live sibling on the same account, this is not hypothetical.
 
 The GitHub MCP incident of May 2025 — a malicious issue hijacking an agent into leaking private repository data through a public PR — is the precedent. Our equivalent is a shared family or team space where one member's captured content reaches another member's agent.
 
@@ -157,4 +157,4 @@ The GitHub MCP incident of May 2025 — a malicious issue hijacking an agent int
 
 ## Local access
 
-A small stdio shim (`npx @jotdojo/mcp`) proxies to the hosted server with a stored token, for clients that still prefer stdio. The hosted server remains the real one — ADR-001.
+A small stdio shim (`npx @jotacular/mcp`) proxies to the hosted server with a stored token, for clients that still prefer stdio. The hosted server remains the real one — ADR-001.

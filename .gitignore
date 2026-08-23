@@ -20,3 +20,6 @@ coverage/
 
 # Local media store (STORAGE_PROVIDER=local). Never committed.
 .media/
+
+# Illustrator scratch files, written beside the artwork they came from.
+~ai-*.tmp

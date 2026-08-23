@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 #
 # apps/web. Build from the REPO ROOT:
-#   docker build -f infra/docker/web.Dockerfile -t <registry>/jotdojo-web:<tag> .
+#   docker build -f infra/docker/web.Dockerfile -t <registry>/jotacular-web:<tag> .
 #
 # No AKS-specific coupling. docs/03-architecture.md requires that a move to
 # Container Apps or a single VM is a re-run of this file, not a rewrite.
@@ -21,7 +21,7 @@ FROM base AS deps
 # dependency -- it is a lockfile that no longer matches the workspace. The
 # manifests are a few kB and change rarely, so this layer still caches well.
 #
-# The subgraph is also not what it looks like. `@jotdojo/domain` pulls in db,
+# The subgraph is also not what it looks like. `@jotacular/domain` pulls in db,
 # embeddings AND storage, so a service that only declares `domain` still needs
 # all four present at install and at runtime.
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
@@ -36,7 +36,10 @@ COPY packages/ink-render/package.json packages/ink-render/
 COPY packages/speech/package.json packages/speech/
 COPY packages/storage/package.json packages/storage/
 COPY packages/vision/package.json packages/vision/
-RUN pnpm install --frozen-lockfile --filter @jotdojo/web...
+# The icon kit comes from npm.fontawesome.com, which `.npmrc` authenticates
+# with this token. A BuildKit secret rather than an ARG, so it never lands in a
+# layer or in `docker history`. ADR-083.
+RUN --mount=type=secret,id=fontawesome_npm_token     FONTAWESOME_NPM_TOKEN="$(cat /run/secrets/fontawesome_npm_token)"     pnpm install --frozen-lockfile --filter @jotacular/web...
 
 # --- build ----------------------------------------------------------------
 FROM deps AS build
@@ -47,15 +50,15 @@ ENV NEXT_TELEMETRY_DISABLED=1
 # sitemap.xml are written at build time from these. They must match
 # infra/k8s/01-config.yaml, which supplies the same two at runtime for the
 # host routing in apps/web/middleware.ts. ADR-040.
-ARG SITE_URL=https://jotdojo.com
-ARG APP_URL=https://app.jotdojo.com
+ARG SITE_URL=https://jotacular.com
+ARG APP_URL=https://app.jotacular.com
 ENV SITE_URL=$SITE_URL APP_URL=$APP_URL
 
 # `next build` reads NODE_ENV itself; setting it to production here would also
 # make the dev-login provider's guard the only thing standing between a
 # misconfigured build and a signin bypass. It is safe by construction either
 # way (apps/web/auth.ts), but the build should not be the thing relying on it.
-RUN pnpm --filter @jotdojo/web exec next build
+RUN pnpm --filter @jotacular/web exec next build
 
 # --- runtime --------------------------------------------------------------
 # Next's standalone output: a server plus only the files it traced. The two

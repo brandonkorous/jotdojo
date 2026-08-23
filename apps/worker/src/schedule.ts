@@ -1,7 +1,7 @@
-import { enqueueTriage } from "@jotdojo/domain";
+import { enqueueTriage } from "@jotacular/domain";
 
 /**
- * The one scheduled thing in jotdojo. M5, ADR-048.
+ * The one scheduled thing in Jotacular. M5, ADR-048.
  *
  * Everything else in the worker is event-driven: something was written, so
  * something must be read. Triage is not -- it is about notes that have STOPPED

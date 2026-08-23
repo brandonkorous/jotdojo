@@ -1,7 +1,7 @@
 /**
- * The only place in jotdojo that talks to an embedding provider.
+ * The only place in jotacular that talks to an embedding provider.
  *
- * Same rule as @jotdojo/db and Postgres: one seam, so swapping providers or
+ * Same rule as @jotacular/db and Postgres: one seam, so swapping providers or
  * models is a change in one file, and so nothing else in the codebase has to
  * know an API key exists. Re-embedding after a model change is a worker job,
  * not a migration (docs/04-data-model.md).

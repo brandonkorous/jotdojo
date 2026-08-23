@@ -1,7 +1,7 @@
-import { billing } from "@jotdojo/billing";
+import { billing } from "@jotacular/billing";
 import {
   billingStatus, listSpaces, spaceUsage, type Actor,
-} from "@jotdojo/domain";
+} from "@jotacular/domain";
 
 /**
  * What an owner is on, per space, for the account page. ADR-038.

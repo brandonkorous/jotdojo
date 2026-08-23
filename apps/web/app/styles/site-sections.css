@@ -4,88 +4,199 @@
    Split out of site.css at the size limit: site.css is the bar, the bands and
    the type scale every page shares; this is what one page does with them. */
 
+/* --- the brand devices: the underline, and the dot grid ------------------ */
+
+/* A violet stroke under a few words, the same gesture as the one in the mark.
+   design.md §13 -- a real quick pen stroke: it sags in the middle and does not
+   land level, because a ruled line reads as a border and says nothing. */
+.jd-ul {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 12' preserveAspectRatio='none'%3E%3Cpath d='M3,4.5 Q34,11 63,7.5 T97,5' fill='none' stroke='%236A39FF' stroke-width='3.2' stroke-linecap='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: 0 100%;
+    background-size: 100% 0.26em;
+    padding-bottom: 0.22em;
+}
+
+/* A pen stroke is one gesture. Broken across a line it leaves a stray mark at
+   the end of the first line, so a phrase that must stay whole says so. */
+.jd-ul-keep {
+    white-space: nowrap;
+}
+@media (max-width: 30rem) {
+    .jd-ul-keep {
+        white-space: normal;
+    }
+}
+
+/* The canvas, quoted. design.md §14: very low contrast, wide spacing, never
+   noisy -- it should read as paper, not as a grid you are meant to see. */
+.jd-band-quiet {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24'%3E%3Ccircle cx='1.5' cy='1.5' r='1.1' fill='%23111418' fill-opacity='0.07'/%3E%3C/svg%3E");
+    background-repeat: repeat;
+}
+
 /* --- legal pages -------------------------------------------------------- */
 
 /* The policy runs straight on from its summary, so the head band keeps its
    heading and drops the padding that would otherwise open a gap between them. */
-.jd-legal-head { padding-bottom: 0; }
-.jd-legal-updated { font-size: 0.85rem; opacity: 0.5; margin-top: 0.5rem; }
-.jd-legal-head .jd-lede { margin-bottom: 0; }
+.jd-legal-head {
+    padding-bottom: 0;
+}
+.jd-legal-updated {
+    font-size: 0.9rem;
+    color: var(--ink-2);
+    margin-top: 0.5rem;
+}
+.jd-legal-head .jd-lede {
+    margin-bottom: 0;
+}
 
 /* The band's padding and the first heading's own margin stack into a hole
    between the summary and the policy. One gap, not two. */
-.jd-legal-body { padding-top: 2.5rem; }
-.jd-legal-body > div > :first-child { margin-top: 0; }
+.jd-legal-body {
+    padding-top: 2.5rem;
+}
+.jd-legal-body > div > :first-child {
+    margin-top: 0;
+}
 
-/* --- the proof: a note, and what an agent made of it --------------------- */
+/* --- four ways in ------------------------------------------------------- */
 
-.jd-demo {
-  display: grid;
-  gap: 1.5rem;
-  grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
-  align-items: start;
+.jd-modes {
+    margin-top: 1.75rem;
+    display: grid;
+    gap: 1.75rem 2rem;
+    grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
 }
-.jd-demo figure {
-  margin: 0;
-  border: 1px solid var(--color-base-300);
-  border-radius: var(--radius-box, 0.375rem);
-  padding: 1.25rem;
-  background: var(--color-base-100);
+.jd-modes h3 {
+    margin-top: 0.7rem;
 }
-.jd-demo figcaption {
-  display: flex;
-  justify-content: space-between;
-  gap: 0.75rem;
-  font-size: 0.8rem;
-  opacity: 0.55;
-  margin-bottom: 0.75rem;
+.jd-modes p {
+    font-size: var(--body);
+    max-width: none;
 }
-/* Both cards space their lines with `gap`, so the band's paragraph rhythm has
-   to let go -- a jotted list is tight, not a column of prose. */
-.jd-demo p { max-width: none; }
-.jd-note-lines p + p,
-.jd-agent-body p + p { margin-top: 0; }
-.jd-note-lines { display: grid; gap: 0.1rem; font-size: 0.95rem; line-height: 1.75; }
 
-/* Human ink is sumi; agent ink is `agent`. The colour is the fast signal, the
-   "Claude · an agent" label beside it is the accessible one. docs/10, ADR-011. */
-.jd-demo .jd-agent { border-color: var(--color-agent); background: var(--color-base-200); }
-.jd-agent figcaption {
-  color: var(--color-agent);
-  opacity: 1;
-  justify-content: flex-start;
-  align-items: center;
-  gap: 0.5rem;
+/* The marker glyph, on a tile. Drawn rather than outlined -- this is the one
+   piece of furniture on the page where the brand's hand shows. ADR-083. */
+.jd-mode-ico {
+    display: grid;
+    place-items: center;
+    width: 3rem;
+    height: 3rem;
+    border-radius: 0.85rem;
+    background: var(--color-base-200);
+    border: 1px solid var(--color-base-300);
+    color: var(--color-primary);
+    font-size: 1.55rem;
 }
-.jd-agent-body { display: grid; gap: 0.75rem; font-size: 0.95rem; line-height: 1.7; }
+/* The glyph sizes itself in `em` from its own artwork -- see ModeIcon. This
+   only has to stop the tile from stretching it. */
+.jd-mode-ico svg {
+    flex: none;
+}
 
-.jd-principle {
-  font-family: var(--font-head);
-  font-size: clamp(1.25rem, 2.5vw, 1.5rem);
-  line-height: 1.35;
-  margin-top: 2.25rem;
-  max-width: 40rem;
+/* --- connect your AI ---------------------------------------------------- */
+
+.jd-steps {
+    margin-top: 1.5rem;
+    display: grid;
+    gap: 1.5rem 2rem;
+    grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
 }
-.jd-footnote { margin-top: 0.75rem; font-size: 0.95rem; opacity: 0.7; }
-.jd-turn { margin-top: 1rem; font-weight: 600; }
+.jd-steps li {
+    display: flex;
+    gap: 0.9rem;
+    align-items: flex-start;
+}
+.jd-step-n {
+    flex: none;
+    width: 1.75rem;
+    height: 1.75rem;
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    background: var(--color-primary);
+    color: var(--color-primary-content);
+    font-size: 0.9rem;
+}
+.jd-steps p {
+    margin: 0;
+    max-width: none;
+}
+
+/* --- real examples ------------------------------------------------------ */
+
+.jd-examples {
+    margin-top: 1.75rem;
+    display: grid;
+    gap: 1.25rem 2rem;
+    grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr));
+}
+.jd-examples h3 {
+    font-size: var(--body);
+    color: var(--color-base-content);
+}
+.jd-examples li {
+    padding-left: 0.9rem;
+    border-left: 2px solid var(--color-primary);
+}
+.jd-examples p {
+    margin-top: 0.25rem;
+    font-size: var(--body);
+    max-width: none;
+}
+
+/* --- the last word ------------------------------------------------------ */
+
+/* Charcoal rather than a mint field. Mint at full bleed reads as a second brand
+   arriving in the last screen; here it is the one lit thing on a dark page,
+   which is what a close is for. ADR-082. */
+.jd-closing {
+    text-align: center;
+    padding-block: clamp(3rem, 6vw, 5rem);
+}
+.jd-closing h2,
+.jd-closing .jd-lede {
+    margin-inline: auto;
+}
+.jd-closing .btn {
+    background: var(--color-primary);
+    border-color: var(--color-primary);
+    color: var(--color-primary-content);
+    border-radius: 999px;
+    padding-inline: 2rem;
+    font-weight: 700;
+}
+.jd-closing .btn:hover {
+    background: color-mix(in oklab, var(--color-primary) 88%, #000);
+}
 
 /* --- what it will never grow into --------------------------------------- */
 
 .jd-never {
-  margin-top: 2.5rem;
-  padding-top: 1.75rem;
-  border-top: 1px solid var(--color-base-300);
-  max-width: 46rem;
+    margin-top: 2rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--color-base-300);
+    max-width: 46rem;
 }
 .jd-never ul {
-  margin-top: 0.75rem;
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
-  gap: 0.5rem 2rem;
-  font-size: 0.95rem;
-  line-height: 1.6;
-  opacity: 0.8;
+    margin-top: 0.75rem;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+    gap: 0.4rem 2rem;
+    font-size: var(--body);
+    line-height: 1.55;
 }
-.jd-never li { padding-left: 1rem; text-indent: -1rem; }
-.jd-never li::before { content: "\2014\00a0"; opacity: 0.4; }
-.jd-never > p { margin-top: 1rem; font-size: 0.95rem; opacity: 0.8; }
+.jd-never li {
+    padding-left: 1rem;
+    text-indent: -1rem;
+}
+.jd-never li::before {
+    content: '\2014\00a0';
+    color: var(--color-primary);
+}
+.jd-never > p {
+    margin-top: 1rem;
+    font-size: var(--body);
+    color: var(--ink-2);
+}

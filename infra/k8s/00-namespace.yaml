@@ -1,4 +1,4 @@
-# jotDOJO's namespace.
+# Jotacular's namespace.
 #
 # The cluster is shared. It belongs to sparx (a different product, a different
 # repository) and already hosts sparx itself, the piggles brand, and kanNINJA --
@@ -19,7 +19,7 @@
 #      cannot mint a certificate for it. Adding a hostname here is therefore a
 #      two-repo change; there is no way to make it a one-repo change without
 #      running a second ingress, which would mean a second load balancer.
-#   3. THE DATABASE SERVER IS NOT OURS EITHER. jotDOJO gets its own DATABASE on
+#   3. THE DATABASE SERVER IS NOT OURS EITHER. Jotacular gets its own DATABASE on
 #      sparx's Postgres Flexible Server. Connection budget is the shared,
 #      exhaustible resource -- see DB_POOL_MAX in config.yaml.
 #
@@ -29,10 +29,10 @@
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: jotdojo
+  name: jotacular
   labels:
-    app.kubernetes.io/part-of: jotdojo
-    # The shared Caddy resolves `<service>.jotdojo.svc.cluster.local`, which needs
+    app.kubernetes.io/part-of: jotacular
+    # The shared Caddy resolves `<service>.jotacular.svc.cluster.local`, which needs
     # no label. This one is for humans reading `kubectl get ns` on a cluster with
     # four products in it.
-    wizeworks.com/product: jotdojo
+    wizeworks.com/product: jotacular

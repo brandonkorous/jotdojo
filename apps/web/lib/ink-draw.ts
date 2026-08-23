@@ -1,4 +1,4 @@
-import type { Stroke } from "@jotdojo/domain";
+import type { Stroke } from "@jotacular/domain";
 import type { InkSurface } from "./ink-surface";
 import type { InkSelection } from "./ink-selection";
 import type { StrokeCapture } from "./ink-capture";

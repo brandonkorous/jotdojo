@@ -1,5 +1,5 @@
 /**
- * The only place in jotdojo that sends audio to a model.
+ * The only place in jotacular that sends audio to a model.
  *
  * In-app recording is for long form -- a meeting, a rant in the car. Short
  * voice capture should go through Shortcuts dictation instead, which is faster

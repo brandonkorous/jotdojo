@@ -1,5 +1,5 @@
-import type { Stroke } from "@jotdojo/domain";
-import { strokesBounds, union, type Bounds } from "@jotdojo/ink-render";
+import type { Stroke } from "@jotacular/domain";
+import { strokesBounds, union, type Bounds } from "@jotacular/ink-render";
 import type { InkSurface } from "./ink-surface";
 import type { InkViewport } from "./ink-viewport";
 import type { InkPainter } from "./ink-painter";
