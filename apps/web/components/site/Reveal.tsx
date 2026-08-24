@@ -1,5 +1,6 @@
 "use client";
 
+import { usePathname } from "next/navigation";
 import { useEffect } from "react";
 
 /**
@@ -21,6 +22,11 @@ import { useEffect } from "react";
 const TARGETS = ".jd-site-main section, .jd-site-foot, .jd-story";
 
 export function Reveal() {
+  // This lives in the layout, which a route change does not remount. Without
+  // the path in the dependencies the marking runs once per full page load,
+  // and every page reached by a link stays at its invisible resting state.
+  const pathname = usePathname();
+
   useEffect(() => {
     const root = document.documentElement;
     if (!window.matchMedia("(prefers-reduced-motion: no-preference)").matches) return;
@@ -62,7 +68,7 @@ export function Reveal() {
       window.clearTimeout(watchdog);
       io.disconnect();
     };
-  }, []);
+  }, [pathname]);
 
   return null;
 }
