@@ -309,3 +309,47 @@ A review of the finished landing page produced nine notes. All nine are done.
 The strategic note — *keep telling one story, capture fast now and use it later* — is
 what the `LakeStory` band was already for, and it kept its heading: **Capture now.
 Use later.**
+
+## 10. Done
+
+**jotacular.com went live on 2026-08-24.** Apex and `www` serve the site, `app.`
+the app, `mcp.` the agent endpoint with its RFC 8707 discovery, and production
+runs as `jotacular_app`. `docs/20-rename-runbook.md` is the record of the move
+itself.
+
+Three things were only ever going to be found by opening the page, and the
+green suites had nothing to say about any of them:
+
+- **A post redirected to itself, forever.** The sweep rewrote both ends of the
+  rule in the commit that created it. The smoke tested `slugs[0]` and stopped,
+  so four working posts hid one infinite loop. It checks every post now — and
+  the redirect is deleted outright, because nothing was linked to the old slug
+  (ADR-095).
+- **"Connect your AI" shipped unreadable.** A `clip-path` reveal on a scroll
+  range finished around mid-viewport, so stopping where a reader stops gave
+  *"Paste one link into Claude's settin"* (ADR-092).
+- **Every reveal played backwards on the way up**, because scroll position is
+  not a trigger. Reveals are one-shot now, and they fail open — the resting
+  state is invisible, and the observer does not fire at all in some browsers
+  (ADR-093).
+
+### What did not move, and why
+
+| | |
+| --- | --- |
+| `migrations/0000`–`0033` | A literal record of what ran. `0034` renames on top. |
+| `jotdojo_owner` | Migrations run *as* it; Postgres refuses to rename the session user. |
+| The production database name | Invisible, and renaming it needs a no-connections window. |
+| `kv-jotdojo-prod-cus`, `stjotdojoprodcus`, `brandonkorous/jotdojo` | Their other end is outside this repo (ADR-090, ADR-091). |
+| The repo directory | Still `jotDOJO`. No reader sees it. |
+
+### Still open
+
+- **Real photography.** The rule is in `10-design-system.md` and
+  `public/img/` is plumbed, but the page still carries only ink and product.
+  This is the largest remaining gap between the design system and the site.
+- The old `jotdojo` namespace still runs a superseded copy of all four
+  workloads against the shared connection budget.
+- Two backup Postgres volumes on the dev machine, and `jotdojo.tf` /
+  `HANDOFF-jotdojo.md` in sparx, whose contents are migrated but whose
+  filenames are not.

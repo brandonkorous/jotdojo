@@ -119,10 +119,10 @@ check("...and a canonical of its own", post.includes(`/blog/${slugs[0]}"`));
 check("a slug nobody wrote is a 404, not a 500",
   (await apex("/blog/no-such-post")).status === 404);
 
-// EVERY post, not just the first one the index happens to list. The rename
-// sweep rewrote both ends of the `connect-jotdojo-to-claude` redirect, so that
-// one post 308'd to itself -- an infinite loop, on the page the footer and the
-// agent band both link to, while `slugs[0]` stayed green. ADR-091.
+// EVERY post, not just the first one the index happens to list. A redirect
+// that pointed at itself once made one post an infinite loop -- on the page the
+// footer and the agent band both link to -- while `slugs[0]` stayed green.
+// The redirect is gone (ADR-095); this check is why it was ever caught.
 const posts = await Promise.all(slugs.map(async (slug) => ({
   slug, status: (await apex(`/blog/${slug}`)).status,
 })));
@@ -130,14 +130,6 @@ const broken = posts.filter((r) => r.status !== 200);
 check("...and so is every other post", broken.length === 0,
   broken.map((r) => `${r.slug}:${r.status}`).join(", "));
 
-// A moved post keeps its old URL working. `permanent: true` is a 308, and the
-// destination must not be the source -- see next.config.ts.
-const moved = await apex("/blog/connect-jotdojo-to-claude");
-check("a post that moved still answers at its old slug",
-  moved.status === 308, String(moved.status));
-check("...pointing at the new one, not at itself",
-  (moved.headers.get("location") ?? "").endsWith("/blog/connect-jotacular-to-claude"),
-  moved.headers.get("location") ?? "no location");
 
 console.log("\nwhat we tell crawlers");
 const robotsRes = await apex("/robots.txt");

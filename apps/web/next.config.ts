@@ -40,25 +40,11 @@ const config: NextConfig = {
   // the export routes through `@jotacular/ink-render/raster`. ADR-067.
   serverExternalPackages: ["postgres", "sharp"],
 
-  /**
-   * The rename moved our most-linked post. ADR-072.
-   *
-   * Permanent, because the old slug is in other people's bookmarks and in the
-   * index -- a 404 there costs the one piece of SEO we actually have.
-   */
-  async redirects() {
-    return [
-      {
-        // The SOURCE is the old slug, and has to stay that way. The rename
-        // sweep rewrote both ends of this rule in the same commit that created
-        // it, which made the post 308 to itself -- an infinite loop on the one
-        // page the footer and the "Connect your AI" band both link to. ADR-091.
-        source: "/blog/connect-jotdojo-to-claude",
-        destination: "/blog/connect-jotacular-to-claude",
-        permanent: true,
-      },
-    ];
-  },
+  /* No `redirects()`. The rename moved a post's slug, and the rule that
+     preserved the old one guarded nothing: the site was a day old, nothing
+     linked to it and no crawler had been near it. It was also the source of
+     the only outage-shaped bug of the rename -- the sweep rewrote both ends of
+     it, so the post 308'd to itself. ADR-095. */
 
   // Next ignores directories starting with a dot, so the well-known paths
   // required by RFC 8414 are rewritten onto ordinary route handlers.

@@ -207,9 +207,37 @@ ADR-083.
   is rarely square (`pen-line` is 640x512), and a square box squashes it.
   `.jd-icon` is one em tall and as wide as its own artwork.
 - The family is 492 icons, not the whole library. `eraser`, `highlighter` and
-  `lasso` are not in it; `SUBSTITUTED` lists what stands in for them.
+  `lasso` are not in it; `SUBSTITUTED` lists what stands in for them —
+  `paintbrush`, `arrow-pointer`, and a **trash can** for the eraser. A slashed
+  brush was tried and rejected: it sat beside the paintbrush standing in for the
+  highlighter, so the rail read "highlighter on, highlighter off". Rubbing out
+  and throwing away are the same idea, and the two never appear side by side.
 - Installing needs `FONTAWESOME_NPM_TOKEN` — on a laptop, in CI, and as a
   BuildKit secret in `web.Dockerfile`.
+
+## Motion
+
+**A reveal plays once and never plays backwards.** ADR-093.
+
+- Reveals are **one-shot** animations, held paused until an
+  IntersectionObserver marks their section seen (`components/site/Reveal.tsx`),
+  and never unmarked. `animation-delay` staggers them; `both` fill holds the
+  end state.
+- **Not `animation-timeline: view()`.** That is a function of scroll position,
+  not a trigger — it plays in reverse as you scroll up. Somebody scrolling
+  around is looking for something, and the page must not hide it again.
+- **It must fail open.** The resting state of a reveal is *invisible*, so
+  anything that stops the marking leaves a blank page. Two floors: whatever is
+  already on screen reveals from its own rect, and a watchdog reveals
+  everything if the observer has not reported in 1.5s. This is not
+  hypothetical — the observer does not fire at all in automated Chrome.
+- **Never clip text on a range you do not control.** `clip-path` and `width`
+  have no legible half-state: caught part way, "Paste one link into Claude's
+  settings" reads "…settin". Opacity and transform can be caught anywhere and
+  still say the right thing. ADR-092.
+- Two animations are deliberately still scroll-driven: the bar's elevation and
+  the dot-grid drift. They report where you are rather than deliver content,
+  and they are *meant* to run backwards.
 
 ## Images
 

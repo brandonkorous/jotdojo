@@ -3818,7 +3818,12 @@ about whether the thing the string named agreed to change with it.**
 
 ### ADR-092 - Text reveals finish on `entry`, never on `cover`
 
-**Status.** Accepted, 2026-08-24.
+**Status.** Superseded by ADR-093, 2026-08-24. The defect it describes was
+real and is worth keeping; the fix was not. `entry` finishes as soon as the
+element is fully on screen, and `view()` measures the ELEMENT -- so on a
+one-line tagline that is 24px of scroll, over before anybody sees it. There
+was no correct range because scroll position was the wrong driver. Reveals are
+one-shot animations now.
 
 **Context.** ADR-088 gave the marketing page scroll-driven motion, and three of
 those animations clip TEXT: `jd-write` runs `clip-path: inset(... 100% ...)` to
@@ -3923,3 +3928,144 @@ band. Both are continuous state rather than content arriving, and both are
 `@supports (animation-timeline: view())` came off everything else. A time-based
 animation needs no gate, so browsers without scroll-driven animations now get
 the motion too - they previously got a completely static page.
+
+### ADR-094 - The paper is not blank, and the first touch clears it
+
+**Status.** Accepted, 2026-08-23.
+
+**Context.** ADR-076 put the running canvas beside the pitch, and it worked --
+except that what it showed was an empty rectangle with a placeholder in it. The
+Open Graph card (ADR-078) does the opposite: a jot with a list on it and a
+drawing under the list, which is what somebody clicked the link expecting. They
+arrived to nothing, and the one thing the hero exists to say -- *type it or draw
+it, either is a note* -- was left entirely to a sentence in the status bar.
+
+**Decision.** A jot is already on the paper: four typed lines, one handwritten
+annotation, and a line drawing, the same three objects as the card. It arrives
+the way it was made -- lines land, strokes draw themselves along their own
+paths, the pen writes the last word -- and the first touch anywhere in the hero
+clears it.
+
+Three things make it safe to put content on a surface that is really writable:
+
+- **It is a sibling of the textarea, not its value.** `components/site/HeroJot`
+  renders above the input at `z-index: 2` with `pointer-events: none`. Nothing
+  decorative can reach `useDraft`, so nothing decorative can reach Postgres, and
+  "Keep this" still hands over exactly what the visitor wrote.
+- **It waits for the server to say the paper is empty.** `useDraft` now reports
+  `ready`, set when the resume round trip returns. A returning visitor with a
+  draft never sees a demo flash over their own words, because the jot is only
+  mounted when that round trip comes back with nothing.
+- **Clearing is the engagement rule that already existed.** It hangs off
+  `data-engaged`, the same attribute that straightens the frame -- so choosing a
+  pen clears the paper before a pointer reaches it, and the jot is gone by the
+  time the first stroke starts.
+
+**Consequences.** The hero shows both capture modes above the fold without a
+screenshot, a video, or a claim. The cost is that the placeholder now has to
+wait its turn: `:has(.jd-hero-jot)` holds it at `opacity: 0` while the demo is
+on the paper and fades it back in after the clear, so the two never sit on top
+of each other. The jot is mounted for the rest of the visit, hidden -- unmounted
+it could not be faded, and a demo that vanishes on the first keystroke reads as
+a bug rather than as room being made.
+
+**One grid, found on the way.** Putting a drawing on the hero surfaced a defect
+that had been there since the stage got its dots: pick up a pen and the ink
+layer mounts its own grid (ADR-053) at a 24px pitch over the stage's 22px one,
+and the two moire. The stage's dots now stop where the ink layer's begin --
+`:has(.jd-ink-mount)` -- because only one of them tracks the pan.
+
+### ADR-095 - The redirect guarded nothing, so it is gone
+
+**Status.** Accepted, 2026-08-24.
+
+**Context.** The rename moved a post from `connect-jotdojo-to-claude` to
+`connect-jotacular-to-claude`, and `next.config.ts` grew a permanent redirect
+to keep the old URL working. Its own comment justified itself: *"the old slug
+is in other people's bookmarks and in the index -- a 404 there costs the one
+piece of SEO we actually have."*
+
+Neither half of that was true. The site was about a day old. Nothing linked to
+it, no crawler had indexed it, and there were no bookmarks because there were
+no readers. The rule was protecting a past that did not exist.
+
+It was also the only outage-shaped bug the rename produced. The sweep rewrote
+**both** ends of it in the same commit that created it, so the post 308'd to
+its own URL -- an infinite loop, on the one page the footer and the "Connect
+your AI" band both link to (ADR-091 caught six other over-renames, all of them
+prose; this was the one in live code).
+
+**Decision.** Delete it. `redirects()` is empty, so the whole hook goes.
+
+**Consequences.** A cost that only existed on paper is gone, and with it the
+config's single riskiest line. The check that caught the loop stays: the site
+smoke asserts **every** post the index lists returns 200, not just `slugs[0]`.
+Four working posts hid one broken one, and that will not be how we find out
+again.
+
+The general rule is worth naming, because the rename produced several
+decisions of this shape. **A compatibility shim is a debt against real users,
+and it is only worth taking on when there are some.** Ask who breaks if it is
+absent before writing it; on a day-old product the honest answer is usually
+nobody. ADR-086 made the same call about the hostnames, for the same reason,
+and was right for the same reason.
+
+### ADR-096 - A green apex is not a healthy database
+
+**Status.** Accepted, 2026-08-24.
+
+**Context.** Migration `0034` renamed `jotdojo_app` to `jotacular_app` in
+production, and `DATABASE-URL` in Key Vault was updated to match. Twenty
+minutes later the vault secret was set back to `jotdojo_app` by a hand that
+reasonably believed the rename was being skipped -- the question *"should we
+just leave the db role?"* was live at the time.
+
+From that moment every service in the cluster held a connection string for a
+role that no longer existed.
+
+**Nothing looked wrong for the next hour.** jotacular.com returned 200. The
+pods reported `1/1 Running` and never restarted. Two properties conspired: the
+marketing pages are statically prerendered, so they serve perfectly with no
+database behind them, and postgres-js connects lazily, so a pod that is never
+asked for a row never discovers it cannot get one. Every signal we had was
+green while the app, the API, the MCP server and the worker were all cut off
+from their data.
+
+It surfaced only by running the pods' own connection string against the server:
+
+    FATAL:  password authentication failed for user "jotdojo_app"
+
+**Decision.** Three things follow.
+
+**A schema change and the credential it invalidates are one change.** `0034` and
+`DATABASE-URL` cannot be decided separately, because reverting either one alone
+produces a system that is broken and silent. If the role rename is being
+reconsidered, the migration is what gets reconsidered -- not the secret.
+
+**Health is proved against the thing that can fail, not against the thing in
+front of it.** `curl https://jotacular.com/` proves the CDN, Caddy, the pod and
+the prerender. It proves nothing at all about Postgres. The check that means
+something is a query:
+
+    kubectl run pg -n jotacular --rm -i --restart=Never --image=postgres:18-alpine       --overrides='...secretKeyRef: jotacular-secrets/DATABASE_URL...'       -- sh -c 'psql "$DATABASE_URL" -tAc "select current_user"'
+
+**Editing the vault does not fix the cluster.** `release.yml` builds the
+`jotacular-secrets` Secret from Key Vault *at deploy time*, so a corrected
+secret reaches running pods only on the next deploy. The repair was a rerun of
+the release, not a `kubectl patch` -- patching by hand would have left the
+cluster and the vault agreeing by luck rather than by pipeline.
+
+**Consequences.** `az keyvault secret list-versions` turned out to be the tool
+that explained this: the revert was a timestamp twenty minutes after the fix,
+which is what made "somebody changed this" a fact rather than a theory. Secret
+history is an audit log, and it is worth reaching for before theorising.
+
+The deeper point is about **what a deploy actually validates**. The release
+pipeline gates on the presence of every required vault key (ADR-090) and it
+correctly found this key present -- it just had the wrong value in it. A
+presence check cannot catch a *wrong* secret. The only thing that can is using
+it, which is what `db-migrate` and `db-role-password` already do -- and both of
+those had run and passed, because both connect as the OWNER. Nothing in the
+pipeline ever connected as the application role. That is the gap, and it is a
+candidate for the next smoke: one query as `DATABASE_URL`, in the deploy,
+before the rollout is called good.

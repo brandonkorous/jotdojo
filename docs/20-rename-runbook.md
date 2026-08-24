@@ -1,13 +1,14 @@
 # Moving jotdojo → jotacular
 
-The code, the config and the docs are done (ADR-086). What is left is state that
-lives outside this repository: DNS, a Caddy site block, a Key Vault secret, and
-two Postgres names. Each step below says what breaks if it is skipped.
+**Done, 2026-08-24.** jotacular.com serves the site, `app.` the app, `mcp.` the
+agent endpoint, and production runs as `jotacular_app`. This is the record of
+what it took and what deliberately did not move — keep it, because two of the
+steps below are the kind that only bite once and the bite is invisible.
 
-Do this while **nobody has the PWA installed and no agent is connected**. That
-window is the entire reason the move is cheap; after it, `app.` is baked into
-home-screen icons and `mcp.` is the audience on every live access token
-(ADR-074).
+It was done while **nobody had the PWA installed and no agent was connected**.
+That window was the entire reason the move was cheap: after it, `app.` is baked
+into home-screen icons and `mcp.` is the audience on every live access token
+(ADR-074, ADR-086).
 
 ---
 
@@ -26,17 +27,14 @@ Until this lands, `SITE_URL` must keep its old value — see step 2.
 `infra/k8s/01-config.yaml` already carries the new hostnames. Deploying it
 before step 1 points the app at a domain that does not resolve.
 
-The overlap is handled at the **edge**, not in application code: jotdojo.com
-301s to jotacular.com at Cloudflare and never reaches the cluster, so
-`isMarketingHost` only knows one apex. That is the better place for it — a
-redirect passes link equity, and a branch in `hosts.ts` would only have served
-the old name forever.
+jotdojo.com 301s to jotacular.com at Cloudflare and never reaches the cluster,
+so `isMarketingHost` only knows one apex.
 
-**The redirect must preserve the path.** A root-only rule leaves every indexed
-`/blog/...` URL returning 404 rather than pointing at its new home, and the blog
-is the distribution (`16-web-presence.md`). In Cloudflare that is a wildcard
-Redirect Rule — `jotdojo.com/*` to `https://jotacular.com/${1}`, 301 — not a
-single-URL redirect.
+**Nothing was tied to the old domain, so nothing needed preserving.** The site
+was a day old: no inbound links, no index, no bookmarks. The root-only redirect
+that exists is a courtesy, not a requirement, and the in-app redirect for a
+moved blog slug was deleted for the same reason (ADR-095). A compatibility shim
+is a debt against real users and is only worth taking on when there are some.
 
 ## 3. Email
 
@@ -109,12 +107,44 @@ The *database* name inside both URLs changes in §5, not here.
 `JOTDOJO-OWNER-PASSWORD` is read by no workflow, so nothing automated breaks if
 its name stays stale.
 
+### What actually went wrong, and why nothing looked wrong
+
+The role rename and the secret have to move **together**, and they came apart.
+Migration `0034` renamed `jotdojo_app` in production. The vault was then set
+back to `jotdojo_app` about twenty minutes later, by a hand that reasonably
+thought the rename was being skipped. From that point every service in the
+cluster was holding a connection string for a role that did not exist.
+
+**The site stayed up the whole time.** The marketing pages are static, so they
+served perfectly while the database was unreachable behind them, and the pods
+reported `1/1 Running` because a lazy pool does not connect until something
+asks it to. Nothing was red. The failure surfaced only when the connection
+string was tried directly:
+
+    kubectl run pg -n jotacular --rm -i --restart=Never --image=postgres:18-alpine       --overrides='...secretKeyRef: jotacular-secrets/DATABASE_URL...'       -- sh -c 'psql "$DATABASE_URL" -tAc "select current_user"'
+
+    FATAL:  password authentication failed for user "jotdojo_app"
+
+Two things to take from it. **`200` on the apex proves nothing about the
+database** on a site whose front page is static — check a role, not a page. And
+a Key Vault secret has version history: `az keyvault secret list-versions`
+showed the revert as a timestamp, which is how the twenty minutes was found.
+
+The vault and the cluster agree again, and a redeploy is what carries a
+corrected secret into the running pods — editing the vault alone changes
+nothing, because the k8s Secret is built from it at deploy time.
+
 ## 5. Postgres — the database
+
+**Not done in production, on purpose.** The database is still called `jotdojo`
+there, inside both connection strings. Renaming it buys nothing a person can
+see and costs a window with no connections to it:
 
     ALTER DATABASE jotdojo RENAME TO jotacular;
 
 Cannot run inside a transaction and needs **no connections to that database** —
-so it is not a migration. Stop the pods (or `pnpm dev`) first.
+so it is not a migration. Both vault URLs change in the same window. Local
+development did it, because there the window is `pnpm db:down`.
 
 ## 6. Local development
 
