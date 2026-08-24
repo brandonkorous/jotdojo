@@ -1,5 +1,6 @@
 import { DomainError } from "./errors";
 import type { TextBox } from "./ink-text";
+import type { ImageOnPage } from "./ink-image";
 
 /**
  * What an ink document IS, and what a client is allowed to send. docs/08-ink.md.
@@ -60,6 +61,17 @@ export type InkDocument = {
    * confidence-scored guess. See ink-text.ts.
    */
   texts?: TextBox[];
+  /**
+   * Where photographs sit on the page. ADR-103.
+   *
+   * A THIRD array for the same reason `texts` is a second one: the bytes live
+   * in a `blocks` row and only the placement lives here, so nothing in this
+   * document can be mistaken for something to draw or something to recognise.
+   *
+   * Optional, because every document written before this shipped has no such
+   * key -- and a reader that assumed one would break every existing page.
+   */
+  images?: ImageOnPage[];
 };
 
 /** Generous, and far above a real page. A guard against a runaway client, not

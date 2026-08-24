@@ -56,3 +56,13 @@ the two client files that had reached the limit beside it:
 
 Both times the split was by responsibility. Both times the file was already being edited
 for something else, which is the only time the rule asks for it.
+
+On 2026-08-24 the canvas work (ADR-101, ADR-102, ADR-103) hit the limit six more times,
+and every split was by responsibility rather than by line count:
+
+    pen-size.css          one control, not the furniture it sits in
+    ink-input-select.ts   the one tool whose gesture is unnamed until the pointer lifts
+    ink-engine-size.ts    how big a caught thing is, and what shape it turned out to be
+    ink-engine-live.ts    what another device did, of every kind
+    ink-object-plane.ts   both plane layers under one owner
+    use-canvas-tool.ts    which tool is in hand

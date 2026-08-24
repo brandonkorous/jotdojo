@@ -1,13 +1,17 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { keepDraftAction } from "@/app/site/actions";
 import { isInk, type CanvasTool } from "@/lib/canvas-tool";
 import { DEFAULT_STYLES, styleFor, type InkStyles } from "@/lib/ink-style";
 import { useDraft, type DraftState } from "@/lib/use-draft";
 import { useMarks } from "@/lib/use-marks";
 import { InkCanvas } from "@/components/InkCanvas";
+import { CanvasMenuHost } from "@/components/CanvasMenuHost";
+import type { InkEngine, SelectionSummary } from "@/lib/ink-engine";
+import { NO_SELECTION } from "@/lib/ink-selection";
 import { ToolRail } from "@/components/ToolRail";
+import { AddMenu } from "@/components/AddMenu";
 import { ToolOptions } from "@/components/ToolOptions";
 import { HeroJot } from "@/components/site/HeroJot";
 
@@ -37,6 +41,11 @@ export function HeroCanvas({ children, appHref }: Props) {
   const [touched, setTouched] = useState(false);
   const [optionsOpen, setOptionsOpen] = useState(false);
   const [styles, setStyles] = useState<InkStyles>(DEFAULT_STYLES);
+  /** The stage, not the ink layer: the camera and the menu have to work on the
+   *  tool this opens with, and that tool takes no pointers here. ADR-102. */
+  const stageRef = useRef<HTMLDivElement>(null);
+  const engineRef = useRef<InkEngine | null>(null);
+  const [selection, setSelection] = useState<SelectionSummary>(NO_SELECTION);
 
   const { input, block, mark, heading, syncBlock, onKeyDown } = useMarks(onChange);
 
@@ -87,7 +96,8 @@ export function HeroCanvas({ children, appHref }: Props) {
           without copying a byte. ADR-010. */}
       <div className="jd-hero-frame">
         <div className="mockup-window jd-hero-mock">
-          <div className="jd-hero-stage">
+          <CanvasMenuHost noteId={noteId ?? ""} engine={engineRef} selection={selection}>
+          <div ref={stageRef} className="jd-hero-stage">
             <textarea
               ref={input}
               className="jd-canvas-input jd-hero-input font-sans"
@@ -99,6 +109,9 @@ export function HeroCanvas({ children, appHref }: Props) {
               onChange={(e) => onChange(e.target.value)}
               onSelect={syncBlock}
               onKeyDown={onKeyDown}
+              // A hold on words is the system's gesture. Spine.tsx says why.
+              onContextMenu={(e) => e.stopPropagation()}
+              onPointerDown={(e) => e.stopPropagation()}
             />
 
             {jot && <HeroJot />}
@@ -109,16 +122,23 @@ export function HeroCanvas({ children, appHref }: Props) {
                   noteId={noteId}
                   tool={tool}
                   style={styleFor(tool, styles)}
+                  outer={stageRef}
+                  held={engineRef}
+                  onSelection={setSelection}
                 />
               </div>
             )}
 
             <div className="jd-chrome glass jd-hero-rail top-3 left-1/2 z-20 flex -translate-x-1/2 items-center rounded-full p-1">
-              <ToolRail
-                tool={tool}
-                onTool={choose}
-                unavailable={["mic", "cam"]}
-                unavailableHint="sign in to record voice notes and add photos"
+              <ToolRail tool={tool} onTool={choose} />
+              {/* Shown and refused, so a stranger sees the whole product
+                  rather than a shorter one. */}
+              <AddMenu
+                onPhoto={() => {}}
+                onVoice={() => {}}
+                onNote={() => {}}
+                unavailable
+                unavailableHint="sign in to add photos, voice notes and notes"
               />
             </div>
 
@@ -144,6 +164,7 @@ export function HeroCanvas({ children, appHref }: Props) {
               )}
             </div>
           </div>
+          </CanvasMenuHost>
         </div>
       </div>
     </div>

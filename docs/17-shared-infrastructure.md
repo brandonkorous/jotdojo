@@ -59,9 +59,28 @@ possible place, after the roles exist and the pods have already rolled. Adding
 one is a change to sparx's `terraform/envs/azure/main.tf`, so it needs to be
 raised *before* the migration that needs it is written.
 
-**3. The connection budget is shared, exhaustible, and small.** The server's tier
-caps `max_connections` at **50 for the whole server** — a hard, tier-specific
-ceiling, not a tunable — and sparx is already drawing on it.
+**3. The connection budget is exhaustible and small, and it used to be shared.** The tier
+caps `max_connections` at **50 for the whole server**, and sparx is already
+drawing on it.
+
+**Fifteen of those fifty are not ours, and nobody can give them back.** Azure
+holds `superuser_reserved_connections` at 10 and `reserved_connections` at 5,
+and both are `isReadOnly: true` -- they cannot be lowered. So the ceiling
+`jotacular_app` actually meets is **35**, and the refusal it meets there does not
+say "too many clients":
+
+    FATAL: remaining connection slots are reserved for roles with privileges of
+    the "pg_use_reserved_connections" role
+
+Every number below is against 35, not 50.
+
+**Since 2026-08-24 that 35 is ours alone.** jotacular has its own B1ms,
+`psql-jotacular-prod-cus`, in its own delegated subnet, and sparx keeps
+`psql-sparx-prod-cus`. Two small servers beat one bigger shared one on both
+counts that mattered: ~$18 each against ~$60 for a B2s, and neither product can
+starve the other however it grows. ADR-099 is how we found out; ADR-100 is the
+move. **The DATABASE SERVER is no longer a shared resource. The CLUSTER still
+is.**
 
 `packages/db/src/client.ts` reads `DB_POOL_MAX`. `infra/k8s` sets it per service:
 

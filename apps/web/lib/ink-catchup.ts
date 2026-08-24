@@ -1,4 +1,4 @@
-import type { Stroke, TextBox } from "@jotacular/domain";
+import type { ImageOnPage, Stroke, TextBox } from "@jotacular/domain";
 import { getInkAction } from "@/app/actions";
 import { strokesSinceAction } from "@/app/actions/live";
 import { needsFullRead } from "./ink-merge";
@@ -23,12 +23,17 @@ import type { InkSync, ServerPage } from "./ink-sync";
  */
 
 export type CatchupTarget = {
-  applyRemote(strokes: Stroke[]): void;
-  reconcile(server: Stroke[], pending: readonly Stroke[]): void;
-  /** Somebody else's text boxes. Only ever reaches here through a FULL read:
-   *  a text edit bumps the version without moving the stroke count, which
-   *  `needsFullRead` already treats as "the middle changed". ADR-065. */
-  applyRemoteTexts(texts: TextBox[]): void;
+  /** Everything that arrives from elsewhere. `InkEngine.remote` is this. */
+  readonly remote: {
+    strokes(strokes: Stroke[]): void;
+    reconcile(server: Stroke[], pending: readonly Stroke[]): void;
+    /** Somebody else's text boxes, and their photographs. Both only ever reach
+     *  here through a FULL read: neither moves the stroke count, and a version
+     *  that moved further than the count explains is what `needsFullRead`
+     *  already treats as "the middle changed". ADR-065, ADR-103. */
+    texts(texts: TextBox[]): void;
+    images(images: ImageOnPage[]): void;
+  };
 };
 
 export class InkCatchup {
@@ -73,14 +78,15 @@ export class InkCatchup {
     const now = { count: tail.strokeCount, version: tail.version };
     if (needsFullRead(have, now)) return this.readWholePage();
 
-    if (tail.strokes.length > 0) this.target.applyRemote(tail.strokes as Stroke[]);
+    if (tail.strokes.length > 0) this.target.remote.strokes(tail.strokes as Stroke[]);
     this.sync.believe(now);
   }
 
   private async readWholePage(): Promise<void> {
     const ink = await getInkAction(this.blockId);
-    this.target.reconcile(ink.document.strokes as Stroke[], this.sync.unsent);
-    this.target.applyRemoteTexts((ink.document.texts ?? []) as TextBox[]);
+    this.target.remote.reconcile(ink.document.strokes as Stroke[], this.sync.unsent);
+    this.target.remote.texts((ink.document.texts ?? []) as TextBox[]);
+    this.target.remote.images((ink.document.images ?? []) as ImageOnPage[]);
     this.sync.believe({ count: ink.strokeCount, version: ink.version });
   }
 }

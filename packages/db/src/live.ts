@@ -63,6 +63,15 @@ const handlers = new Set<Handler>();
 let listening: Promise<void> | null = null;
 
 /**
+ * How long a failed LISTEN keeps the channel shut. ADR-098.
+ *
+ * EventSource reconnects on its own, so without this every browser with a note
+ * open retries into a database that is already refusing connections.
+ */
+const RETRY_AFTER_MS = 5_000;
+let closedUntil = 0;
+
+/**
  * Receive every event this database emits, for the life of the process.
  *
  * AWAITED, and it has to be: `LISTEN` is a round trip, and a subscriber that
@@ -76,6 +85,8 @@ let listening: Promise<void> | null = null;
  * docs/17-shared-infrastructure.md is why that budget is a real number.
  */
 export async function subscribeRaw(handler: Handler): Promise<() => void> {
+  if (Date.now() < closedUntil) throw new Error("the live channel is not listening");
+
   handlers.add(handler);
   try {
     listening ??= startListening();
@@ -86,8 +97,10 @@ export async function subscribeRaw(handler: Handler): Promise<() => void> {
     // merely in a quiet note.
     handlers.delete(handler);
     listening = null;
+    closedUntil = Date.now() + RETRY_AFTER_MS;
     throw err;
   }
+  closedUntil = 0;
   return () => { handlers.delete(handler); };
 }
 
@@ -108,7 +121,12 @@ function startListening(): Promise<void> {
   // the gap are gone -- NOTIFY has no durability -- and that is survivable
   // precisely because a client resyncs from the database when its own stream
   // reconnects. Nothing here is a source of truth.
-  return client.listen(CHANNEL, fanOut).then(() => undefined);
+  return client.listen(CHANNEL, fanOut).then(() => undefined, async (err: unknown) => {
+    // A client whose LISTEN never landed still owns a socket and a reconnect
+    // timer, and dropping the reference does not close either. ADR-098.
+    await client.end({ timeout: 0 }).catch(() => {});
+    throw err;
+  });
 }
 
 /**

@@ -133,7 +133,7 @@ export function Recorder({ noteId, startSignal }: { noteId: string; startSignal:
       )}
 
       {busy && <p className="jd-transcript-note">Saving the recording&hellip;</p>}
-      {error && <p className="jd-photos-error">{error}</p>}
+      {error && <p className="jd-recorder-error">{error}</p>}
 
       <ul className="jd-clips">
         {clips.map((b) => (

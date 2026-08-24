@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type RefObject } from "react";
 import type { InkEngine, SelectionSummary } from "@/lib/ink-engine";
 import { canReachText, inkToolFor, type CanvasTool } from "@/lib/canvas-tool";
 import { NO_SELECTION } from "@/lib/ink-selection";
@@ -12,7 +12,6 @@ import { downloadSelection } from "@/lib/export-client";
 import type { InkStyle } from "@/lib/ink-style";
 import { useInkEngine } from "@/lib/use-ink-engine";
 import { SelectionBar } from "./SelectionBar";
-import { CanvasMenu } from "./CanvasMenu";
 import { ZoomChip } from "./ZoomChip";
 
 /**
@@ -28,6 +27,7 @@ import { ZoomChip } from "./ZoomChip";
 
 export function InkCanvas({
   noteId, tool, style, onReady, onDraw, onTextPlaced, live = false,
+  outer, held, onSelection,
 }: {
   noteId: string;
   /**
@@ -55,6 +55,16 @@ export function InkCanvas({
    * visit. A component that has not said it wants this does not get it.
    */
   live?: boolean;
+  /**
+   * The whole canvas shell, so the camera can be moved on EVERY tool. The ink
+   * surface takes no pointers while somebody is typing, so a camera listening
+   * only there is a camera the spine can never reach. ADR-102.
+   */
+  outer?: RefObject<HTMLElement | null>;
+  /** The caller's handle on the engine, for furniture it hangs outside this
+   *  component -- the canvas menu wraps the whole page now. ADR-102. */
+  held?: RefObject<InkEngine | null>;
+  onSelection?: (selection: SelectionSummary) => void;
 }) {
   const committedRef = useRef<HTMLCanvasElement>(null);
   const liveRef = useRef<HTMLCanvasElement>(null);
@@ -63,7 +73,11 @@ export function InkCanvas({
   /** The object plane. Outside the canvases, because scaling a canvas through
    *  a transformed ancestor blurs its bitmap. ADR-065. */
   const planeRef = useRef<HTMLDivElement>(null);
-  const engineRef = useRef<InkEngine | null>(null);
+  const ownEngine = useRef<InkEngine | null>(null);
+  // A ref either way, so it is stable for the whole life of the component --
+  // the effects below list it because the linter cannot see that, not because
+  // any of them would ever run again on its account.
+  const engineRef = held ?? ownEngine;
   const syncRef = useRef<InkSync | null>(null);
   const catchupRef = useRef<InkCatchup | null>(null);
   /** In a ref, because the engine is built once and this changes per render. */
@@ -80,6 +94,9 @@ export function InkCanvas({
 
   const [state, setState] = useState<SyncState>("idle");
   const [selected, setSelected] = useState<SelectionSummary>(NO_SELECTION);
+  /** In a ref for the same reason `draw` is: the engine is built once. */
+  const told = useRef(onSelection);
+  told.current = onSelection;
   const [error, setError] = useState<string | null>(null);
   /** Only ever set from the engine's `onView`, which stays silent on a pan. */
   const [view, setView] = useState({ k: 1, home: true });
@@ -109,12 +126,13 @@ export function InkCanvas({
     noteId,
     surfaces: {
       committed: committedRef, live: liveRef, shell: shellRef,
-      grid: gridRef, plane: planeRef,
+      grid: gridRef, plane: planeRef, outer,
     },
     held: { engine: engineRef, sync: syncRef, catchup: catchupRef },
     initial: { tool: ink, style, textReachable: reachable },
+    owned: live,
     onState: setState,
-    onSelection: setSelected,
+    onSelection: (next) => { setSelected(next); told.current?.(next); },
     onView: setView,
     onError: setError,
     onBlock: setBlockId,
@@ -143,13 +161,13 @@ export function InkCanvas({
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [selected.count]);
+  }, [selected.count, engineRef]);
 
   useInkTrouble(state, error);
 
-  useEffect(() => { engineRef.current?.setTool(ink); }, [ink]);
-  useEffect(() => { engineRef.current?.setTextReachable(reachable); }, [reachable]);
-  useEffect(() => { engineRef.current?.setStyle(style); }, [style]);
+  useEffect(() => { engineRef.current?.setTool(ink); }, [ink, engineRef]);
+  useEffect(() => { engineRef.current?.setTextReachable(reachable); }, [reachable, engineRef]);
+  useEffect(() => { engineRef.current?.setStyle(style); }, [style, engineRef]);
 
   /**
    * The last line of defence for unsaved strokes.
@@ -177,47 +195,33 @@ export function InkCanvas({
   const engine = () => engineRef.current;
 
   return (
-    <CanvasMenu
-      selection={selected}
-      actions={{
-        onOpenAt: (x, y) => engine()?.selectAtClient(x, y),
-        anchorRect: () => engine()?.marqueeRect() ?? null,
-        onCard: (fill) => engine()?.selection.recolourCards(fill),
-        onResize: (bigger) => engine()?.selection.resize(bigger),
-        onTidy: () => engine()?.selection.tidyShape(),
-        onExport: () => void downloadSelection(noteId, selected.ids),
-        onDelete: () => engine()?.selection.remove(),
-        onTextBoxHere: (x, y) => engine()?.textAtClient(x, y),
-      }}
-    >
-      <div ref={shellRef} className="jd-ink-shell">
-        <div ref={gridRef} className="jd-ink-grid" aria-hidden />
-        {/* Between the grid and the canvases in the DOM, and BELOW the live
-            canvas in z-order, so a highlighter drawn over a typed line reads the
-            way it does on paper. */}
-        <div ref={planeRef} className="jd-object-plane" />
-        <canvas ref={committedRef} className="jd-ink-layer" aria-hidden />
-        <canvas
-          ref={liveRef}
-          className="jd-ink-layer jd-ink-live"
-          role="img"
-          aria-label="Handwriting canvas"
-        />
-        <SelectionBar
-          selection={selected}
-          onColor={(color) => engine()?.selection.restyle({ color })}
-          onWidth={(width) => engine()?.selection.restyle({ width }, false)}
-          onCommitWidth={(width) => engine()?.selection.restyle({ width })}
-          onCard={(fill) => engine()?.selection.recolourCards(fill)}
-          onDelete={() => engine()?.selection.remove()}
-          onExport={() => void downloadSelection(noteId, selected.ids)}
-        />
-        <ZoomChip
-          zoom={view.k}
-          home={view.home}
-          onFit={() => engine()?.fitToContent()}
-        />
-      </div>
-    </CanvasMenu>
+    <div ref={shellRef} className="jd-ink-shell">
+      <div ref={gridRef} className="jd-ink-grid" aria-hidden />
+      {/* Between the grid and the canvases in the DOM, and BELOW the live
+          canvas in z-order, so a highlighter drawn over a typed line reads the
+          way it does on paper. */}
+      <div ref={planeRef} className="jd-object-plane" />
+      <canvas ref={committedRef} className="jd-ink-layer" aria-hidden />
+      <canvas
+        ref={liveRef}
+        className="jd-ink-layer jd-ink-live"
+        role="img"
+        aria-label="Handwriting canvas"
+      />
+      <SelectionBar
+        selection={selected}
+        onColor={(color) => engine()?.selection.restyle({ color })}
+        onWidth={(width) => engine()?.selection.restyle({ width }, false)}
+        onCommitWidth={(width) => engine()?.selection.restyle({ width })}
+        onCard={(fill) => engine()?.selection.recolourCards(fill)}
+        onDelete={() => engine()?.selection.remove()}
+        onExport={() => void downloadSelection(noteId, selected.ids)}
+      />
+      <ZoomChip
+        zoom={view.k}
+        home={view.home}
+        onFit={() => engine()?.fitToContent()}
+      />
+    </div>
   );
 }

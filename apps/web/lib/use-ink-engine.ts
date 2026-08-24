@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect, type RefObject } from "react";
-import type { Stroke, TextBox } from "@jotacular/domain";
+import type { ImageOnPage, Stroke, TextBox } from "@jotacular/domain";
 import { InkEngine, type SelectionSummary, type Tool } from "./ink-engine";
 import { InkSync, type SyncState } from "./ink-sync";
 import { InkCatchup } from "./ink-catchup";
 import type { InkStyle } from "./ink-style";
 import { inkLayerAction, getInkAction } from "@/app/actions";
+import { photoUrlAction, noteImagesAction } from "@/app/actions/media";
 
 /**
  * Standing the engine up, and taking it down again.
@@ -31,6 +32,9 @@ export type Surfaces = {
   shell: RefObject<HTMLDivElement | null>;
   grid: RefObject<HTMLDivElement | null>;
   plane: RefObject<HTMLDivElement | null>;
+  /** The whole canvas shell, so the camera can be moved on every tool -- the
+   *  ink surface is pointer-transparent while somebody types. ADR-102. */
+  outer?: RefObject<HTMLElement | null>;
 };
 
 export type MountOptions = {
@@ -44,6 +48,9 @@ export type MountOptions = {
   onSelection: (selection: SelectionSummary) => void;
   onView: (view: { k: number; home: boolean }) => void;
   onError: (message: string) => void;
+  /** Whether this is a signed-in person's note rather than the hero's anonymous
+   *  draft. Gates the one query a draft can never have an answer to. */
+  owned?: boolean;
   onBlock: (blockId: string) => void;
   /** In refs at the call site, because the engine is built once and these
    *  change per render. */
@@ -89,6 +96,9 @@ export function useInkEngine(o: MountOptions) {
         live: liveCanvas,
         grid,
         plane,
+        gestures: surfaces.outer?.current ?? undefined,
+        // Signed on demand and never stored in the page. ADR-103.
+        imageSrc: photoUrlAction,
         onStrokes: (strokes) => { sync!.push(strokes); o.onDraw.current?.(); },
         onDelta: (delta) => sync!.delta(delta),
         onSelectionChange: o.onSelection,
@@ -106,16 +116,32 @@ export function useInkEngine(o: MountOptions) {
       // A block created a moment ago is empty, but a reload of an existing one
       // is not -- and loading after resize matters, because resize repaints.
       //
-      // Strokes OR text: a note that is nothing but a typed box has a stroke
-      // count of zero and still has a page to load. ADR-065.
-      if (block.strokeCount > 0 || block.hasText) {
+      // Strokes OR text OR photographs: a note that is nothing but one photo
+      // has a stroke count of zero and still has a page to load. ADR-065,
+      // ADR-103.
+      if (block.strokeCount > 0 || block.hasText || block.hasImages) {
         const existing = await getInkAction(block.blockId);
         if (!disposed) {
           engine.load(
             existing.document.strokes as Stroke[],
             (existing.document.texts ?? []) as TextBox[],
+            (existing.document.images ?? []) as ImageOnPage[],
           );
         }
+      }
+
+      // Photographs taken before placements existed have a row and nowhere to
+      // be. Asked AFTER the page loads, so a picture that already has a home is
+      // recognised and left where somebody put it. ADR-103.
+      //
+      // Only on a real note. The marketing hero draws on an anonymous draft
+      // that cannot have photographs, and asking would be an authenticated
+      // round trip on every visit to the front page -- the same reason the live
+      // subscription is off by default there.
+      if (o.owned) {
+        const known = await noteImagesAction(noteId);
+        if (disposed) return;
+        if (known.length > 0) engine.adoptImages(known);
       }
 
       observer = new ResizeObserver(([entry]) => {

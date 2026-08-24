@@ -21,7 +21,8 @@
     "smoke:review": "dotenv -e ../../.env -- tsx scripts/smoke-review.ts",
     "smoke:billing": "dotenv -e ../../.env -- tsx scripts/smoke-billing.ts",
     "smoke:anon": "dotenv -e ../../.env -- tsx scripts/smoke-anon.ts",
-    "smoke:live": "dotenv -e ../../.env -- tsx scripts/smoke-live.ts"
+    "smoke:live": "dotenv -e ../../.env -- tsx scripts/smoke-live.ts",
+    "smoke:ink-images": "dotenv -e ../../.env -- tsx scripts/smoke-ink-images.ts"
   },
   "dependencies": {
     "@jotacular/db": "workspace:*",

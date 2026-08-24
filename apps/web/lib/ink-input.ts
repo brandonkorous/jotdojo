@@ -8,6 +8,7 @@ import { bindPointer, PalmGuard, pointFrom, samplesOf } from "./ink-pointer";
 import { ViewGestures } from "./ink-gestures";
 import { HoldToSnap } from "./ink-input-snap";
 import { TextDrag } from "./ink-text-drag";
+import { LassoInput } from "./ink-input-select";
 import type { Bounds } from "./ink-geometry";
 
 /**
@@ -66,19 +67,41 @@ export class InkInput {
   private erasedThisDrag = false;
   private readonly hold = new HoldToSnap();
   private readonly textDrag = new TextDrag();
-  /** Where a select gesture began, or null when it began inside a marquee. */
-  private selectFrom: Point | null = null;
+  private readonly lasso = new LassoInput();
   private readonly unbind: () => void;
   private readonly gestures: ViewGestures;
+  /** True when the camera listens on an outer element and drives itself, so
+   *  the events below must be consulted rather than forwarded. ADR-102. */
+  private readonly selfFed: boolean;
 
-  constructor(private readonly el: HTMLElement, private readonly host: InputHost) {
+  /**
+   * `outer` is the whole canvas shell, and giving it is what lets the camera
+   * move on EVERY tool. The drawing surface takes no pointers while the spine
+   * is in hand, so a pinch over a page being typed on never reaches this
+   * element at all. ADR-102.
+   */
+  constructor(
+    private readonly el: HTMLElement,
+    private readonly host: InputHost,
+    outer?: HTMLElement,
+  ) {
+    this.selfFed = outer !== undefined;
     this.unbind = bindPointer(el, { down: this.down, move: this.move, up: this.up });
     this.gestures = new ViewGestures(el, {
       view: host.view,
       rect: () => host.surface.rect(),
       abortInput: () => this.abort(),
       onView: () => host.onView(),
-    });
+      ignores: (target) =>
+        target instanceof Element && target.closest("textarea") !== null,
+    }, outer);
+  }
+
+  /** Whether the camera has the pointers. Asking when it feeds itself, telling
+   *  when it does not -- forwarding an event it already saw would count every
+   *  finger twice. */
+  private camera(e: PointerEvent, feed: (e: PointerEvent) => boolean): boolean {
+    return this.selfFed ? this.gestures.claiming : feed(e);
   }
 
   destroy() {
@@ -99,7 +122,7 @@ export class InkInput {
     this.activePointer = null;
     const host = this.host;
     if (host.tool === "eraser") host.endErase(this.erasedThisDrag);
-    else if (host.tool === "select") { this.selectFrom = null; host.dropSelection(); }
+    else if (host.tool === "select") this.lasso.abort(host);
     // A pinch that starts mid-drag abandons the box. No half-drawn rectangle
     // is left on the overlay, and nothing is placed -- an interrupted gesture
     // is not a smaller version of the gesture.
@@ -128,7 +151,9 @@ export class InkInput {
     // starts a lasso, and `preventDefault` below suppresses the `contextmenu`
     // event that follows, so the menu never opens at all. ADR-084.
     if (e.button !== 0 && e.button !== -1) return;
-    if (!this.writingWithPen && this.gestures.down(e)) return void e.preventDefault();
+    if (!this.writingWithPen && this.camera(e, (ev) => this.gestures.down(ev))) {
+      return void e.preventDefault();
+    }
     if (!this.palm.accepts(e)) return;
     e.preventDefault();
     this.el.setPointerCapture(e.pointerId);
@@ -153,17 +178,7 @@ export class InkInput {
 
     if (host.tool === "eraser") return void this.erase(p);
 
-    if (host.tool === "select") {
-      // Inside an existing marquee means "move this", not "start over" --
-      // otherwise a selection could never be dragged, only redrawn.
-      if (host.sel.covers(p[0], p[1])) return void host.sel.beginDrag(p[0], p[1]);
-      host.dropSelection();
-      // Remembered so `up` can tell a tap from a loop. Both start identically
-      // and there is no way to know which it was until the pointer lifts.
-      this.selectFrom = p;
-      host.sel.beginLasso(p);
-      return void host.scheduleLive();
-    }
+    if (host.tool === "select") return void this.lasso.down(host, p);
 
     host.capture.begin(p);
     host.scheduleLive();
@@ -172,7 +187,9 @@ export class InkInput {
   private move = (e: PointerEvent) => {
     // Before the guards below, which key on the ONE active pointer and would
     // otherwise drop the second finger of every pinch on the floor.
-    if (!this.writingWithPen && this.gestures.move(e)) return void e.preventDefault();
+    if (!this.writingWithPen && this.camera(e, (ev) => this.gestures.move(ev))) {
+      return void e.preventDefault();
+    }
     if (!this.penDown || e.pointerId !== this.activePointer) return;
     e.preventDefault();
     const host = this.host;
@@ -184,12 +201,7 @@ export class InkInput {
       return void host.scheduleLive();
     }
 
-    if (host.tool === "select") {
-      const p = this.pointAt(e);
-      if (host.sel.dragging) return void host.dragSelection(p[0], p[1]);
-      host.sel.extendLasso(p);
-      return void host.scheduleLive();
-    }
+    if (host.tool === "select") return void this.lasso.move(host, this.pointAt(e));
 
     // The hot path: hoist the rect and the camera once, then map every sample
     // the pen actually produced rather than the one per frame the event carries.
@@ -204,7 +216,7 @@ export class InkInput {
   };
 
   private up = (e: PointerEvent) => {
-    if (this.gestures.up(e)) return;
+    if (this.camera(e, (ev) => this.gestures.up(ev))) return;
     if (!this.penDown || e.pointerId !== this.activePointer) return;
     this.penDown = false;
     this.activePointer = null;
@@ -214,14 +226,7 @@ export class InkInput {
     if (host.tool === "eraser") return void host.endErase(this.erasedThisDrag);
 
     if (host.tool === "select") {
-      const from = this.selectFrom;
-      this.selectFrom = null;
-      // A loop that never went anywhere is a tap, and a tap means "that one".
-      // Null when the press began inside a marquee, which is a drag ending.
-      if (from && near(from, this.pointAt(e), host.view.k)) {
-        return void host.tapSelect(from[0], from[1]);
-      }
-      return void host.finishSelect();
+      return void this.lasso.up(host, this.pointAt(e), host.view.k);
     }
 
     if (host.tool === "textbox") {
@@ -240,11 +245,3 @@ export class InkInput {
     if (this.host.eraseAt(p[0], p[1])) this.erasedThisDrag = true;
   }
 }
-
-/** Close enough to be a tap rather than a loop, in SCREEN pixels. Smaller than
- *  the text-box threshold: this only has to survive an unsteady hand, not tell
- *  two deliberate gestures apart. ADR-084. */
-const TAP_SLOP = 6;
-
-const near = (a: Point, b: Point, k: number) =>
-  Math.hypot(b[0] - a[0], b[1] - a[1]) * k <= TAP_SLOP;

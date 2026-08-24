@@ -1,4 +1,4 @@
-import type { Point, TextBox } from "@jotacular/domain";
+import type { ImageOnPage, Point, TextBox } from "@jotacular/domain";
 import { cardBounds, textBounds } from "@jotacular/ink-render";
 import { pointInPolygon, type Bounds } from "./ink-geometry";
 
@@ -32,19 +32,7 @@ export const boxBounds = (box: TextBox): Bounds => textBounds(box);
 export const boxArea = (box: TextBox): Bounds => cardBounds(box);
 
 export function boxesBounds(boxes: readonly TextBox[]): Bounds | null {
-  let out: Bounds | null = null;
-  for (const box of boxes) {
-    const b = boxArea(box);
-    if (!out) { out = { ...b }; continue; }
-    const x = Math.min(out.x, b.x);
-    const y = Math.min(out.y, b.y);
-    out = {
-      x, y,
-      w: Math.max(out.x + out.w, b.x + b.w) - x,
-      h: Math.max(out.y + out.h, b.y + b.h) - y,
-    };
-  }
-  return out;
+  return unionOf(boxes.map(boxArea));
 }
 
 /**
@@ -122,3 +110,62 @@ export function drawnBox(
 /** Boxes with nothing in them. A person who tapped, thought better of it and
  *  tapped elsewhere should not leave a trail of empty rectangles. */
 export const isEmpty = (box: TextBox) => box.text.trim() === "";
+
+/**
+ * A photograph's rectangle. ADR-103.
+ *
+ * It IS the placement -- no card, no derived height, nothing to keep in step --
+ * which is why images need four functions here and text boxes needed six.
+ */
+export const imageArea = (image: ImageOnPage): Bounds =>
+  ({ x: image.x, y: image.y, w: image.w, h: image.h });
+
+export function imagesBounds(images: readonly ImageOnPage[]): Bounds | null {
+  return unionOf(images.map(imageArea));
+}
+
+/** Caught when ALL FOUR CORNERS are inside the lasso -- the rule strokes and
+ *  boxes already use, for the reason `boxInPolygon` gives. */
+export function imageInPolygon(poly: readonly Point[], image: ImageOnPage): boolean {
+  if (poly.length < 3) return false;
+  const b = imageArea(image);
+  return ([
+    [b.x, b.y], [b.x + b.w, b.y], [b.x + b.w, b.y + b.h], [b.x, b.y + b.h],
+  ] as Array<[number, number]>).every(([x, y]) => pointInPolygon(poly, x, y));
+}
+
+/** Reversed, so the topmost wins -- matching what is drawn. */
+export function imageAt(
+  images: readonly ImageOnPage[], x: number, y: number,
+): ImageOnPage | null {
+  for (let i = images.length - 1; i >= 0; i--) {
+    const image = images[i]!;
+    if (x >= image.x && x <= image.x + image.w
+      && y >= image.y && y <= image.y + image.h) return image;
+  }
+  return null;
+}
+
+/** Move images, in place, the way dragging a selection moves everything else. */
+export function translateImages(images: readonly ImageOnPage[], dx: number, dy: number): void {
+  for (const image of images as ImageOnPage[]) {
+    image.x += dx;
+    image.y += dy;
+  }
+}
+
+/** The smallest box holding all of them, or null for none of them. */
+function unionOf(boxes: readonly Bounds[]): Bounds | null {
+  let out: Bounds | null = null;
+  for (const b of boxes) {
+    if (!out) { out = { ...b }; continue; }
+    const x = Math.min(out.x, b.x);
+    const y = Math.min(out.y, b.y);
+    out = {
+      x, y,
+      w: Math.max(out.x + out.w, b.x + b.w) - x,
+      h: Math.max(out.y + out.h, b.y + b.h) - y,
+    };
+  }
+  return out;
+}

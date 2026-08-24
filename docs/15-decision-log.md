@@ -4069,3 +4069,427 @@ those had run and passed, because both connect as the OWNER. Nothing in the
 pipeline ever connected as the application role. That is the gap, and it is a
 candidate for the next smoke: one query as `DATABASE_URL`, in the deploy,
 before the rollout is called good.
+
+### ADR-097 - A loopback redirect cannot register its port
+
+ChatGPT's desktop app reached our consent screen on 2026-08-24 and was turned
+away: *"That redirect address is not registered for this application."* It is a
+native client, and it identifies itself with a Client ID Metadata Document:
+
+    https://chatgpt.com/oauth/codex/MC-iJv6DUvOJ/client.json
+
+That document lists two redirect addresses, and neither has a port:
+
+    http://127.0.0.1/callback/MC-iJv6DUvOJ
+    http://localhost/callback/MC-iJv6DUvOJ
+
+The request that arrived asked for `http://127.0.0.1:52143/callback/…`, because a
+native app takes a free port from the operating system at the moment the flow
+starts. It cannot know that port when the document is written, and the document
+is served by OpenAI to every user, so it could not carry one anyway. Our check
+was `redirectUris.includes(redirectUri)` -- exact, no exceptions -- so every such
+client was refused. This is the case RFC 8252 s7.3 exists for, and it says the
+authorization server MUST allow any port for a loopback address.
+
+**Decision.** Exact match stays the rule, with a single exemption: when the
+requested address is `http:` on `127.0.0.1`, `localhost` or `[::1]`, it matches a
+registered address that agrees on scheme, host, path and query, whatever the
+port. The exemption is scoped to the loopback interface and cannot be reached by
+a public host, so `https://claude.ai:8443/…` is still refused against
+`https://claude.ai/…`. Path and query are still compared exactly, so a client
+that listens on the loopback cannot claim a redirect it did not register.
+
+The matcher is `packages/domain/src/oauth-redirect.ts`, its own file rather than
+another function in `oauth.ts`: "does this address belong to this client" is the
+one question the whole consent screen turns on, and it should be readable
+without reading five hundred lines of grant plumbing around it.
+
+**Consequences.** The token exchange is deliberately left alone. It compares the
+`redirect_uri` presented at exchange against the one recorded when the code was
+issued -- the real address, port and all -- not against the registered pattern,
+so the loosened comparison never reaches it and the code stays bound to the exact
+socket that asked for it.
+
+The failure was invisible from our side. Nothing errored, nothing logged: a page
+rendered, the user read it, and the connection simply did not happen. The URL in
+their address bar was the entire diagnosis, and we had no other copy of it. A
+refused authorization is a thing worth recording.
+
+### ADR-098 - A failed LISTEN must not leave a client behind
+
+The account page returned Next's generic server error on 2026-08-24, digest
+`659896347`. It was not the account page. The pod's log carries the whole story:
+
+    remaining connection slots are reserved for roles with the SUPERUSER attribute
+    code: '53300', routine: 'InitPostgres'
+
+The shared server was at `max_connections`, so nothing that needed a connection
+could render -- and `/account` needs six. 117 of these in twenty minutes, all
+from `web`; `api`, `mcp` and `worker` were quiet, because a process that already
+holds its pool never asks for another connection and never finds out.
+
+**What our own code did to that.** `subscribeRaw` opened a dedicated client for
+`LISTEN`, outside the pool and one per process. On failure it set
+`listening = null` so the next subscriber would try again -- and dropped the
+failed client on the floor without ending it. A `postgres()` client owns a socket
+and a reconnect timer; losing the reference closes neither. Meanwhile EventSource
+reconnects by itself, so every browser with a note open came back within seconds
+and made another one. A shortage of connections became a source of them.
+
+**Decision.** Two changes, both in `packages/db/src/live.ts`.
+
+`startListening` ends its client when `LISTEN` rejects. A client that never
+subscribed has nothing to keep.
+
+A failed attempt shuts the channel for five seconds. Subscribers inside that
+window are refused without touching the database, which turns a reconnect storm
+into one attempt every five seconds per pod.
+
+`apps/web/app/api/live/[noteId]/route.ts` now subscribes before it builds the
+`Response`, so a refusal is a 503 rather than a stream that dies mid-pipe and
+logs `failed to pipe response`. The page has never needed the live channel to
+work; it needed it to fail quietly.
+
+**Consequences.** This does not explain where fifty connections went, and the fix
+does not claim to. It removes our contribution to the pile and stops a transient
+shortage from sustaining itself -- the difference between a bad minute and a
+morning. Finding the holder means `pg_stat_activity` grouped by
+`application_name`, on a server we share with sparx (docs/17), and that is the
+next question, not this one.
+
+The wider lesson is the same one as ADR-096, from the other end. There the signals
+were green while the database was unreachable; here the database was the whole
+story and the signal was a digest on a page that had nothing wrong with it. Both
+times the answer was in the pod's log and nowhere else.
+
+### ADR-099 - The ceiling is 35, and there are two of us on the cluster
+
+ADR-098 fixed our contribution to the connection exhaustion and said finding the
+holder was the next question. This is the answer, and it is two answers.
+
+**The ceiling was never 50.** `max_connections` is 50, which is what
+docs/17 budgeted against. Azure also sets, and will not let anyone change:
+
+    superuser_reserved_connections  10   isReadOnly: true
+    reserved_connections             5   isReadOnly: true
+
+So an ordinary role gets **35**. The last fifteen are held for privileges
+`jotacular_app` does not have, which is why the refusal says *reserved for roles
+with privileges of the `pg_use_reserved_connections` role* rather than *too many
+clients already* -- a different message for a different wall, and the one we
+never wrote down. Azure's metric agreed the server was at 43 of 50 and looked
+fine while the app could not open a single connection.
+
+The floor tells the story better than the peak. Maximum-per-hour never moved
+much; the MINIMUM climbed and stayed: 20 through 23 August, 27 overnight, **36
+from 06:12** on the 24th. A rising floor is somebody holding, not somebody busy.
+Once it passed 35 the app was locked out, and it stayed locked out.
+
+**And there are two jotDOJOs.** The rename left the old namespace running:
+
+    jotdojo     api mcp web worker   deployments 35h old, pods 10h
+    jotacular   api mcp web worker   the one Caddy actually routes to
+
+`jotdojo` has its own `jotdojo-config` and `jotdojo-secrets`, and its worker is
+in a retry loop against a password the role rename invalidated -- `28P01
+auth_failed`, seven attempts in five minutes and still going. Its web, api and
+mcp hold almost nothing, because pools are lazy (ADR-031) and nothing routes to
+them. So the duplicate is not what ate the connections. It is dead weight that
+has been failing quietly for ten hours, and it is the same rename that ADR-095
+already caught halfway through.
+
+**Decision.** The budget in docs/17 is recomputed against 35 and says so. The
+`jotdojo` namespace goes, because a deployment nothing routes to and whose worker
+cannot authenticate is not a fallback, it is a second thing to be wrong.
+
+**Consequences.** 35 shared with sparx, against our own 16 plus one live channel,
+is not a comfortable number and no amount of pool trimming makes it one. The next
+real decision is the tier -- docs/17 already prices it -- and it belongs to sparx
+because the server does.
+
+The lesson is narrower than ADR-096's and worth keeping separate: **a quota you
+did not read is a quota you do not have.** Three parameters decided this, two of
+them read-only, none of them in any document we wrote.
+ter.
+
+### ADR-100 - Two small servers, not one bigger shared one
+
+ADR-099 found the wall: 35 usable connections, shared with sparx, and no way to
+raise the reserved fifteen. This is what we did about it.
+
+**Decision.** jotacular gets its own Postgres. `psql-jotacular-prod-cus`, B1ms,
+in its own delegated subnet `snet-psql-jotacular` (10.20.16.16/28), reusing
+sparx's private DNS zone. sparx keeps `psql-sparx-prod-cus`, unchanged and
+untouched.
+
+The alternative on the table was scaling the shared server to B2s. Two B1ms at
+~$18 beat one B2s at ~$60 on price, and they beat it on the thing that actually
+failed: **a bigger shared server is still shared.** B2s would have raised the
+ceiling far enough that this morning could not recur, and left the coupling in
+place for whatever grows next. Isolation was the point, not headroom.
+
+**The server admin IS `jotacular_owner`**, which deletes a step rather than
+moving it. On sparx's server the owner had to be minted by sparx's data stage
+from `JOTDOJO-OWNER-PASSWORD`, because a server-level role is not something a
+tenant of that server can create for itself. On our own server it exists the
+moment the server does, and `DATABASE-ADMIN-URL` works with no bootstrap.
+
+**And the connection strings finally say jotacular.** This was not cosmetic and
+it is the part worth remembering. Terraform still emitted `jotdojo_app`, and
+`0034` renamed that role out of existence -- so the next apply of that file, for
+any reason at all, would have written `DATABASE-URL` naming a role that does not
+exist. That is ADR-096 exactly, waiting for an unrelated trigger. ADR-091 logged
+it as the one thing a key-name workaround could not fix. It is fixed: the
+strings name `jotacular_app`, `jotacular_owner`, and the database `jotacular`.
+
+**What deliberately did not move.** The vault KEY names -- `JOTDOJO-APP-PASSWORD`
+and `JOTDOJO-OWNER-PASSWORD` -- still say jotdojo. They carry `prevent_destroy`,
+and `release.yml` names them in its required list, so renaming them is a
+coordinated change across two repositories rather than a substitution. ADR-086
+kept `kv-jotdojo-prod-cus` for the same reason. A key name is bookkeeping; a
+role name inside a connection string is not.
+
+The old `jotdojo` database stays on sparx's server as the rollback until the new
+one has served traffic. Deleting it is a later, deliberate commit.
+
+**Consequences.** The terraform apply was scoped with `-target`, because a full
+plan in that workspace needs a Cloudflare token this machine does not have. Four
+added, two changed, zero destroyed, and the two changes were the two connection
+strings. A targeted apply is a thing to notice in the state, not a thing to
+repeat.
+
+There was no data to move -- jotacular had no users -- so the new database is
+built by the migrations rather than restored. That is the cheapest this will
+ever be, and it is the second time in one day that "nobody is using it yet" paid
+for a move that would otherwise have needed a window (ADR-086's rename was the
+first). It is worth being blunt about the corollary: **both of these got done
+because they got done early.** Neither is a manoeuvre we could repeat in a month.
+
+---
+
+### ADR-101 - The toolbar overflowed, and two kinds of thing were sharing one rail
+
+**Status.** Accepted, 2026-08-24.
+
+**Context.** A screenshot from an iPhone showed the pill with its last icon cut in
+half. That is not a matter of taste, it is arithmetic: `chrome.css` grows every
+button to 44px on a coarse pointer, and the pill held ten of them — search, five
+modes, voice, photo, remarks, the avatar — plus two seams and its padding. About
+484px inside `calc(100vw - 1.5rem)`, on a viewport of 390pt. It had been
+overflowing since the day voice and photo were added.
+
+The interesting half is *why* there were ten. `ToolRail` carried an `action?:
+boolean` flag, and that flag was the design admitting something: **modes and
+actions are different things wearing the same button.** A mode changes what the
+canvas does, only one is true at a time, and it can be `aria-pressed`. Voice and
+photo produce content and then finish. They were in the rail because the rail was
+where buttons went.
+
+**Decision.** Actions leave. `AddMenu` — a `+` — holds photo, voice, and *a note
+on the canvas*, which is the same three the canvas menu offers on bare paper.
+Two doors to one room beats one door somebody has to already know about, and a
+menu that lists what CAN be added is how a stranger finds out voice exists at all.
+
+Below 30rem the five modes collapse to the one in hand, with a chevron drawn in
+CSS on the chip rather than a second button beside it to hit by mistake. The
+first tap opens the rail and chooses nothing — otherwise the one visible button
+would mean both "the tool you are holding" and "the four you are not", and would
+have to guess. Five buttons, about 250px, with room to spare.
+
+`useNarrow` exists only so a *tap* can mean something different when the rail is
+collapsed. The breakpoint itself lives in CSS and is the authority; the two share
+one number and both say so.
+
+**The tool is remembered per device.** `tool-memory.ts`, localStorage, guarded in
+both directions because Safari can throw rather than return null. Deliberately
+not a server preference like the chrome's left/right side: which hand holds the
+pencil is a fact about a person, and which tool is down is a fact about a session
+at a desk. Syncing it would hand the pen to a phone because a tablet had been
+drawing. `textbox` is not remembered — it is a one-shot the app itself leaves
+immediately (ADR-065), so restoring it would restore a state that does not exist.
+
+**Consequences.** `chrome.css` reached the 250-line limit and split by
+responsibility: `pen-size.css` is one control with a nib, a track and a readout,
+and the other half of `components/PenSize.tsx`. `Canvas.tsx` reached it too, and
+`use-canvas-tool.ts` came out — which tool is in hand is a small state machine
+with three rules, each of which has a reason somebody has to be able to find.
+
+"Put a text box here" left the text tool's options for the add menu. ADR-065 put
+it there because a box is "the additional thing you go looking for"; the `+` *is*
+where you go looking, and one home beats two.
+
+---
+
+### ADR-102 - The camera was fenced to the ink tools, and so was the menu
+
+**Status.** Accepted, 2026-08-24.
+
+**Context.** Two complaints arrived as separate bugs — *the context menu only
+works when the pen is selected*, and *this is a zoomable canvas, not an infinite
+one* — and they are one line of CSS:
+
+    .jd-ink-mount { pointer-events: none; }
+    .jd-ink-mount[data-active="true"] { pointer-events: auto; }
+
+`data-active` is `isInk(tool)`. On the spine — the tool the app opens with, and
+the tool most people are in most of the time — the ink surface takes no pointers
+at all. `ViewGestures` lives under it, so two fingers did nothing. `CanvasMenu`
+wrapped it, so a hold did nothing. And on a note nobody had drawn on yet the
+whole layer was unmounted, so there was no menu to have.
+
+The canvas has been genuinely endless since ADR-053 — unbounded `panBy`,
+0.1x-8x zoom, world-space strokes, a grid that tracks the camera. Nothing was
+missing from the surface. It was fenced off from the tool people were holding.
+
+**Decision, three parts.**
+
+*The camera feeds itself.* `ViewGestures` takes an optional outer element and
+listens there in the CAPTURE phase, so a pinch reaches it before whatever is
+underneath — which on the spine is a textarea that would otherwise scroll. It
+gains an `ignores` predicate, and a textarea is what it ignores: a field owns
+scrolling its own words, and a pinch that panned the world out from under a
+half-selected sentence is not a gesture anybody asked for. When no outer element
+is given it is driven by `InkInput` exactly as before, which is why the hero and
+`smoke-gestures.ts` needed no change.
+
+*The menu wraps the page, not the ink.* `CanvasMenuHost` moved out of `InkCanvas`
+and now wraps the whole shell, above the spine as well as the ink. The spine
+stops the event where it starts, because a hold on words is the system's
+text-selection gesture and that is the right one there — ADR-084 made the same
+call for notes on the plane. The ink layer is also mounted unconditionally now: a
+page that waited for somebody to pick up a pen before it had a camera or a menu
+was a page you could not pan, pinch or hold on.
+
+*The spine is only as tall as its words.* This is the part that makes the rest
+mean anything. `.jd-canvas-input` was `height: 100%` of a `100dvh` shell, so a
+page with four words on it was a text field from edge to edge: every hold, every
+right-click and every empty inch of "canvas" belonged to the textarea. **There
+was no blank paper to put a menu on because there was no blank paper.** `Spine`
+measures itself after every change and caps at the page. A tap on the paper below
+still puts the caret at the end, so ADR-008's contract is unchanged — the wrapper
+is transparent to pointers and the shell catches it.
+
+**Not decided.** The spine stays a screen-space layer; the body text is not an
+object on the plane. That is the larger version of this change, it reopens the
+sub-300ms capture contract, and it deserves its own decision rather than being
+arrived at.
+
+**Consequences.** A long note fills the screen again and scrolls its own words,
+which is correct — by then there is no blank paper, because somebody used it.
+`ink-input.ts` was at the limit and split: `ink-input-select.ts` holds the one
+tool whose gesture cannot be named until the pointer lifts.
+
+---
+
+### ADR-103 - A photograph goes on the page, not in a tray beside it
+
+**Status.** Accepted, 2026-08-24.
+
+**Context.** A photo taken in the app landed in a strip along the bottom of the
+screen with a caption under it. It could not be moved, could not be drawn on,
+could not be put next to the note it was about — and it took `max-height: 40vh`
+of a phone to say so. It looked like something was happening. Nothing was.
+
+**Decision.** The bytes stay where they are and only the *placement* is new.
+`blocks` keeps the file, the direct-to-storage upload, the vision transcript and
+the search index; none of that wants re-uploading because somebody nudged a photo
+two centimetres left. Where the picture sits is `doc.images[]` in the layer
+document, beside the strokes and the text boxes.
+
+That split is the whole design, and ADR-065 wrote the argument already: objects in
+the layer inherit ADR-058 whole — id-named, commutative deltas, one version, one
+subscription. A `blocks` row per placement would put N objects on one optimistic
+counter, which is the conflict machine that ADR explicitly refused. Moving a photo
+is four numbers in a delta.
+
+A third array rather than one polymorphic list, for the reason `texts` is a second
+one: `toSvg` renders `doc.strokes`, so nothing on the plane can reach the
+recogniser by accident. Keeping the arrays apart makes that impossible rather than
+merely unlikely.
+
+Everything the canvas can already do works on a photo with no new machinery — the
+same whole-object containment rule (ADR-033), the same tap-to-select (ADR-084),
+the same drag, the same one delta for a mixed selection. It scales about its own
+centre, so a row of photos does not walk off down the page as somebody presses
+"bigger" three times.
+
+**Photographs taken before this existed have a row and nowhere to be.** Left
+alone they would be stored, transcribed, searchable and invisible on the page
+somebody took them for — which reads as loss whatever the database says. The
+canvas asks `noteImages` once on mount and gives a home to whatever has none,
+laid out in a row above the existing content. Somewhere to start, not somewhere
+to stay. After the first time it returns nothing new.
+
+**Consequences.** Three files reached the 250-line limit and split by
+responsibility, as the rule asks:
+
+    ink-object-plane.ts   BOTH plane layers under one owner -- the engine had a
+                          `texts?.` at six call sites and a second layer would
+                          have doubled every one of them
+    ink-engine-live.ts    what another device did, of every kind
+    ink-engine-size.ts    how big a caught thing is, and what shape it turned
+                          out to be
+
+`ink-delta.ts` had two near-identical merges and was about to have three.
+`mergeById` is now one function for strokes, boxes and pictures — the third copy
+is what made the duplication a liability rather than a smell.
+
+#### The camera has no surface of its own
+
+The first cut of this replaced the 40vh strip with a small pill at the foot of
+the page saying "Adding your photo…", and that pill was wrong for a reason worth
+writing down: **ADR-061 collapsed four live-status surfaces into one line**, and
+a pill of our own floating over the foot of the page was quietly the fifth. The
+fix was not to style it better. It was to delete it and publish to the line, the
+way the autosave, the ink sync and the agent's remarks already do.
+
+The wording had to change with the venue. The line never wraps — it ellipsises —
+so "The photo did not upload. It is still on your device — try again." arrived as
+about half of itself. It is one clause now, sentence case, no full stop: *That
+photo did not upload — it is still on your device.* Reaching for the camera again
+clears it, because that is the retry.
+
+**Nothing is said on success.** The picture appearing on the page is the
+confirmation, and a line that repeats what somebody can already see is exactly
+the noise ADR-061 exists to remove.
+
+Trouble on the line also gained weight it did not have. Before this, a failed
+upload and "Jot saved." were the same object with one different opacity. It is
+still the same small pill in the same place — it does not grow, jump, or take
+the middle of the screen — but it is drawn at full strength, ringed in the error
+colour, and rises once on arrival. Once, and never again: a status that keeps
+moving is a status people learn to ignore.
+
+#### What a browser found that the suites did not
+
+All of the above was green — typecheck, lint, twenty-two domain checks against
+real Postgres — before any of it was opened. Three things only a browser knew:
+
+**A slot with no bytes is not a photograph.** Asking for an upload URL writes the
+block and the asset row *before* anything is sent, so an upload that fails on the
+wire leaves one behind with no picture in it. The rescue pass adopted those
+happily and put empty rectangles on the page — a picture of nothing, which is
+worse than the tray it replaced. `noteImages` now requires `byteSize`, which
+`finalizeMedia` sets and nothing else does.
+
+**A picture whose bytes will not load shows nothing**, rather than a framed empty
+rectangle. The placement stays — a page is not ours to edit because a URL
+expired — but it stops claiming there is a photograph there.
+
+**The API served every media file as `application/octet-stream`**, and no browser
+will decode an image it has been told is a byte stream. The line was already a
+ternary whose two branches were identical, which is the shape of an intention
+that never landed. It reads the type from the extension the key already carries
+(`mediaKey` builds it from the content type at upload), so nothing new is stored.
+This predates all of the above and made every photograph invisible in local
+development, with a 200 and the right bytes on the wire the whole time. Azure
+serves its own type and never reaches that code.
+
+Then it was watched working end to end: adopted, rendered at the right aspect
+ratio, framed by the camera, tapped to select, dragged, and the new position read
+back out of `jsonb` — on a 390px viewport.
+
+**What this does NOT do yet.** Export renders strokes and text; a selection saved
+as an image will not carry the photograph in it. The renderer would have to embed
+the bytes, and that is a separate piece of work with its own decisions about size
+and signing. It is a gap, and it is stated here rather than discovered la

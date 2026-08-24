@@ -1,6 +1,9 @@
-import type { Point, Stroke, TextBox } from "@jotacular/domain";
+import type { ImageOnPage, Point, Stroke, TextBox } from "@jotacular/domain";
 import { type Bounds, inBounds, strokeBounds, strokeInPolygon } from "./ink-geometry";
-import { boxAt, boxInPolygon, boxesBounds, translateBoxes } from "./ink-objects";
+import {
+  boxAt, boxInPolygon, boxesBounds, translateBoxes,
+  imageAt, imageInPolygon, imagesBounds, translateImages,
+} from "./ink-objects";
 import { topmostAt } from "./ink-edit";
 import { classify, type ShapeKind } from "./ink-shapes";
 
@@ -30,6 +33,9 @@ export type SelectionSummary = {
    *  "strokes" when a selection holds both, and hides the pen palettes when it
    *  holds only text. ADR-065. */
   texts: number;
+  /** How many of them are photographs. The bar and the menu offer a photo
+   *  nothing a pen palette could act on. ADR-103. */
+  images: number;
   /**
    * What one selected stroke could be tidied into, when the classifier is sure.
    *
@@ -41,7 +47,8 @@ export type SelectionSummary = {
 };
 
 export const NO_SELECTION: SelectionSummary = {
-  count: 0, pen: false, marker: false, penWidth: null, ids: [], texts: 0, shape: null,
+  count: 0, pen: false, marker: false, penWidth: null, ids: [],
+  texts: 0, images: 0, shape: null,
 };
 
 export class InkSelection {
@@ -50,11 +57,14 @@ export class InkSelection {
   /** Text boxes caught by the same loop. A SECOND ARRAY rather than a
    *  discriminated list, matching how they are stored -- see ink-text.ts. */
   private boxes: TextBox[] = [];
+  /** Photographs caught by the same loop. A THIRD array, matching how they are
+   *  stored -- see ink-image.ts. */
+  private pics: ImageOnPage[] = [];
   private box: Bounds | null = null;
   private dragFrom: { x: number; y: number } | null = null;
   private moved = false;
 
-  get count() { return this.picked.length + this.boxes.length; }
+  get count() { return this.picked.length + this.boxes.length + this.pics.length; }
 
   /**
    * What was caught, not just how much.
@@ -70,18 +80,24 @@ export class InkSelection {
       pen: pen !== undefined,
       marker: this.picked.some((s) => s.tool === "highlighter"),
       penWidth: pen?.width ?? null,
-      ids: [...this.picked.map((s) => s.id), ...this.boxes.map((b) => b.id)],
+      ids: [
+        ...this.picked.map((s) => s.id),
+        ...this.boxes.map((b) => b.id),
+        ...this.pics.map((i) => i.id),
+      ],
       texts: this.boxes.length,
+      images: this.pics.length,
       // Only ever asked of ONE stroke: "tidy these six squiggles" is not a
       // thing anybody means, and classifying a whole selection to find out
       // would cost a pass over every point for an offer nobody wanted.
-      shape: this.picked.length === 1 && this.boxes.length === 0
+      shape: this.picked.length === 1 && this.boxes.length === 0 && this.pics.length === 0
         ? classify(this.picked[0]!.pts)?.kind ?? null
         : null,
     };
   }
   get selected(): readonly Stroke[] { return this.picked; }
   get selectedTexts(): readonly TextBox[] { return this.boxes; }
+  get selectedImages(): readonly ImageOnPage[] { return this.pics; }
   get path(): readonly Point[] | null { return this.lasso; }
   get marquee(): Bounds | null { return this.box; }
   get dragging() { return this.dragFrom !== null; }
@@ -98,15 +114,19 @@ export class InkSelection {
    * Fewer than three points cannot enclose anything, so a stray tap clears the
    * selection rather than selecting the whole page.
    */
-  settle(all: readonly Stroke[], texts: readonly TextBox[] = []): number {
+  settle(
+    all: readonly Stroke[], texts: readonly TextBox[] = [],
+    images: readonly ImageOnPage[] = [],
+  ): number {
     const poly = this.lasso ?? [];
     this.lasso = null;
     const enclosing = poly.length >= 3;
     this.picked = enclosing ? all.filter((s) => strokeInPolygon(poly, s)) : [];
-    // The SAME rule for both kinds: whole-object containment, ADR-033. A mixed
-    // selection is only explicable if one standard governs it.
+    // The SAME rule for all three kinds: whole-object containment, ADR-033. A
+    // mixed selection is only explicable if one standard governs it.
     this.boxes = enclosing ? texts.filter((t) => boxInPolygon(poly, t)) : [];
-    this.box = mergeBounds(strokeBounds(this.picked), boxesBounds(this.boxes));
+    this.pics = enclosing ? images.filter((i) => imageInPolygon(poly, i)) : [];
+    this.remeasure();
     return this.count;
   }
 
@@ -124,15 +144,28 @@ export class InkSelection {
    */
   pick(
     all: readonly Stroke[], texts: readonly TextBox[],
-    x: number, y: number, radius: number,
+    x: number, y: number, radius: number, images: readonly ImageOnPage[] = [],
   ): number {
     this.lasso = null;
     const box = boxAt(texts, x, y);
-    const stroke = box ? null : topmostAt(all, x, y, radius);
+    // Photographs come after boxes and before strokes, matching what is drawn:
+    // the plane is above both canvases, and a note laid on a photo is the thing
+    // you can see.
+    const pic = box ? null : imageAt(images, x, y);
+    const stroke = box || pic ? null : topmostAt(all, x, y, radius);
     this.picked = stroke ? [stroke] : [];
     this.boxes = box ? [box] : [];
-    this.box = mergeBounds(strokeBounds(this.picked), boxesBounds(this.boxes));
+    this.pics = pic ? [pic] : [];
+    this.remeasure();
     return this.count;
+  }
+
+  /** The marquee round whatever is held, of however many kinds. */
+  private remeasure() {
+    this.box = mergeBounds(
+      mergeBounds(strokeBounds(this.picked), boxesBounds(this.boxes)),
+      imagesBounds(this.pics),
+    );
   }
 
   beginDrag(x: number, y: number) {
@@ -150,6 +183,7 @@ export class InkSelection {
       for (const p of stroke.pts) { p[0] += dx; p[1] += dy; }
     }
     translateBoxes(this.boxes, dx, dy);
+    translateImages(this.pics, dx, dy);
     if (this.box) { this.box.x += dx; this.box.y += dy; }
     this.dragFrom = { x, y };
     this.moved = true;
@@ -170,6 +204,7 @@ export class InkSelection {
     if (this.count === 0 && this.lasso === null) return false;
     this.picked = [];
     this.boxes = [];
+    this.pics = [];
     this.box = null;
     this.lasso = null;
     this.dragFrom = null;

@@ -162,6 +162,14 @@ and Enterprise an admin must additionally allow custom connectors.
 Security and login, then Apps → Advanced settings, and "Connectors" was renamed "Plugins"
 around July 2026. Any walkthrough we write goes stale in a quarter.
 
+**Corrected 2026-08-24.** All of the above is about ChatGPT *on the web*, and it still
+holds there. The desktop app is a different surface: **Settings -> MCP servers -> Add
+server** takes a Streamable HTTP address with no developer mode and no warning screen, and
+the desktop app, the Codex CLI and the IDE extension share that one configuration. It
+authenticates by Client ID Metadata Document on a loopback port, which is what ADR-097 is
+about. So ChatGPT does now have a fallback -- it just costs the reader an app download,
+which the Claude one does not.
+
 ### What follows from that
 
 For the audience this whole document is about, **the ChatGPT directory listing is not the

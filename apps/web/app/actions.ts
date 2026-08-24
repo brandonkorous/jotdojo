@@ -177,7 +177,8 @@ export async function inkLayerAction(noteId: string, canvas: { w: number; h: num
   // WAS before it can tell whether a live event is news. ADR-058.
   return {
     blockId: block.blockId, strokeCount: block.strokeCount,
-    hasText: block.textCount > 0, version: block.version,
+    hasText: block.textCount > 0, hasImages: block.imageCount > 0,
+    version: block.version,
   };
 }
 

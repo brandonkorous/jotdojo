@@ -1,12 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import {
-  createPhotoSlotAction, finalizePhotoAction, photoUrlAction, noteBlocksAction,
-} from "@/app/actions/media";
+import { createPhotoSlotAction, finalizePhotoAction } from "@/app/actions/media";
+import { usePublish } from "@/lib/live-feed";
 
 /**
- * Photo capture and the strip of what has been captured.
+ * Taking a photograph, and putting it on the page. ADR-103.
  *
  * `capture="environment"` asks a phone for the rear camera directly instead of
  * the photo library, which is the difference between "photograph this napkin"
@@ -16,124 +15,136 @@ import {
  * time-limited URL and the browser PUTs the bytes straight at storage
  * (docs/04). On a phone over a slow connection that is the whole difference
  * between a capture that lands and one that times out.
+ *
+ * THERE IS NO STRIP ANY MORE. A photo used to land in a tray along the bottom
+ * of the screen, where it could not be moved, could not be drawn on, could not
+ * be put beside the note it was about -- and took 40% of a phone to say so. It
+ * goes on the canvas now, and everything the canvas can already do to an object
+ * works on it. This component is the camera and nothing else.
+ *
+ * IT RENDERS NO SURFACE OF ITS OWN. What the camera is doing goes on the live
+ * line with everything else -- ADR-061 collapsed four status surfaces into that
+ * one line, and a pill of our own floating over the foot of the page would be
+ * the fifth. There is nothing to look at here but the picture that arrives.
  */
-type Block = Awaited<ReturnType<typeof noteBlocksAction>>[number];
-
-const POLL_MS = 3000;
-const POLL_CEILING_MS = 20_000;
-
 export function Photos({
-  noteId, openSignal,
+  noteId, openSignal, onPlaced,
 }: {
   noteId: string;
-  /** Increments when the camera tool is tapped. */
+  /** Increments when the camera is chosen. */
   openSignal: number;
+  /** Where the picture goes, once the bytes are safe. The canvas decides -- it
+   *  is the thing that knows where somebody is looking. */
+  onPlaced: (blockId: string, natural: { w: number; h: number }) => void;
 }) {
   const fileRef = useRef<HTMLInputElement>(null);
-  const [photos, setPhotos] = useState<Block[]>([]);
-  const [urls, setUrls] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const opened = useRef(0);
 
-  const refresh = useCallback(async (delay = POLL_MS) => {
-    const blocks = await noteBlocksAction(noteId);
-    const images = blocks.filter((b) => b.kind === "image");
-    setPhotos(images);
-
-    setUrls((current) => {
-      const missing = images.filter((b) => !current[b.id]);
-      for (const b of missing) {
-        void photoUrlAction(b.id).then((u) => {
-          if (u) setUrls((prev) => ({ ...prev, [b.id]: u }));
-        });
-      }
-      return current;
-    });
-
-    // Only while something is still being read. A note sitting open all
-    // afternoon should not poll forever for a caption that already arrived.
-    if (images.some((b) => b.transcriptState === "pending")) {
-      timer.current = setTimeout(
-        () => void refresh(Math.min(delay * 1.5, POLL_CEILING_MS)), delay,
-      );
-    }
-  }, [noteId]);
-
   useEffect(() => {
-    void refresh();
-    return () => { if (timer.current) clearTimeout(timer.current); };
-  }, [refresh]);
-
-  useEffect(() => {
-    if (openSignal > opened.current) {
-      opened.current = openSignal;
-      fileRef.current?.click();
-    }
+    if (openSignal <= opened.current) return;
+    opened.current = openSignal;
+    // Reaching for the camera again is the retry, so the old failure stops
+    // holding the line the moment somebody acts on it.
+    setError(null);
+    fileRef.current?.click();
   }, [openSignal]);
 
-  const upload = async (file: File) => {
+  /**
+   * One clause, sentence case, no full stop -- the line never wraps, and a
+   * message written as two sentences arrives as one of them plus an ellipsis.
+   *
+   * Nothing is said on success. The picture appearing on the page IS the
+   * confirmation, and a line that repeats what somebody can already see is the
+   * noise ADR-061 exists to remove.
+   */
+  usePublish(
+    "photo",
+    error
+      ? { tone: "trouble" as const, line: error }
+      : busy
+        ? { tone: "standing" as const, line: "Adding your photo", rank: 1 }
+        : null,
+    [busy, error],
+  );
+
+  const upload = useCallback(async (file: File) => {
     setBusy(true);
     setError(null);
     try {
+      // Measured BEFORE the upload, from the file already in hand. Asking the
+      // server afterwards would mean a photo appearing as a square and then
+      // reshaping itself once a second request came back.
+      const natural = await measure(file);
       const slot = await createPhotoSlotAction(noteId, file.type || "image/jpeg");
       if (!slot.ok) { setError(slot.message); return; }
 
       const put = await fetch(slot.slot.url, {
         method: "PUT", headers: slot.slot.headers, body: file,
       });
-      if (!put.ok) {
-        setError("The photo did not upload. It is still on your device \u2014 try again.");
-        return;
-      }
+      if (!put.ok) return void setError(FAILED);
 
-      const done = await finalizePhotoAction(slot.slot.blockId, { byteSize: file.size });
-      if (!done.ok) { setError(done.message ?? "That photo could not be saved."); return; }
-      await refresh();
+      const done = await finalizePhotoAction(slot.slot.blockId, {
+        byteSize: file.size, width: natural.w, height: natural.h,
+      });
+      if (!done.ok) return void setError(done.message ?? "That photo could not be saved");
+      onPlaced(slot.slot.blockId, natural);
     } catch {
-      setError("The photo did not upload. It is still on your device \u2014 try again.");
+      setError(FAILED);
     } finally {
       setBusy(false);
     }
-  };
+  }, [noteId, onPlaced]);
 
   return (
-    <>
-      <input
-        ref={fileRef}
-        type="file"
-        accept="image/*"
-        capture="environment"
-        hidden
-        onChange={(e) => {
-          const file = e.target.files?.[0];
-          e.target.value = "";
-          if (file) void upload(file);
-        }}
-      />
-
-      {(photos.length > 0 || busy || error) && (
-        <div className="jd-chrome glass jd-photos">
-          {error && <p className="jd-photos-error">{error}</p>}
-          {busy && <p className="jd-transcript-note">Adding your photo&hellip;</p>}
-          <ul className="jd-photo-strip">
-            {photos.map((b) => (
-              <li key={b.id} className="jd-photo">
-                {urls[b.id]
-                  // eslint-disable-next-line @next/next/no-img-element
-                  ? <img src={urls[b.id]} alt={b.transcript ?? "Photo"} />
-                  : <span className="jd-photo-placeholder" aria-hidden />}
-                <span className="jd-photo-caption">
-                  {b.transcriptState === "pending" && "Reading\u2026"}
-                  {b.transcriptState === "failed" && "Saved, but not read"}
-                  {b.transcriptState === "ready" && (b.transcript || "Nothing written on it")}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-    </>
+    <input
+      ref={fileRef}
+      type="file"
+      accept="image/*"
+      capture="environment"
+      hidden
+      onChange={(e) => {
+        const file = e.target.files?.[0];
+        e.target.value = "";
+        if (file) void upload(file);
+      }}
+    />
   );
+}
+
+/** It is worth being precise that nothing was lost: the bytes are still on the
+ *  device, and reaching for the camera again is the retry. */
+const FAILED = "That photo did not upload — it is still on your device";
+
+/**
+ * How big the picture actually is.
+ *
+ * `createImageBitmap` where it exists, because it decodes off the main thread
+ * and a phone photo is twelve megapixels. The `<img>` fallback is for older
+ * Safari, and a square is the fallback's fallback -- a photo placed at the
+ * wrong aspect ratio is still a photo somebody can drag, and losing the
+ * capture over a measurement would not be.
+ */
+async function measure(file: File): Promise<{ w: number; h: number }> {
+  try {
+    if (typeof createImageBitmap === "function") {
+      const bitmap = await createImageBitmap(file);
+      const size = { w: bitmap.width, h: bitmap.height };
+      bitmap.close();
+      return size;
+    }
+  } catch { /* fall through */ }
+
+  const url = URL.createObjectURL(file);
+  try {
+    return await new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => resolve({ w: img.naturalWidth || 1, h: img.naturalHeight || 1 });
+      img.onerror = () => resolve({ w: 1, h: 1 });
+      img.src = url;
+    });
+  } finally {
+    URL.revokeObjectURL(url);
+  }
 }

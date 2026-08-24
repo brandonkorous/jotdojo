@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import {
-  getClient, resolveCimdClient, issueAuthCode, listSpaces,
+  getClient, resolveCimdClient, issueAuthCode, listSpaces, redirectUriIsRegistered,
   DEFAULT_SCOPES, SCOPES, type Scope, type ClientRecord,
 } from "@jotacular/domain";
 import { requireActor } from "@/lib/session";
@@ -52,8 +52,8 @@ export default async function Authorize({
   }
   if (!client) return <Problem title="Unknown client" detail="This application is not registered." />;
 
-  // Exact match only. No wildcards, no prefixes.
-  if (!client.redirectUris.includes(redirectUri)) {
+  // Exact match, except for the loopback port a native app cannot know early.
+  if (!redirectUriIsRegistered(client.redirectUris, redirectUri)) {
     return <Problem title="That redirect address is not registered for this application" />;
   }
 

@@ -204,3 +204,30 @@
   gap: 0.125rem;
   padding: 0.25rem 0.5rem;
 }
+
+/* Photographs on the object plane. ADR-103.
+ *
+ * On the SAME transformed layer as the text boxes, so a photo pans and scales
+ * with the handwriting for free -- and never inside a `<canvas>` ancestor,
+ * which would scale a bitmap and blur the ink.
+ *
+ * Transparent to pointers, deliberately. A photo is lassoed or tapped on the
+ * ink surface underneath exactly as a stroke is, so there is no second
+ * hit-testing path to disagree with the first. */
+.jd-plane-image {
+  position: absolute;
+  display: block;
+  object-fit: contain;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-drag: none;
+  /* A hairline of paper under the picture, so a photo of a white page does not
+     dissolve into the canvas it is lying on. */
+  border-radius: 2px;
+  box-shadow: 0 1px 6px -2px color-mix(in oklch, var(--color-base-content) 35%, transparent);
+}
+
+/* Bytes that will not load. The placement stays -- a page is not ours to edit
+   because a URL expired -- but a framed empty rectangle claims there is a
+   photograph there, and there is not. */
+.jd-plane-image[data-broken] { visibility: hidden; }

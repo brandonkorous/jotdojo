@@ -1,57 +1,13 @@
 /* Photos and voice: the two senses added in M4. docs/07-capture-pipeline.md. */
 
-/* Photos attached to the page. docs/07-capture-pipeline.md. */
-.jd-photos {
-  position: absolute;
-  left: 50%;
-  bottom: 2.5rem;
-  transform: translateX(-50%);
-  z-index: 14;
-  width: min(94vw, 34rem);
-  max-height: 40vh;
-  overflow-y: auto;
-  padding: 0.625rem 0.75rem;
-  border-radius: 1rem;
-}
-
-.jd-photos-error { color: var(--color-warning); font-size: 0.8125rem; }
-
-.jd-photo-strip {
-  display: flex;
-  gap: 0.625rem;
-  overflow-x: auto;
-  padding-bottom: 0.25rem;
-}
-
-.jd-photo {
-  flex: none;
-  width: 8.5rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
-.jd-photo img,
-.jd-photo-placeholder {
-  width: 100%;
-  height: 6rem;
-  object-fit: cover;
-  border-radius: 0.625rem;
-  background: color-mix(in oklch, var(--color-base-content) 8%, transparent);
-}
-.jd-photo-caption {
-  font-size: 0.6875rem;
-  line-height: 1.35;
-  opacity: 0.7;
-  /* Two lines, then ellipsis. A long caption must not push the strip taller
-     than the canvas it is floating over. */
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-/* When both are on screen the transcript sits above the photo strip. */
-.jd-photos ~ .jd-transcript { bottom: 12rem; }
+/* The camera has NO surface of its own. ADR-103.
+ *
+ * It was a strip of thumbnails 40vh tall; the pictures are on the canvas now,
+ * and what the camera is DOING goes on the live line with everything else.
+ * ADR-061 collapsed four status surfaces into that one line, and a pill of our
+ * own floating over the foot of the page would have been the fifth.
+ *
+ * So there are no `.jd-photos` rules here any more, and there should not be. */
 
 /* Voice notes. docs/02-product-spec.md: this is the LONG-FORM path -- short
    capture should go through Shortcuts dictation instead. */
@@ -68,6 +24,10 @@
   border-radius: 1rem;
   font-size: 0.8125rem;
 }
+
+/* Inside the recorder's own panel, where the thing that failed is. It was
+   `.jd-photos-error`, borrowed from a surface that no longer exists. */
+.jd-recorder-error { color: var(--color-warning); font-size: 0.8125rem; }
 
 .jd-recorder-live { display: flex; align-items: center; gap: 0.5rem; }
 .jd-recorder-live > :nth-child(2) { margin-right: auto; }
@@ -88,5 +48,4 @@
 .jd-clip-text { flex: 1 1 auto; line-height: 1.4; }
 
 /* When several float at once they stack rather than overlap. */
-.jd-recorder ~ .jd-photos { bottom: 10rem; }
 .jd-recorder ~ .jd-transcript { bottom: 10rem; }

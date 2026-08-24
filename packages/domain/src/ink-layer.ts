@@ -49,6 +49,7 @@ export async function findInkBlock(actor: Actor, noteId: string): Promise<InkBlo
       // WHETHER to read the page -- and a page with text and no strokes still
       // has one. ADR-065.
       textCount: sql<number>`coalesce(jsonb_array_length(${mediaAssets.strokes} -> 'texts'), 0)`,
+      imageCount: sql<number>`coalesce(jsonb_array_length(${mediaAssets.strokes} -> 'images'), 0)`,
     })
       .from(blocks)
       .innerJoin(mediaAssets, eq(mediaAssets.id, blocks.artifactId))
@@ -66,6 +67,7 @@ export async function findInkBlock(actor: Actor, noteId: string): Promise<InkBlo
       spaceId: row.spaceId,
       strokeCount: Number(row.strokeCount ?? 0),
       textCount: Number(row.textCount ?? 0),
+      imageCount: Number(row.imageCount ?? 0),
       version: Number(row.version ?? 0),
       canvas: { w: row.width ?? 0, h: row.height ?? 0 },
       transcript: row.transcript,
@@ -76,7 +78,20 @@ export async function findInkBlock(actor: Actor, noteId: string): Promise<InkBlo
   });
 }
 
-/** Whether a note has handwriting on it, so a canvas can mount its ink layer
- *  BEFORE somebody reaches for the pen rather than after. */
-export const hasInk = (note: { blocks?: { kind: string }[] }): boolean =>
-  note.blocks?.some((b) => b.kind === "ink") ?? false;
+/**
+ * Whether a note has anything ON its canvas -- strokes, typed boxes or
+ * photographs. ADR-103.
+ *
+ * It used to be "does a block of kind `ink` exist", which was the same answer
+ * while the layer was only created when somebody reached for the pen. ADR-102
+ * mounts the layer on every page, so every note has that block and the old test
+ * answers yes for a page nobody has touched -- which would silently take away
+ * the "Start jotting." prompt that ADR-094 exists to keep.
+ *
+ * Asked of the page itself, so it cannot drift from what is drawn again.
+ */
+export async function hasInk(actor: Actor, noteId: string): Promise<boolean> {
+  const block = await findInkBlock(actor, noteId);
+  if (!block) return false;
+  return block.strokeCount > 0 || block.textCount > 0 || block.imageCount > 0;
+}

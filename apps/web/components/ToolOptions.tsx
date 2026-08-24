@@ -37,7 +37,7 @@ const MARKS: { id: Mark; label: string; icon: IconName; key: string }[] = [
 ];
 
 export function ToolOptions({
-  tool, styles, block, open, onClose, onStyle, onMark, onBlock, onTextBox,
+  tool, styles, block, open, onClose, onStyle, onMark, onBlock,
 }: {
   tool: CanvasTool;
   styles: InkStyles;
@@ -50,15 +50,6 @@ export function ToolOptions({
   onStyle: (tool: "pen" | "highlighter", patch: { color?: string; width?: number }) => void;
   onMark?: (mark: Mark) => void;
   onBlock?: (block: Block) => void;
-  /**
-   * Arm placing a text box on the canvas. ADR-065.
-   *
-   * Here rather than in the rail on purpose. The spine is the DEFAULT typing
-   * surface -- tap and type, under 300ms, which docs/02 calls non-negotiable --
-   * and a box is the additional thing you go looking for. Putting it in the
-   * rail would make every tap a decision about where the words go.
-   */
-  onTextBox?: () => void;
 }) {
   if (tool === "eraser" || tool === "select" || tool === "textbox") return null;
   if (!open) return null;
@@ -97,16 +88,6 @@ export function ToolOptions({
               </button>
             ))}
           </nav>
-          <span aria-hidden className="jd-rail-sep-v" />
-          <button
-            type="button"
-            className="jd-tool"
-            title="Put a text box on the canvas"
-            aria-label="Add a text box"
-            onClick={onTextBox}
-          >
-            <Icon name="addBox" />
-          </button>
         </>
       )}
 

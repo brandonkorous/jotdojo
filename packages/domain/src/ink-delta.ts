@@ -4,8 +4,9 @@ import { canReachSpace, hasScope, type Actor } from "./actor";
 import { Forbidden, NotFound, DomainError } from "./errors";
 import { validateStrokes, MAX_STROKES, MAX_BATCH, type Stroke } from "./ink-doc";
 import { validateTexts, syncTextBlock, MAX_TEXTS, type TextBox } from "./ink-text";
+import { validateImages, MAX_IMAGES, type ImageOnPage } from "./ink-image";
 import { markPageChanged, announceInk } from "./ink-recognition";
-import { lockPage, bumpPage, writeTexts } from "./ink-page";
+import { lockPage, bumpPage, writeTexts, writeImages } from "./ink-page";
 
 /**
  * Changing the middle of a page: erase, move, recolour, delete. ADR-058.
@@ -47,6 +48,13 @@ export type InkDelta = {
    * that. ADR-065.
    */
   texts?: TextBox[];
+  /**
+   * Where photographs sit, same rules again. ADR-103.
+   *
+   * Moving a photo is a delta and never a re-upload: the bytes are a `blocks`
+   * row that nobody touched, and only four numbers changed.
+   */
+  images?: ImageOnPage[];
 };
 
 /** Erasing a big scribble can touch a lot of strokes; this is still a guard. */
@@ -62,7 +70,8 @@ export async function applyInkDelta(
   const remove = validateIds(delta.remove ?? []);
   const upsert = validateUpserts(delta.upsert ?? []);
   const texts = delta.texts === undefined ? null : validateTexts(delta.texts);
-  if (remove.length === 0 && upsert.length === 0 && texts === null) {
+  const images = delta.images === undefined ? null : validateImages(delta.images);
+  if (remove.length === 0 && upsert.length === 0 && texts === null && images === null) {
     throw new DomainError("a delta must change something", "empty_delta", 400);
   }
 
@@ -72,7 +81,7 @@ export async function applyInkDelta(
       throw new NotFound("That ink block does not exist, or you cannot reach it");
     }
 
-    const next = merge(row.strokes, remove, upsert);
+    const next = mergeById(row.strokes, remove, upsert);
     if (next.length > MAX_STROKES) {
       throw new DomainError("this page has too many strokes", "page_full", 400);
     }
@@ -80,9 +89,13 @@ export async function applyInkDelta(
     // `remove` spans both kinds, so a delta that only deletes still has to
     // reach the text array -- otherwise a lasso holding one stroke and one box
     // deletes the stroke and leaves the box behind.
-    const nextTexts = mergeTexts(row.texts, remove, texts);
+    const nextTexts = mergeById(row.texts, remove, texts);
     if (nextTexts.length > MAX_TEXTS) {
       throw new DomainError("this page has too many text boxes", "page_full", 400);
+    }
+    const nextImages = mergeById(row.images, remove, images);
+    if (nextImages.length > MAX_IMAGES) {
+      throw new DomainError("this page has too many images", "page_full", 400);
     }
 
     let version = await bumpPage(tx, row.artifactId, next);
@@ -91,6 +104,11 @@ export async function applyInkDelta(
       // The searchable copy, in the same transaction. A box that is saved but
       // not indexed is invisible to search forever with nothing to indicate it.
       await syncTextBlock(tx, row, nextTexts);
+    }
+    // No companion row: an image's searchable text is its vision transcript,
+    // which lives on the block that owns the bytes and did not move. ADR-103.
+    if (changed(row.images, nextImages)) {
+      version = await writeImages(tx, row.artifactId, nextImages);
     }
 
     await markPageChanged(tx, { blockId, noteId: row.noteId }, next.length > 0);
@@ -102,69 +120,52 @@ export async function applyInkDelta(
 }
 
 /**
- * Apply the delta, preserving paint order.
+ * Apply the delta to one kind of object, preserving paint order.
  *
  * A restyled stroke keeps its position rather than moving to the end -- paint
  * order is what puts a highlighter behind the word it highlights, and a marker
  * that jumped in front of the text on recolour would look like the recolour
- * broke it.
- */
-function merge(page: Stroke[], remove: string[], upsert: Stroke[]): Stroke[] {
-  const gone = new Set(remove);
-  const replacements = new Map(upsert.map((s) => [s.id, s]));
-
-  const kept: Stroke[] = [];
-  for (const stroke of page) {
-    if (gone.has(stroke.id)) continue;
-    const replacement = replacements.get(stroke.id);
-    if (replacement) {
-      kept.push(replacement);
-      replacements.delete(stroke.id);
-      continue;
-    }
-    kept.push(stroke);
-  }
-
-  // Whatever was not already on the page is new, and new strokes go on top.
-  // Removal wins: an id in both lists was rubbed out by somebody, and the
-  // upsert here is a restyle of a stroke that no longer exists.
-  for (const stroke of upsert) {
-    if (replacements.has(stroke.id) && !gone.has(stroke.id)) kept.push(stroke);
-  }
-  return kept;
-}
-
-/**
- * The same merge, for boxes.
+ * broke it. The same is true of a photo somebody deliberately put underneath.
  *
- * `texts === null` means the delta said nothing about text, which is not the
- * same as saying there is none -- a plain erase must not wipe the page's typed
- * boxes. Removal still applies either way, because `remove` spans both kinds.
+ * `next === null` means the delta said nothing about this kind, which is not
+ * the same as saying there is none of it -- a plain erase must not wipe the
+ * page's typed boxes or its photographs. Removal still applies either way,
+ * because `remove` spans every kind.
+ *
+ * ONE function for strokes, boxes and images. It was three near-identical
+ * copies, and the third was the one that made the duplication a liability
+ * rather than a smell. ADR-103.
  */
-function mergeTexts(page: TextBox[], remove: string[], texts: TextBox[] | null): TextBox[] {
+function mergeById<T extends { id: string }>(
+  page: T[], remove: string[], next: T[] | null,
+): T[] {
   const gone = new Set(remove);
-  const replacements = new Map((texts ?? []).map((t) => [t.id, t]));
+  const replacements = new Map((next ?? []).map((item) => [item.id, item]));
 
-  const kept: TextBox[] = [];
-  for (const box of page) {
-    if (gone.has(box.id)) continue;
-    const replacement = replacements.get(box.id);
+  const kept: T[] = [];
+  for (const item of page) {
+    if (gone.has(item.id)) continue;
+    const replacement = replacements.get(item.id);
     if (replacement) {
       kept.push(replacement);
-      replacements.delete(box.id);
+      replacements.delete(item.id);
       continue;
     }
-    kept.push(box);
+    kept.push(item);
   }
-  for (const box of texts ?? []) {
-    if (replacements.has(box.id) && !gone.has(box.id)) kept.push(box);
+
+  // Whatever was not already on the page is new, and new things go on top.
+  // Removal wins: an id in both lists was rubbed out by somebody, and the
+  // upsert here is a restyle of something that no longer exists.
+  for (const item of next ?? []) {
+    if (replacements.has(item.id) && !gone.has(item.id)) kept.push(item);
   }
   return kept;
 }
 
-/** Whether the text actually moved. A stroke-only delta must not rewrite the
+/** Whether anything actually moved. A stroke-only delta must not rewrite the
  *  flattened block and re-queue an embedding for text nobody touched. */
-function changed(before: TextBox[], after: TextBox[]): boolean {
+function changed(before: unknown[], after: unknown[]): boolean {
   return before.length !== after.length || JSON.stringify(before) !== JSON.stringify(after);
 }
 

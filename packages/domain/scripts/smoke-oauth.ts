@@ -11,6 +11,7 @@ import {
   upsertUserFromGoogle, asUser, createNote, defaultSpaceId, listSpaces, listNotes,
   registerClient, issueAuthCode, exchangeAuthCode, refreshTokens, verifyAccessToken,
   revokeToken, listConnections, revokeConnection, getNote, DomainError,
+  redirectUriIsRegistered,
 } from "../src/index";
 
 let failures = 0;
@@ -156,6 +157,17 @@ const again = await exchangeAuthCode({
 await revokeConnection(A, client.client_id);
 check("revoking a connection kills its tokens",
   (await verifyAccessToken(again.access_token, RESOURCE)) === null);
+
+// A native client cannot register the port the OS hands it. RFC 8252 s7.3.
+const LOOPBACK = ["http://127.0.0.1/callback/x", "http://localhost/callback/x"];
+check("a loopback redirect matches on any port",
+  redirectUriIsRegistered(LOOPBACK, "http://127.0.0.1:52143/callback/x"));
+check("a loopback redirect still has to match its path",
+  !redirectUriIsRegistered(LOOPBACK, "http://127.0.0.1:52143/callback/elsewhere"));
+check("the port exemption does not reach a public address",
+  !redirectUriIsRegistered([REDIRECT], "https://claude.ai:8443/api/mcp/auth_callback"));
+check("an unregistered loopback address is still refused",
+  !redirectUriIsRegistered(LOOPBACK, "http://127.0.0.1:52143/steal"));
 
 console.log(failures === 0 ? "\noauth smoke: all checks passed" : `\noauth smoke: ${failures} FAILED`);
 process.exit(failures === 0 ? 0 : 1);

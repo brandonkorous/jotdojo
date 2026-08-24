@@ -1,7 +1,7 @@
 "use server";
 
 import {
-  createMediaBlock, finalizeMedia, mediaUrl, getNote,
+  createMediaBlock, finalizeMedia, mediaUrl, getNote, noteImages, type NoteImage,
 } from "@jotacular/domain";
 import { requireActor } from "@/lib/session";
 
@@ -52,6 +52,22 @@ export async function photoUrlAction(blockId: string): Promise<string | null> {
     return await mediaUrl(await requireActor(), blockId);
   } catch {
     return null;
+  }
+}
+
+/**
+ * Every photograph on a note, so the canvas can place the ones that have
+ * nowhere to be. ADR-103.
+ *
+ * Asked once per mount. A note whose photos are all placed gets back a list it
+ * then ignores, which is cheaper than the alternative: a photo taken before
+ * placements existed being invisible on the page it was taken for.
+ */
+export async function noteImagesAction(noteId: string): Promise<NoteImage[]> {
+  try {
+    return await noteImages(await requireActor(), noteId);
+  } catch {
+    return [];
   }
 }
 

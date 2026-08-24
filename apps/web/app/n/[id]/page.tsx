@@ -24,7 +24,7 @@ export default async function NotePage({ params }: { params: Promise<{ id: strin
             noteId={note.id}
             initialBody={note.body}
             initialRevision={note.revision}
-            hasInk={hasInk(note)}
+            hasInk={await hasInk(actor, note.id)}
             user={user}
             toolbarPreference={await getToolbarSide(actor)}
           />

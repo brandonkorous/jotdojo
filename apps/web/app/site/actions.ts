@@ -32,7 +32,8 @@ async function open(actor: Actor, spaceId: string): Promise<Draft> {
     ? await getNote(actor, recent[0].id)
     : await createNote(actor, spaceId, "");
   return {
-    noteId: note.id, body: note.body, revision: note.revision, hasInk: hasInk(note),
+    noteId: note.id, body: note.body, revision: note.revision,
+    hasInk: await hasInk(actor, note.id),
   };
 }
 

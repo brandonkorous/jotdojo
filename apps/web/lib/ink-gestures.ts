@@ -6,6 +6,12 @@ import type { InkViewport, Pinch } from "./ink-viewport";
  * Pan and zoom are the same formula -- a two-finger drag with unchanged spread
  * falls out of `applyPinch` as a pure pan -- so there is no separate pan path
  * to get wrong. Only `touch` participates; pen and mouse pass straight through.
+ *
+ * IT CAN FEED ITSELF, and that is what unfenced the camera. ADR-102. Given an
+ * `outer` element it listens there in the CAPTURE phase, so a pinch reaches it
+ * before the surface underneath -- and the surface underneath may be the
+ * typing spine, which takes no pointers from the ink layer at all. Without an
+ * outer element it is driven by InkInput exactly as before.
  */
 
 export type GestureHost = {
@@ -16,6 +22,15 @@ export type GestureHost = {
   abortInput(): void;
   /** The camera moved. The host decides what, if anything, React hears. */
   onView(): void;
+  /**
+   * Something the camera must keep its hands off.
+   *
+   * A textarea -- the spine or a note on the plane -- owns scrolling its own
+   * words and putting a caret between them, and a pinch that panned the world
+   * out from under a half-selected sentence is not a camera gesture people
+   * asked for.
+   */
+  ignores?(target: EventTarget | null): boolean;
 };
 
 /** One wheel notch is 100+ deltaY, so an unclamped exponential is a 30x jump. */
@@ -59,17 +74,56 @@ export class ViewGestures {
    */
   private claimed = false;
 
-  constructor(private readonly el: HTMLElement, private readonly host: GestureHost) {
+  /** Where the listeners went: the outer element when there is one, so a
+   *  gesture over the spine is seen, and the drawing surface otherwise. */
+  private readonly on: HTMLElement;
+  /** Whether this instance drives itself from listeners. When false, InkInput
+   *  calls `down`/`move`/`up` and must keep doing so. */
+  private readonly selfFed: boolean;
+
+  constructor(
+    private readonly el: HTMLElement,
+    private readonly host: GestureHost,
+    outer?: HTMLElement,
+  ) {
+    this.on = outer ?? el;
+    this.selfFed = outer !== undefined;
     // Imperative, because React's delegated onWheel cannot be non-passive and
     // a passive listener may not preventDefault the browser's page zoom.
-    el.addEventListener("wheel", this.wheel, { passive: false });
+    this.on.addEventListener("wheel", this.wheel, { passive: false, capture: this.selfFed });
+    if (!this.selfFed) return;
+    // Capture, so the pinch is seen before whatever is under the fingers --
+    // which on the spine is a textarea that would otherwise scroll instead.
+    this.on.addEventListener("pointerdown", this.onDown, true);
+    this.on.addEventListener("pointermove", this.onMove, true);
+    this.on.addEventListener("pointerup", this.onUp, true);
+    this.on.addEventListener("pointercancel", this.onUp, true);
   }
 
   destroy() {
-    this.el.removeEventListener("wheel", this.wheel);
+    this.on.removeEventListener("wheel", this.wheel, { capture: this.selfFed });
+    this.on.removeEventListener("pointerdown", this.onDown, true);
+    this.on.removeEventListener("pointermove", this.onMove, true);
+    this.on.removeEventListener("pointerup", this.onUp, true);
+    this.on.removeEventListener("pointercancel", this.onUp, true);
     this.touches.clear();
     this.pinch = null;
   }
+
+  /** Whether the camera currently owns the pointers. Read by InkInput when
+   *  this instance feeds itself, in place of handing it the events. */
+  get claiming() { return this.claimed; }
+
+  private onDown = (e: PointerEvent) => {
+    if (this.host.ignores?.(e.target)) return;
+    if (this.down(e)) e.preventDefault();
+  };
+
+  private onMove = (e: PointerEvent) => {
+    if (this.move(e)) e.preventDefault();
+  };
+
+  private onUp = (e: PointerEvent) => { this.up(e); };
 
   /** True when the gesture layer consumed the event and drawing must not run. */
   down(e: PointerEvent): boolean {
@@ -124,6 +178,9 @@ export class ViewGestures {
   }
 
   private wheel = (e: WheelEvent) => {
+    // A textarea scrolls its own words. Everywhere else the wheel moves the
+    // canvas, which is what an endless surface owes a mouse.
+    if (this.host.ignores?.(e.target)) return;
     // Always prevented: ctrl+wheel is the browser's own page zoom, and over an
     // endless canvas a plain wheel should move the canvas, not the document.
     e.preventDefault();

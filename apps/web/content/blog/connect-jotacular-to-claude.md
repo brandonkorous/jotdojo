@@ -47,9 +47,22 @@ Once it is connected, ask it something you know the answer to:
 
 ## ChatGPT
 
-Under **Settings → Connectors**, add a custom connector with the same URL. The
-consent screen is ours, so the choices are the same. Tool availability inside a
-conversation depends on your ChatGPT plan and mode; that part is theirs, not ours.
+Custom servers live in the **ChatGPT desktop app**, not on the web. The desktop
+app, the Codex CLI and the IDE extension share one configuration, so you do this
+once and all three are connected.
+
+1. Open **Settings → MCP servers**.
+2. Select **Add server**.
+3. Name it `jotacular`, choose **Streamable HTTP**, and paste the address above.
+4. Save, then select **Restart**.
+5. Back in the server list, select **Authenticate**.
+
+Your browser opens on the same Jotacular consent screen — Google account, spaces,
+scopes — and approving it finishes the connection. In a conversation, type `/mcp`
+to see what is connected.
+
+ChatGPT on the web has no field for a custom address; it reaches remote tools
+through plugins instead. Use the desktop app.
 
 ## Claude Code
 

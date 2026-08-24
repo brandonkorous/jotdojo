@@ -10,6 +10,8 @@ import type { Align } from "@/lib/toolbar-side";
 import type { CanvasTool } from "@/lib/canvas-tool";
 import { listNotesAction, createNoteAction } from "@/app/actions";
 import { ToolRail } from "./ToolRail";
+import { AddMenu } from "./AddMenu";
+import { useNarrow } from "@/lib/use-narrow";
 
 /**
  * All of the app's chrome: one floating pill, top of the canvas.
@@ -35,7 +37,7 @@ import { ToolRail } from "./ToolRail";
  * Read the comments on both rules before changing either.
  */
 export function Chrome({
-  align, user, dimmed, tool, onTool, onCamera, onMic,
+  align, user, dimmed, tool, onTool, onCamera, onMic, onTextBox,
 }: {
   align: Align;
   user: { name?: string | null; image?: string | null; email?: string | null } | null;
@@ -44,9 +46,29 @@ export function Chrome({
   onTool: (tool: CanvasTool) => void;
   onCamera: () => void;
   onMic: () => void;
+  onTextBox: () => void;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  const narrow = useNarrow();
+  // Only ever false on a phone -- CSS keeps every mode showing above the
+  // breakpoint, and a rail that cannot collapse must not pretend it is shut.
+  const [railOpen, setRailOpen] = useState(true);
+  useEffect(() => { setRailOpen(!narrow); }, [narrow]);
+
+  /**
+   * On a phone the first tap OPENS the rail and chooses nothing.
+   *
+   * Otherwise the one visible button would be both "the tool you are holding"
+   * and "the four you are not", and tapping it would have to guess which was
+   * meant. Expand, choose, collapse -- and choosing the tool already in hand
+   * still opens its options, because by then the rail is showing. ADR-101.
+   */
+  const tapTool = (next: CanvasTool) => {
+    if (!railOpen) return void setRailOpen(true);
+    onTool(next);
+    if (narrow) setRailOpen(false);
+  };
   const [notes, setNotes] = useState<CommandItem[]>([]);
   const [, startTransition] = useTransition();
 
@@ -114,10 +136,12 @@ export function Chrome({
 
         <span aria-hidden className="jd-rail-sep-v" />
 
-        <ToolRail
-          tool={tool}
-          onTool={onTool}
-          onAction={(id) => (id === "cam" ? onCamera() : onMic())}
+        <ToolRail tool={tool} onTool={tapTool} open={railOpen} />
+
+        <AddMenu
+          onPhoto={onCamera}
+          onVoice={onMic}
+          onNote={() => { onTextBox(); if (narrow) setRailOpen(false); }}
         />
 
         <span aria-hidden className="jd-rail-sep-v" />

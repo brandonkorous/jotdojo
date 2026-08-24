@@ -3,6 +3,7 @@ import { type Tx } from "@jotacular/db";
 import { NotFound } from "./errors";
 import { type Stroke } from "./ink-doc";
 import { type TextBox } from "./ink-text";
+import { type ImageOnPage } from "./ink-image";
 
 /**
  * Taking hold of an ink page, and putting it back. docs/08-ink.md, ADR-058.
@@ -46,13 +47,14 @@ export async function lockPageCount(tx: Tx, blockId: string): Promise<LockedPage
 /** Lock the page and read it. For edits, which have to see what they change. */
 export async function lockPage(
   tx: Tx, blockId: string,
-): Promise<LockedPage & { strokes: Stroke[]; texts: TextBox[] }> {
+): Promise<LockedPage & { strokes: Stroke[]; texts: TextBox[]; images: ImageOnPage[] }> {
   const rows = await tx.execute(sql`
     SELECT b.id AS block_id, b.space_id, b.note_id, a.id AS artifact_id,
            a.strokes_version AS version,
            jsonb_array_length(a.strokes -> 'strokes') AS count,
            a.strokes -> 'strokes' AS page,
-           a.strokes -> 'texts' AS texts
+           a.strokes -> 'texts' AS texts,
+           a.strokes -> 'images' AS images
       FROM blocks b
       JOIN media_assets a ON a.id = b.artifact_id
      WHERE b.id = ${blockId} AND b.kind = 'ink'
@@ -65,6 +67,8 @@ export async function lockPage(
     strokes: (row.page as Stroke[] | null) ?? [],
     // NULL for every page written before ADR-065, which is most of them.
     texts: (row.texts as TextBox[] | null) ?? [],
+    // And NULL for every page written before ADR-103, which is all of them.
+    images: (row.images as ImageOnPage[] | null) ?? [],
   };
 }
 
@@ -138,8 +142,34 @@ export async function writeTexts(
      WHERE id = ${artifactId}
     RETURNING strokes_version AS version
   `);
-  return Number((rows as unknown as Array<{ version: number }>)[0]?.version ?? 0);
+  return version(rows);
 }
+
+/**
+ * Replace the page's image placements. ADR-103.
+ *
+ * Its own statement rather than `writeTexts` with the path passed in. That was
+ * the first attempt and Postgres rejected it outright -- a `jsonb_set` path
+ * built as a nested `sql` fragment does not render as a literal, and the
+ * failure is a 42601 syntax error rather than anything the types could catch.
+ * Two statements that each say what they write is worth more than one that has
+ * to be told.
+ */
+export async function writeImages(
+  tx: Tx, artifactId: string, images: ImageOnPage[],
+): Promise<number> {
+  const rows = await tx.execute(sql`
+    UPDATE media_assets
+       SET strokes = jsonb_set(strokes, '{images}', ${JSON.stringify(images)}::jsonb),
+           strokes_version = strokes_version + 1
+     WHERE id = ${artifactId}
+    RETURNING strokes_version AS version
+  `);
+  return version(rows);
+}
+
+const version = (rows: unknown): number =>
+  Number((rows as Array<{ version: number }>)[0]?.version ?? 0);
 
 async function write(tx: Tx, artifactId: string, next: ReturnType<typeof sql>): Promise<number> {
   const rows = await tx.execute(sql`

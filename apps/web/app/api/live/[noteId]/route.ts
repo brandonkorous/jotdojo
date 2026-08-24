@@ -41,7 +41,18 @@ export async function GET(
     return new Response("No such note", { status: 404 });
   }
 
-  return new Response(stream(noteId, request.signal), {
+  // Subscribed BEFORE the response exists, so a database that is refusing
+  // connections becomes a plain 503 instead of a stream that dies mid-pipe.
+  // The page works without a live channel, and EventSource comes back by itself.
+  const relay: Relay = { send: () => {} };
+  let unsubscribe: () => void;
+  try {
+    unsubscribe = await subscribeToNote(noteId, (event) => relay.send(frame(event)));
+  } catch {
+    return new Response("The live channel is unavailable", { status: 503 });
+  }
+
+  return new Response(stream(relay, unsubscribe, request.signal), {
     headers: {
       "Content-Type": "text/event-stream; charset=utf-8",
       "Cache-Control": "no-cache, no-transform",
@@ -53,25 +64,31 @@ export async function GET(
   });
 }
 
-function stream(noteId: string, signal: AbortSignal): ReadableStream<Uint8Array> {
+/** Where a frame goes until the stream exists to carry it. */
+type Relay = { send: (chunk: string) => void };
+
+/**
+ * `start` runs as the stream is constructed and `fanOut` cannot interleave with
+ * it, so nothing published after LISTEN falls into the gap.
+ */
+function stream(
+  relay: Relay, unsubscribe: () => void, signal: AbortSignal,
+): ReadableStream<Uint8Array> {
   const encode = new TextEncoder();
 
   return new ReadableStream({
-    async start(controller) {
+    start(controller) {
       let open = true;
       const send = (chunk: string) => {
         if (!open) return;
         try { controller.enqueue(encode.encode(chunk)); } catch { close(); }
       };
+      relay.send = send;
 
       // A first frame immediately, so the client's `onopen` is not waiting on
       // somebody else to do something before it believes it is connected.
       send(": open\n\n");
 
-      // Awaited: returning before LISTEN completes would drop anything published
-      // while this page was still opening, which is exactly when somebody else is
-      // most likely to be drawing on it.
-      const unsubscribe = await subscribeToNote(noteId, (event) => send(frame(event)));
       const keepalive = setInterval(() => send(": keepalive\n\n"), KEEPALIVE_MS);
 
       function close() {
@@ -82,7 +99,10 @@ function stream(noteId: string, signal: AbortSignal): ReadableStream<Uint8Array>
         try { controller.close(); } catch { /* already closed by the runtime */ }
       }
 
-      signal.addEventListener("abort", close);
+      // An already-aborted signal never fires, and the LISTEN handler would
+      // outlive a request nobody is reading.
+      if (signal.aborted) close();
+      else signal.addEventListener("abort", close);
     },
   });
 }

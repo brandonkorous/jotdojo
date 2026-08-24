@@ -149,7 +149,7 @@ The GitHub MCP incident of May 2025 — a malicious issue hijacking an agent int
 | Client | Status |
 |---|---|
 | Claude (web, desktop, mobile) | Primary target. Full custom remote connector support on consumer plans |
-| ChatGPT | Developer-mode custom connectors on paid plans; **write-capable connectors restricted to Business, Enterprise, Edu** |
+| ChatGPT | Desktop app, Codex CLI and IDE extension add a remote server directly under Settings -> MCP servers, and share one config. Web has no field for a custom address: developer-mode connectors on paid plans, **write-capable restricted to Business, Enterprise, Edu** |
 | Gemini consumer app | No custom connector support. API and Enterprise surfaces only |
 | Claude Code, Codex, Cursor | Work today, and the best demo for the founder persona |
 

@@ -39,6 +39,29 @@ export function registerMediaRoutes(app: FastifyInstance) {
     (_req, body, done) => done(null, body as Buffer),
   );
 
+  /**
+   * What the bytes ARE, from the extension the key already carries.
+   *
+   * This served `application/octet-stream` for everything, and a browser will
+   * not decode an image it is told is a byte stream -- so every photograph on
+   * the canvas rendered as nothing at all in local development, with a 200 and
+   * the right bytes on the wire. The line was already a ternary whose two
+   * branches were identical, which is the shape of an intention that never
+   * landed.
+   *
+   * Derived rather than stored: `mediaKey` builds the extension from the
+   * content type at upload (`extensionFor`), so the key is already the record.
+   * Azure serves its own type and never reaches here.
+   */
+  const TYPES: Record<string, string> = {
+    png: "image/png", jpg: "image/jpeg", webp: "image/webp", heic: "image/heic",
+    webm: "audio/webm", m4a: "audio/mp4", mp3: "audio/mpeg",
+    wav: "audio/wav", ogg: "audio/ogg",
+  };
+
+  const typeOf = (key: string): string =>
+    TYPES[key.split(".").pop()?.toLowerCase() ?? ""] ?? "application/octet-stream";
+
   type Params = { "*": string };
   type Query = { expires?: string; sig?: string };
 
@@ -92,7 +115,7 @@ export function registerMediaRoutes(app: FastifyInstance) {
       const bytes = await readFile(full);
       return reply
         .header("cache-control", "private, max-age=300")
-        .type(request.query.expires ? "application/octet-stream" : "application/octet-stream")
+        .type(typeOf(key))
         .send(bytes);
     } catch {
       return reply.code(404).send({

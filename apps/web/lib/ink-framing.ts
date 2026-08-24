@@ -32,11 +32,16 @@ export class InkFraming {
    * new kind of object. ADR-065.
    */
   fitTo(strokes: readonly Stroke[], texts?: Bounds | null) {
-    const ink = strokesBounds(strokes);
-    const box = ink && texts ? union(ink, texts) : (ink ?? texts ?? null);
-    this.view.fitTo(box, this.surface.width, this.surface.height);
+    this.view.fitTo(this.contentBounds(strokes, texts), this.surface.width, this.surface.height);
     this.tell();
     this.painter.now();
+  }
+
+  /** Everything on the page, of every kind. Null when the page is empty, which
+   *  is what `fitTo` reads as "open exactly where a fresh note opens". */
+  contentBounds(strokes: readonly Stroke[], objects?: Bounds | null): Bounds | null {
+    const ink = strokesBounds(strokes);
+    return ink && objects ? union(ink, objects) : (ink ?? objects ?? null);
   }
 
   /**

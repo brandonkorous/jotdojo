@@ -54,6 +54,18 @@
   opacity: 0.75;
 }
 
+/* Trouble is still the same small pill in the same place -- it does not grow,
+   jump or take the middle of the screen. It is drawn at full strength and
+   ringed in the error colour, which is the difference between "you may want to
+   know" and "this did not happen". Before this, trouble and a saved-flash were
+   the same object with one different opacity, and a failed photo upload read as
+   quietly as "Jot saved.". */
+.jd-live[data-tone="trouble"] {
+  box-shadow:
+    0 6px 24px -8px color-mix(in oklch, var(--color-base-content) 22%, transparent),
+    inset 0 0 0 1px color-mix(in oklch, var(--color-error) 45%, transparent);
+}
+
 /* Colour is never the only signal (docs/10) -- the words carry the meaning and
    the dot is a second, quieter one. */
 .jd-live-dot {
@@ -67,6 +79,19 @@
 .jd-live-dot[data-tone="trouble"] { background: var(--color-error); }
 .jd-live-dot[data-tone="standing"] { background: var(--color-agent); }
 .jd-live[data-tone="trouble"] .jd-live-text { opacity: 1; }
+
+/* The one place the line is allowed to ask for an eye. Once, on arrival, and
+   never again -- a status that keeps moving is a status people turn off. */
+.jd-live[data-tone="trouble"] { animation: jd-live-arrive 220ms var(--ease, ease); }
+
+@keyframes jd-live-arrive {
+  from { transform: translateY(0.375rem); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .jd-live[data-tone="trouble"] { animation: none; }
+}
 
 .jd-live-more {
   display: flex;

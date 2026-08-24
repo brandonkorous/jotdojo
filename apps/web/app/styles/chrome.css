@@ -82,96 +82,6 @@
   background: var(--color-base-content);
 }
 
-/* ---------------------------------------------------------------------------
- * Pen size. ADR-059.
- *
- * A range rather than three buttons: an endless canvas has no page size for
- * "medium" to mean anything against. The travel is geometric, so the thumb
- * has as much room in the handwriting sizes as in the poster ones.
- * ------------------------------------------------------------------------ */
-
-.jd-pen-size {
-  display: flex;
-  min-width: 0;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0 0.5rem;
-}
-
-/* The thumb is the target, and a 28px band is not one. */
-@media (pointer: coarse) {
-  .jd-size-slider { height: 2.75rem; }
-}
-
-/* A fixed berth, so a nib growing from a pinprick to a slab does not shove
-   the slider along the pill as it goes. */
-.jd-nib-well {
-  display: flex;
-  flex: none;
-  width: 1.5rem;
-  height: 1.5rem;
-  align-items: center;
-  justify-content: center;
-}
-
-/* Wide enough to aim at with a thumb, and the first thing to give when the
-   pill has to fit across a phone beside five colours. */
-.jd-size-slider {
-  flex: 0 1 5.5rem;
-  min-width: 3.25rem;
-  height: 1.75rem;
-  appearance: none;
-  background: transparent;
-  cursor: pointer;
-}
-
-.jd-size-slider::-webkit-slider-runnable-track {
-  height: 2px;
-  border-radius: 9999px;
-  background: color-mix(in oklch, var(--color-base-content) 22%, transparent);
-}
-
-.jd-size-slider::-moz-range-track {
-  height: 2px;
-  border-radius: 9999px;
-  background: color-mix(in oklch, var(--color-base-content) 22%, transparent);
-}
-
-.jd-size-slider::-webkit-slider-thumb {
-  appearance: none;
-  width: 1rem;
-  height: 1rem;
-  margin-top: -0.4375rem;
-  border-radius: 9999px;
-  background: var(--color-base-content);
-  box-shadow: 0 1px 2px rgb(0 0 0 / 0.25);
-}
-
-.jd-size-slider::-moz-range-thumb {
-  width: 1rem;
-  height: 1rem;
-  border: 0;
-  border-radius: 9999px;
-  background: var(--color-base-content);
-  box-shadow: 0 1px 2px rgb(0 0 0 / 0.25);
-}
-
-.jd-size-slider:focus-visible {
-  outline: 2px solid var(--color-primary);
-  outline-offset: 2px;
-  border-radius: 9999px;
-}
-
-/* The nib carries the size until it would outgrow the pill; past that the
-   number is the only honest signal left. */
-.jd-size-read {
-  min-width: 1.5rem;
-  flex: none;
-  font-size: 0.6875rem;
-  font-variant-numeric: tabular-nums;
-  text-align: right;
-  opacity: 0.6;
-}
 
 .jd-tool-danger:hover:not(:disabled) {
   background: color-mix(in oklch, var(--color-error) 16%, transparent);
@@ -219,4 +129,35 @@
 [data-base-ui-portal] {
   position: relative;
   z-index: 60;
+}
+
+/* ---------------------------------------------------------------------------
+ * The collapsing tool rail. ADR-101.
+ *
+ * Ten 44px buttons is ~484px of pill on a phone whose viewport is 390pt, so the
+ * old rail did not merely feel crowded -- it overflowed and clipped its last
+ * icon. Voice and photo left for the add menu, and below the breakpoint the
+ * five modes collapse to the one in hand.
+ *
+ * CSS decides what SHOWS; `useNarrow` decides what a tap MEANS, and the two
+ * share this number. Change one and change the other.
+ * ------------------------------------------------------------------------- */
+@media (max-width: 30rem) {
+  .jd-rail[data-open="false"] .jd-tool:not(.jd-tool-active) { display: none; }
+
+  /* The chip says it opens, without a second button beside it to hit by
+     mistake -- the whole 44px target is still the tool. */
+  .jd-rail .jd-tool[data-chip] { position: relative; }
+  .jd-rail .jd-tool[data-chip]::after {
+    content: "";
+    position: absolute;
+    right: 0.3125rem;
+    bottom: 0.3125rem;
+    width: 0.3125rem;
+    height: 0.3125rem;
+    border-right: 1.5px solid currentColor;
+    border-bottom: 1.5px solid currentColor;
+    transform: rotate(45deg);
+    opacity: 0.5;
+  }
 }

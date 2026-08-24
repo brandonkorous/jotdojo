@@ -22,7 +22,8 @@
     "smoke:gestures": "tsx scripts/smoke-gestures.ts",
     "smoke:merge": "tsx scripts/smoke-merge.ts",
     "smoke:live-http": "dotenv -e ../../.env -- tsx scripts/smoke-live-http.ts",
-    "smoke:export": "dotenv -e ../../.env -- tsx scripts/smoke-export.ts"
+    "smoke:export": "dotenv -e ../../.env -- tsx scripts/smoke-export.ts",
+    "smoke:images": "tsx scripts/smoke-images.ts"
   },
   "dependencies": {
     "@auth/core": "^0.41.3",

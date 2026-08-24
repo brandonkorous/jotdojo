@@ -1,8 +1,8 @@
-import type { InkDelta, Stroke, TextBox } from "@jotacular/domain";
+import type { ImageOnPage, InkDelta, NoteImage, Stroke, TextBox } from "@jotacular/domain";
 import type { InkTool } from "./canvas-tool";
 import { StrokeCapture } from "./ink-capture";
 import type { Bounds } from "./ink-geometry";
-import { mergePages, newcomers } from "./ink-merge";
+import { LiveMerge } from "./ink-engine-live";
 import { InkSurface } from "./ink-surface";
 import { InkInput, type InputHost } from "./ink-input";
 import { InkViewport } from "./ink-viewport";
@@ -16,7 +16,7 @@ import { Eraser } from "./ink-engine-erase";
 import { commitStroke, type Scene } from "./ink-draw";
 import { InkPainter } from "./ink-painter";
 import { DEFAULT_PEN, type InkStyle } from "./ink-style";
-import { InkTextLayer } from "./ink-text-layer";
+import { ObjectPlane } from "./ink-object-plane";
 import { clientRect, worldAt } from "./ink-screen";
 
 /**
@@ -47,20 +47,20 @@ export class InkEngine implements InputHost {
   private readonly input: InkInput;
   private readonly painter: InkPainter;
   private readonly framing: InkFraming;
-  /** Typed text, when a plane was supplied. Null on the marketing hero, which
-   *  mounts ink alone. */
-  private readonly texts: InkTextLayer | null;
+  /** Typed text and photographs, when a plane was supplied. Null on the
+   *  marketing hero, which mounts ink alone. ADR-065, ADR-103. */
+  private readonly plane: ObjectPlane | null;
   private readonly eraser: Eraser;
+  readonly remote: LiveMerge;
 
   constructor(opts: EngineOptions) {
     this.opts = opts;
     this.surface = new InkSurface(opts.committed, opts.live, this.view);
-    this.texts = opts.plane
-      ? new InkTextLayer(opts.plane, {
-        // A text box is an object on the page like a stroke is, so it travels
-        // as the same delta -- one version, one subscription. ADR-058, ADR-065.
-        onChange: (boxes) => opts.onDelta({ remove: [], upsert: [], texts: [...boxes] }),
+    this.plane = opts.plane
+      ? new ObjectPlane(opts.plane, {
+        onDelta: opts.onDelta,
         onGeometry: () => this.paintOverlay(),
+        imageSrc: opts.imageSrc ?? (async () => null),
       })
       : null;
     this.painter = new InkPainter(
@@ -71,11 +71,21 @@ export class InkEngine implements InputHost {
       strokes: () => this.strokes,
       setStrokes: (next) => { this.strokes = next; },
       texts: () => this.texts,
+      images: () => this.plane?.images ?? null,
       index: this.index,
       onDelta: opts.onDelta,
       onChange: opts.onSelectionChange,
       repaint: () => this.repaint(),
       overlay: () => this.paintOverlay(),
+    });
+    // What another device did. Exposed rather than relayed, the same call
+    // `selection` makes and for the same reason. ADR-058, ADR-103.
+    this.remote = new LiveMerge({
+      strokes: () => this.strokes,
+      setStrokes: (next) => { this.strokes = next; },
+      plane: () => this.plane,
+      repaint: () => this.repaint(),
+      dropSelection: () => this.dropSelection(),
     });
     this.eraser = new Eraser({
       strokes: () => this.strokes,
@@ -88,15 +98,17 @@ export class InkEngine implements InputHost {
 
     // Without this, a two-finger drag scrolls the page mid-stroke.
     this.live.style.touchAction = "none";
-    this.input = new InkInput(this.live, this);
+    this.input = new InkInput(this.live, this, opts.gestures);
   }
 
   destroy() {
     this.painter.cancel();
     this.input.destroy();
-    this.texts?.destroy();
+    this.plane?.destroy();
   }
 
+  /** The text half of the plane, which is all most call sites ever wanted. */
+  private get texts() { return this.plane?.texts ?? null; }
   setTool(tool: Tool) {
     // Leaving select drops the selection: a marquee that outlives the tool that
     // made it is a promise the next pen stroke will not keep.
@@ -105,8 +117,8 @@ export class InkEngine implements InputHost {
     this.strokeCapture.setStyle(tool, this.style.color, this.style.width);
   }
 
-  /** Whether a note takes a tap. Separate from the tool because the spine
-   *  reaches this engine as `pen` -- `canReachText` says why. ADR-085. */
+  /** Whether a note takes a tap. Separate from the tool: the spine reaches
+   *  this engine as `pen`, and `canReachText` says why. ADR-085. */
   setTextReachable(on: boolean) { this.texts?.setReachable(on); }
 
   /** Colour and width for the CURRENT tool. React owns one of these per tool
@@ -116,54 +128,43 @@ export class InkEngine implements InputHost {
     this.strokeCapture.setStyle(this.currentTool, style.color, style.width);
   }
 
-  /** Load an existing page, and frame it. Opening a note on an endless
-   *  surface must never land on empty paper miles from the writing. */
-  load(strokes: Stroke[], texts: TextBox[] = []) {
+  /** Load a page and frame it: opening a note on an endless surface must never
+   *  land on empty paper miles from the writing. */
+  load(strokes: Stroke[], texts: TextBox[] = [], images: ImageOnPage[] = []) {
     this.strokes = strokes.map((s) => ({ ...s, pts: [...s.pts] }));
-    this.texts?.load(texts);
+    this.plane?.load(texts, images);
     this.dropSelection();
     this.fitToContent();
   }
 
-  /** Somebody else's text boxes. Like applyRemote for strokes: the camera does
-   *  not move, and the box being typed into is not overwritten. */
-  applyRemoteTexts(texts: TextBox[]) { this.texts?.applyRemote(texts); }
-
-  /**
-   * Strokes somebody else drew. The camera does not move and the selection is
-   * not touched -- writing here must not scroll out from under somebody
-   * because a laptop in the next room caught up. ADR-058.
-   */
-  applyRemote(incoming: Stroke[]) {
-    if (newcomers(this.strokes, incoming).length === 0) return;
-    this.strokes = mergePages(this.strokes, incoming);
-    this.repaint();
+  /** Give a home to photographs taken before placements existed. Frames the
+   *  page again when it rescued any, because the content just grew. ADR-103. */
+  adoptImages(known: readonly NoteImage[]) {
+    const at = this.framing.contentBounds(this.strokes, this.plane?.bounds());
+    if (this.plane?.images.adoptOrphans(known, at)) this.fitToContent();
   }
 
-  /** Adopt the server's page, keeping what is still queued here. The selection
-   *  goes, because the strokes it pointed at may not have survived. */
-  reconcile(server: Stroke[], pending: readonly Stroke[]) {
-    this.strokes = mergePages(server, pending);
-    this.dropSelection();
-    this.repaint();
+  /** Put a photograph where somebody is looking. The bytes are already a
+   *  `blocks` row; the page only learns where the picture goes. ADR-103. */
+  placeImage(blockId: string, natural: { w: number; h: number }) {
+    const r = this.surface.rect();
+    this.plane?.images.place(blockId, natural, this.view, { w: r.width, h: r.height });
+    this.paintOverlay();
   }
 
-  fitToContent() { this.framing.fitTo(this.strokes, this.texts?.bounds()); }
+  fitToContent() { this.framing.fitTo(this.strokes, this.plane?.bounds()); }
 
   resize(cssWidth: number, cssHeight: number) { this.framing.resize(cssWidth, cssHeight); }
 
   dropSelection() { this.editor.drop(); }
 
   /** Editing what was caught is `SelectionEditor`, exposed rather than relayed:
-   *  eight one-line wrappers only restated what it already says, and every new
-   *  action added a ninth. ADR-084. */
+   *  one-line wrappers only restated it, and every new action added another. */
   get selection() { return this.editor; }
 
   // ------------------------------------------------------------- input ----
-  //
   // `InkInput` owns what a pointer is DOING; everything below is what the page
-  // does about it. The host contract is narrow on purpose -- input may ask for
-  // changes and may never paint.
+  // does about it. Input may ask for changes and may never paint.
 
   get tool() { return this.currentTool; }
   get sel() { return this.editor.sel; }
@@ -173,25 +174,25 @@ export class InkEngine implements InputHost {
    *  so a stray stroke never lands under a box somebody is editing. */
   tapText(x: number, y: number): boolean {
     const width = this.view.visible(this.surface.width, this.surface.height).w;
-    const took = this.texts?.tapAt(x, y, this.style, width) ?? false;
-    if (took) this.opts.onTextPlaced?.();
-    return took;
+    if (!this.texts?.tapAt(x, y, this.style, width)) return false;
+    this.opts.onTextPlaced?.();
+    return true;
   }
 
-  /** The box being dragged out. Overlay only -- nothing is stored until the
-   *  pointer lifts, so an abandoned drag leaves no trace. ADR-078. */
+  /** The box being dragged out. Overlay only: an abandoned drag leaves no
+   *  trace, because nothing is stored until the pointer lifts. ADR-078. */
   previewText(rect: Bounds | null) { this.pendingText = rect; }
 
   /** A box at exactly the rectangle somebody drew. ADR-078. */
   drawText(rect: Bounds) {
-    if (!this.texts?.drawAt(rect, this.style)) return;
-    this.opts.onTextPlaced?.();
+    if (this.texts?.drawAt(rect, this.style)) this.opts.onTextPlaced?.();
   }
 
   /** One object, by tapping it. Same screen-space reach as the eraser, so what
-   *  you can rub out you can also pick up. ADR-084. */
+   *  you can rub out you can also pick up -- of all three kinds. ADR-084. */
   tapSelect(x: number, y: number) {
-    this.editor.pickAt(x, y, ERASE_RADIUS / this.view.k, this.texts?.all ?? []);
+    const reach = ERASE_RADIUS / this.view.k;
+    this.editor.pickAt(x, y, reach, this.texts?.all ?? [], this.plane?.images.all ?? []);
   }
 
   /** The same, from CLIENT coordinates: React has a MouseEvent, not a document
@@ -233,7 +234,6 @@ export class InkEngine implements InputHost {
 
   // ----------------------------------------------------------- render ----
   // WHEN to paint is `InkPainter`; this is only which paint to ask for.
-
   private get scene(): Scene {
     return {
       strokes: this.strokes, sel: this.editor.sel, capture: this.strokeCapture,

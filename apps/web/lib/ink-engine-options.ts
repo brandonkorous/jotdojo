@@ -39,4 +39,21 @@ export type EngineOptions = {
    *  because scaling a canvas through a transformed ancestor blurs it. Omit it
    *  and the engine is exactly what it was before ADR-065. */
   plane?: HTMLElement;
+  /**
+   * Where a photograph's bytes are, signed on demand. ADR-103.
+   *
+   * A function rather than a URL map: the links are time-limited, the canvas
+   * may hold a page for an afternoon, and the plane asks once per block rather
+   * than once per frame.
+   */
+  imageSrc?: (blockId: string) => Promise<string | null>;
+  /**
+   * The whole canvas shell, for camera gestures. ADR-102.
+   *
+   * The camera listens HERE rather than on the drawing surface, because the
+   * drawing surface takes no pointers while somebody is typing -- so before
+   * this, a page could not be panned or pinched on the tool it opens with.
+   * Omit it and the camera is fenced to the ink tools, as it was.
+   */
+  gestures?: HTMLElement;
 };

@@ -152,10 +152,16 @@ check("...with the strokes still counted", afterStrokes.strokeCount === 1,
   String(afterStrokes.strokeCount));
 check("a note with no handwriting has no layer to find",
   (await findInkBlock(A, (await createNote(A, space, "typed")).id)) === null);
-check("hasInk sees the block on a loaded note",
-  hasInk(await getNote(A, layered.id)) === true);
-check("...and says no for a note that has none",
-  hasInk(await getNote(A, (await createNote(A, space, "x")).id)) === false);
+// The page, not the block. ADR-102 mounts the ink layer on every note, so
+// "a block of kind ink exists" is true everywhere and says nothing. ADR-103.
+check("hasInk says yes for a note with strokes on it",
+  (await hasInk(A, layered.id)) === true);
+check("...and no for a note that has none",
+  (await hasInk(A, (await createNote(A, space, "x")).id)) === false);
+const bare = await createNote(A, space, "bare");
+await ensureInkBlock(A, bare.id, { w: 800, h: 600 });
+check("...and no for a note whose layer exists but is empty",
+  (await hasInk(A, bare.id)) === false);
 
 
 console.log(failures === 0 ? "\nink smoke: all checks passed" : `\nink smoke: ${failures} FAILED`);

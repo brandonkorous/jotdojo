@@ -38,7 +38,7 @@ export default async function Home() {
           noteId={note.id}
           initialBody={note.body}
           initialRevision={note.revision}
-          hasInk={hasInk(note)}
+          hasInk={await hasInk(actor, note.id)}
           user={user}
           toolbarPreference={preference}
         />
