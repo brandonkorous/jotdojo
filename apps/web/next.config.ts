@@ -49,7 +49,11 @@ const config: NextConfig = {
   async redirects() {
     return [
       {
-        source: "/blog/connect-jotacular-to-claude",
+        // The SOURCE is the old slug, and has to stay that way. The rename
+        // sweep rewrote both ends of this rule in the same commit that created
+        // it, which made the post 308 to itself -- an infinite loop on the one
+        // page the footer and the "Connect your AI" band both link to. ADR-091.
+        source: "/blog/connect-jotdojo-to-claude",
         destination: "/blog/connect-jotacular-to-claude",
         permanent: true,
       },
