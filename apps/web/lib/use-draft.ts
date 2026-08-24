@@ -25,6 +25,9 @@ export function useDraft() {
   // Counted rather than flagged, so the "sign in to keep this" line shows
   // exactly once without a ref being mutated during render.
   const [saves, setSaves] = useState(0);
+  // Whether the resume round trip has come back. Nothing decorative goes on the
+  // paper before it, or a returning visitor sees it flash over their own words.
+  const [ready, setReady] = useState(false);
 
   const note = useRef<string | null>(null);
   const revision = useRef(0);
@@ -38,8 +41,10 @@ export function useDraft() {
     let alive = true;
     resumed.current = resumeDraftAction();
     void resumed.current.then((draft) => {
+      if (!alive) return;
+      setReady(true);
       // Somebody who started typing during the round trip keeps what they typed.
-      if (!alive || !draft || note.current || pending.current !== null) return;
+      if (!draft || note.current || pending.current !== null) return;
       note.current = draft.noteId;
       revision.current = draft.revision;
       setNoteId(draft.noteId);
@@ -138,5 +143,5 @@ export function useDraft() {
     };
   }, []);
 
-  return { body, noteId, hasInk, state, limit, saves, onChange, ensureNote };
+  return { body, noteId, hasInk, ready, state, limit, saves, onChange, ensureNote };
 }

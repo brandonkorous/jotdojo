@@ -151,3 +151,78 @@
 @media (prefers-reduced-motion: reduce) {
   .jd-hero-frame { transition: none; transform: none; }
 }
+
+/* --- the jot already on the paper --------------------------------------- */
+
+/* Typed lines and drawn lines, the pair from the Open Graph card, so the page
+ * looks like the link that led to it. Above the textarea rather than inside it
+ * -- the draft is real, and nothing decorative may ever reach Postgres. */
+.jd-hero-jot {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: calc(var(--pad-block) + 2.75rem) 1.25rem calc(var(--foot) + 0.75rem);
+  pointer-events: none;
+}
+
+/* Cleared for whoever showed up, on the first touch anywhere in the hero. It
+ * leaves the way a page is turned rather than the way a dialog closes. */
+.jd-hero[data-engaged="true"] .jd-hero-jot {
+  opacity: 0;
+  transform: translateY(-0.4rem);
+  visibility: hidden;
+  transition: opacity 380ms ease-out, transform 380ms ease-out, visibility 0s 380ms;
+}
+
+/* The same metrics as the textarea, in the same place on the surface, so the
+ * lines read as typed into it rather than printed on it. */
+.jd-hero-jot-typed {
+  flex: none;
+  font-size: 16px;
+  line-height: 1.7;
+}
+.jd-hero-jot-typed p { margin: 0; }
+
+/* design.md §10 keeps the hand for annotations. This is one: the pen, writing
+   a word, beside the pen drawing a chair. */
+.jd-hero-jot-typed .jd-hero-jot-hand {
+  margin-top: 0.75rem;
+  font-size: 1.4rem;
+  line-height: 1.2;
+  color: var(--color-agent);
+  transform: rotate(-1.5deg);
+}
+
+/* On a short window the drawing gives way rather than being cut off by the
+   status bar: it shrinks, and `xMaxYMax` keeps it in its corner while it does. */
+.jd-hero-jot-drawn {
+  align-self: flex-end;
+  flex: 0 1 auto;
+  min-height: 0;
+  width: min(21rem, 100%);
+  height: auto;
+  opacity: 0.85;
+}
+.jd-hero-jot-heart { stroke: var(--color-agent); }
+
+/* While the jot is on the paper the placeholder stays out from under it, and
+ * comes back only once the paper is clear. */
+.jd-hero-stage:has(.jd-hero-jot) .jd-hero-input::placeholder { opacity: 0; }
+.jd-hero[data-engaged="true"] .jd-hero-stage:has(.jd-hero-jot) .jd-hero-input::placeholder {
+  opacity: 0.5;
+  transition: opacity 240ms ease-out 380ms;
+}
+
+/* Still cleared, just not swept away. After the rule above, or it loses to it. */
+@media (prefers-reduced-motion: reduce) {
+  .jd-hero[data-engaged="true"] .jd-hero-jot { transform: none; transition: none; }
+}
+
+/* One grid at a time: the ink layer brings its own on a different pitch
+   (ADR-053), and two of them moire. The ink layer's is the real one -- it
+   tracks the pan, and the stage's is only there so the paper is never blank. */
+.jd-hero-stage:has(.jd-ink-mount) { background-image: none; }

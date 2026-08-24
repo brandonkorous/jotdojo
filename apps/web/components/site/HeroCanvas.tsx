@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { keepDraftAction } from "@/app/site/actions";
 import { isInk, type CanvasTool } from "@/lib/canvas-tool";
 import { DEFAULT_STYLES, styleFor, type InkStyles } from "@/lib/ink-style";
@@ -9,6 +9,7 @@ import { useMarks } from "@/lib/use-marks";
 import { InkCanvas } from "@/components/InkCanvas";
 import { ToolRail } from "@/components/ToolRail";
 import { ToolOptions } from "@/components/ToolOptions";
+import { HeroJot } from "@/components/site/HeroJot";
 
 const PLACEHOLDER = "The thing you would rather not forget…";
 
@@ -29,7 +30,7 @@ type Props = {
 };
 
 export function HeroCanvas({ children, appHref }: Props) {
-  const { body, noteId, hasInk, state, limit, saves, onChange, ensureNote } = useDraft();
+  const { body, noteId, hasInk, ready, state, limit, saves, onChange, ensureNote } = useDraft();
   const [tool, setTool] = useState<CanvasTool>("text");
   const [inkStarted, setInkStarted] = useState(false);
   const showInk = inkStarted || hasInk;
@@ -42,6 +43,11 @@ export function HeroCanvas({ children, appHref }: Props) {
   // Anything already on the page counts as engagement, so a returning visitor
   // never sees the headline sitting on top of what they wrote OR drew.
   const engaged = touched || body.length > 0 || hasInk;
+
+  // The demo jot goes on once, onto paper nobody has used yet, and stays
+  // mounted afterwards so engaging with it can clear it rather than cut it.
+  const [jot, setJot] = useState(false);
+  useEffect(() => { if (ready && !engaged) setJot(true); }, [ready, engaged]);
 
   const setStyle = (
     which: "pen" | "highlighter", patch: { color?: string; width?: number },
@@ -94,6 +100,8 @@ export function HeroCanvas({ children, appHref }: Props) {
               onSelect={syncBlock}
               onKeyDown={onKeyDown}
             />
+
+            {jot && <HeroJot />}
 
             {showInk && noteId && (
               <div className="jd-ink-mount" data-active={isInk(tool)}>
