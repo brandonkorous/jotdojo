@@ -65,57 +65,70 @@
 
 /* --- the page moving under the reader ------------------------------------ */
 
+/* The latch. ADR-093.
+ *
+ * Everything that REVEALS content is a one-shot animation, held paused until
+ * components/site/Reveal.tsx marks its section seen. `both` fill shows the
+ * from-state while paused and holds the to-state forever after, so scrolling
+ * back up never plays a reveal in reverse -- a reader looking for something
+ * they have already read must not watch it un-write itself.
+ *
+ * `[data-motion]` is set by that component. Without JavaScript this rule
+ * matches nothing, no animation is ever paused, and the page is simply the
+ * page. `.jd-story` is listed beside the sections because it is a scene of its
+ * own inside one, and its thirteen beats must not start when the band's first
+ * pixel appears. */
+@media (prefers-reduced-motion: no-preference) {
+  [data-motion] :is(.jd-site-main section, .jd-site-foot, .jd-story):not([data-seen]) * {
+    animation-play-state: paused;
+  }
+  /* Pseudo-elements are not descendants, so `*` misses them: the rule under an
+     example and the one down the margin of the gap are both `::before`. */
+  [data-motion] :is(.jd-site-main section, .jd-site-foot, .jd-story):not([data-seen]) *::before {
+    animation-play-state: paused;
+  }
+
+  /* Each band says its piece in order: the heading arrives, the pen goes under
+     it, and the lede follows the heading rather than racing it. */
+  .jd-band > :is(h1, h2) {
+    animation: jd-rise 620ms var(--jd-ease, cubic-bezier(0.22, 1, 0.36, 1)) both;
+  }
+  .jd-band > .jd-lede {
+    animation: jd-rise 620ms var(--jd-ease, cubic-bezier(0.22, 1, 0.36, 1)) both;
+    animation-delay: 90ms;
+  }
+  /* Everything the band says after that, and the button it ends on. The turn,
+     the footnote and the fine print are all `<p>` already. */
+  .jd-band > :is(p, .jd-prose-2, .jd-never, .btn) {
+    animation: jd-rise 620ms var(--jd-ease, cubic-bezier(0.22, 1, 0.36, 1)) both;
+    animation-delay: 140ms;
+  }
+
+  /* The stroke is drawn after the words are on the page, never with them. A
+     pen underlines something it can already see. */
+  .jd-band .jd-ul-stroke {
+    --len: 1;
+    stroke-dasharray: 1;
+    animation: jd-ink 520ms var(--jd-ease, cubic-bezier(0.22, 1, 0.36, 1)) both;
+    animation-delay: 340ms;
+  }
+}
+
+/* The two things here that are NOT reveals, and so stay scroll-driven: a bar
+   that reports how far down the page you are, and a background that drifts
+   under it. Both are continuous state rather than content arriving, and both
+   are meant to run backwards when you scroll back. ADR-093. */
 @media (prefers-reduced-motion: no-preference) {
   @supports (animation-timeline: view()) {
-    /* The bar lifts off the paper once the page has moved beneath it. Six
-       rem, which is about the height of the first heading. */
     .jd-site-bar {
       animation: jd-bar both;
       animation-timeline: scroll(root);
       animation-range: 0 6rem;
     }
 
-    /* Each band says its piece in order: the heading arrives, the pen goes
-       under it, and the lede follows the heading rather than racing it.
-       `cover` rather than `entry` -- an entry range is only as long as the
-       element is tall, so on a two-line heading a stagger measured in it
-       would be a stagger of forty pixels and read as a glitch. */
-    .jd-band > :is(h1, h2) {
-      animation: jd-rise both;
-      animation-timeline: view();
-      animation-range: cover 6% cover 26%;
-    }
-    .jd-band > .jd-lede {
-      animation: jd-rise both;
-      animation-timeline: view();
-      animation-range: cover 9% cover 29%;
-    }
-    /* Everything the band says after that, and the button it ends on. The
-       turn, the footnote and the fine print are all `<p>` already. */
-    .jd-band > :is(p, .jd-prose-2, .jd-never, .btn) {
-      animation: jd-rise both;
-      animation-timeline: view();
-      animation-range: cover 8% cover 30%;
-    }
-
-    /* The stroke is drawn after the words are on the page, never with them.
-       A pen underlines something it can already see. */
-    .jd-band .jd-ul-stroke {
-      --len: 1;
-      stroke-dasharray: 1;
-      animation: jd-ink both;
-      animation-timeline: view();
-      animation-range: cover 22% cover 38%;
-    }
-
-    /* The dot grid drifts slower than the page it sits under. It moves on a
-       layer of its own so the drift is a transform rather than a repaint of
-       the whole section every frame.
-
-       `clip-path` and not `overflow: hidden`: hiding overflow would make this
-       band a scroll container, and every `view()` timeline inside it -- the
-       whole lake story -- would then be measured against a box that never
-       scrolls. */
+    /* `clip-path` and not `overflow: hidden`: hiding overflow would make this
+       band a scroll container, and a `view()` timeline inside it would then be
+       measured against a box that never scrolls. */
     .jd-band-quiet {
       position: relative;
       clip-path: inset(0);

@@ -4,6 +4,7 @@ import { appOrigin, siteOrigin } from "@/lib/hosts";
 import { brand } from "@/lib/brand";
 import { Wordmark } from "@/components/Brand";
 import { SiteFooter } from "@/components/site/SiteFooter";
+import { Reveal } from "@/components/site/Reveal";
 
 /**
  * The marketing site. ADR-010, ADR-040.
@@ -60,6 +61,7 @@ export default function SiteLayout({ children }: { children: React.ReactNode }) 
       {children}
 
       <SiteFooter />
+      <Reveal />
     </div>
   );
 }

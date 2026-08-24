@@ -4,6 +4,15 @@
  * these is a thing that happens on paper: a stroke drawn, a card settling, a
  * word written, tape pressed down. Nothing glows and nothing sparkles. */
 
+/* One curve for everything that arrives: quick off the mark, long settle. It
+   is declared here rather than in a theme block because it belongs to the
+   motion, and every rule that uses it also carries it as a fallback -- an
+   unresolvable `var()` does not fall back, it invalidates the whole
+   declaration, and the failure would be a page with no animation at all. */
+:root {
+  --jd-ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
 /* Ink drawing in, along its own path. `--len` is the path's length in user
    units, set where the shape is drawn -- only the shape knows it. */
 @keyframes jd-ink {

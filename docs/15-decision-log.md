@@ -3815,3 +3815,111 @@ nothing routed.
 
 **A sweep proves that a string changed everywhere it appears. It proves nothing
 about whether the thing the string named agreed to change with it.**
+
+### ADR-092 - Text reveals finish on `entry`, never on `cover`
+
+**Status.** Accepted, 2026-08-24.
+
+**Context.** ADR-088 gave the marketing page scroll-driven motion, and three of
+those animations clip TEXT: `jd-write` runs `clip-path: inset(... 100% ...)` to
+`inset(... -0.9em ...)`, so the words are literally written on. All three were
+ranged on `cover`.
+
+`cover` measures the subject's whole passage through the scrollport - from
+first appearing at the bottom to finally leaving the top. A range ending at
+`cover 34%` therefore does not finish until the element is somewhere near the
+middle of the viewport. Which means:
+
+- **"Connect your AI" shipped unreadable.** Scroll to that band and stop, which
+  is what a reader does, and it says *"Paste one link into Claude's settin"*,
+  *"Sign in, and pi ... reach."*, and for the third step nothing at all. The
+  stagger made it worse the further down the list you looked.
+- **The footer tagline stopped at "Where the thought lanc"** and stayed there
+  forever. At the bottom of a document `cover` progress is capped by how much
+  scroll is left, and there is none - the comment above that rule had already
+  worked this out for the footer columns and then kept `cover` for the tagline,
+  reasoning that a hand line caught mid-stroke still reads as a hand line. It
+  does not. It reads as a bug.
+
+**Decision.** Anything that clips text ranges on **`entry`**, which is measured
+against the element arriving in the viewport rather than against the scroll
+remaining. `entry 100%` is the moment the element is fully on screen, so a range
+that ends before it is guaranteed to complete - at the bottom of the document as
+readily as in the middle of it.
+
+`jd-fade` and `jd-rise` keep `cover`. Their partial state is dim or slightly
+displaced, which is legible; a clip's partial state is a different sentence.
+
+**Consequences.** The rule generalises: **a reveal whose half-state is wrong,
+rather than merely quiet, must complete on `entry`.** Opacity and transform can
+be caught anywhere and still say the right thing. `clip-path`, `width` and
+anything that hides characters cannot.
+
+The animation itself did not change. `jd-write` still writes, `view()` still
+drives it - only the range moved, in three declarations.
+
+`.jd-note-hand > p` also uses `jd-write`, on the named `--jd-story` timeline
+rather than on `view()`, and it is left alone: that one is the handwritten note
+being written inside a pinned scene, where the whole point is watching it
+happen, and it completes before the scene releases.
+
+### ADR-093 - A reveal plays once, and never plays backwards
+
+**Status.** Accepted, 2026-08-24. Supersedes the mechanism in ADR-088.
+
+**Context.** ADR-088 built the page's motion on `animation-timeline: view()`.
+That is not a trigger. It is a *function of scroll position* - the animation's
+progress is wherever the scrollbar is, so scrolling up plays every reveal in
+reverse. A reader who scrolls back to find something they have already read
+watches it un-fade, un-rise and un-write itself.
+
+That is the wrong behaviour for the same reason ADR-076 removed the opacity:
+somebody scrolling around is looking for something, and hiding it again is the
+one thing the page must not do.
+
+Being a function of scroll also made the reveals impossible to time. ADR-092
+had already caught the "Connect your AI" steps truncating mid-word, and the
+footer tagline was worse: three different scroll ranges, three different
+failures. `cover` could not finish because at the bottom of a document its
+progress is capped by the scroll left below. `entry` finished instantly because
+`view()` measures the element, and the tagline is one line tall - 24px of
+scroll. Borrowing the footer's timeline moved the whole stroke off the bottom
+of the screen, so it completed before it was visible. There was no correct
+range, because the mechanism was wrong.
+
+**Decision.** Reveals are **one-shot, time-based animations**, held paused until
+`components/site/Reveal.tsx` marks their section seen with an
+IntersectionObserver, and never unmarked. `both` fill shows the from-state while
+paused and holds the to-state forever after.
+
+The pause is one rule, not a rewrite of every selector:
+
+    [data-motion] :is(.jd-site-main section, .jd-site-foot, .jd-story):not([data-seen]) *
+
+`.jd-story` is listed beside the sections because it is a scene inside one, and
+its thirteen beats must not start when the band's first pixel appears.
+Pseudo-elements need their own copy of the rule - `*` does not match `::before`,
+and two of the reveals are drawn that way.
+
+`[data-motion]` is set by the component rather than assumed. Without JavaScript
+the rule matches nothing, no animation is ever paused, and the page is simply
+the page - which is the only acceptable failure mode for a mechanism whose
+resting state is *invisible*.
+
+**Consequences.** The lake story loses its scrub. That was the best thing on
+the page: thirteen beats under the reader's thumb, runnable backwards to watch
+the note write itself again. It is now a 3.3-second sequence that plays once.
+The delays are the old percentages at about 55ms each, so the order and the
+pauses the story was written around survive - the beat of nothing before the pen
+goes back, the weeks that pass before the question. A scene that rewinds is
+still a thing that hides what somebody already read, and the page holds one rule
+about that everywhere.
+
+**Two animations stay scroll-driven, and they are not reveals.** The bar
+reports how far down the page you are; the dot grid drifts under the quiet
+band. Both are continuous state rather than content arriving, and both are
+*meant* to run backwards when you scroll back.
+
+`@supports (animation-timeline: view())` came off everything else. A time-based
+animation needs no gate, so browsers without scroll-driven animations now get
+the motion too - they previously got a completely static page.
