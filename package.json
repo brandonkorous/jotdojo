@@ -67,12 +67,17 @@
   },
   "devDependencies": {
     "dotenv-cli": "^8.0.0",
-    "sharp": "^0.33.5",
+    "sharp": "^0.35.3",
     "tsx": "^4.19.2",
     "turbo": "^2.5.0",
     "typescript": "^5.7.3"
   },
   "pnpm": {
+    "overrides": {
+      "postcss": "^8.5.26",
+      "sharp": "^0.35.3",
+      "@esbuild-kit/core-utils>esbuild": "^0.25.12"
+    },
     "onlyBuiltDependencies": [
       "esbuild",
       "sharp"

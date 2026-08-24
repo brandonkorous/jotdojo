@@ -2,7 +2,7 @@ import { createHash, randomBytes } from "node:crypto";
 import { and, desc, eq, isNull, sql } from "drizzle-orm";
 import { withActor, spaceInvites, spaceMembers, users, type Tx } from "@jotacular/db";
 import type { Actor } from "./actor";
-import { DomainError, Forbidden, NotFound } from "./errors";
+import { DomainError, Forbidden, NotFound, raisedMessage } from "./errors";
 
 const PREFIX = "jd_inv_";
 const TTL_DAYS = 14;
@@ -150,7 +150,7 @@ export async function acceptInvite(actor: Actor, token: string): Promise<string>
 
 /** Postgres RAISE messages, mapped back to codes a caller can branch on. */
 function asInviteError(err: unknown): Error {
-  const message = (err as { message?: string }).message ?? "";
+  const message = raisedMessage(err);
   const known: [string, string][] = [
     ["no such invite", "invite_unknown"],
     ["invite revoked", "invite_revoked"],

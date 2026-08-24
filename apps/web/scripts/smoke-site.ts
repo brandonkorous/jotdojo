@@ -48,7 +48,7 @@ check("the hero is an editable surface, not a screenshot",
 check("...with the app's toolbar on it", home.includes('aria-label="Handwriting"')
   && home.includes('aria-label="Highlighter"') && home.includes('aria-label="Select"'));
 check("...saying plainly which tools need an account",
-  home.includes("sign in to record voice notes and add photos"));
+  home.includes("sign in to add photos, voice notes and text"));
 // Inter serves NONE of these, so each one fell through to a system font, and
 // U+270E has an emoji presentation variant that rendered the pen in colour on
 // Apple platforms. ADR-044. They must not come back.

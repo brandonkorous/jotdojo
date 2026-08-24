@@ -138,7 +138,7 @@ export function HeroCanvas({ children, appHref }: Props) {
                 onVoice={() => {}}
                 onNote={() => {}}
                 unavailable
-                unavailableHint="sign in to add photos, voice notes and notes"
+                unavailableHint="sign in to add photos, voice notes and text"
               />
             </div>
 

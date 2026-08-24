@@ -2,7 +2,7 @@ import { createHash, randomBytes } from "node:crypto";
 import { sql } from "drizzle-orm";
 import { withActor, withoutActor } from "@jotacular/db";
 import { asUser, type Actor } from "./actor";
-import { DomainError, NotFound } from "./errors";
+import { DomainError, NotFound, raisedMessage } from "./errors";
 
 /**
  * Capture before you have an account. ADR-009, ADR-039.
@@ -142,7 +142,7 @@ export async function claimAnonSession(actor: Actor, token: string): Promise<str
       const row = (rows as unknown as Array<Record<string, unknown>>)[0];
       return String(row?.space_id);
     } catch (err) {
-      if ((err as Error).message?.includes("no such draft")) throw new NotFound("No such draft");
+      if (raisedMessage(err).includes("no such draft")) throw new NotFound("No such draft");
       throw err;
     }
   });

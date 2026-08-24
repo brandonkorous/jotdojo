@@ -26,7 +26,7 @@
   },
   "dependencies": {
     "@jotacular/db": "workspace:*",
-    "drizzle-orm": "^0.38.3",
+    "drizzle-orm": "^0.45.2",
     "@jotacular/embeddings": "workspace:*",
     "@jotacular/storage": "workspace:*",
     "@jotacular/billing": "workspace:*"

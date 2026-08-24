@@ -19,12 +19,23 @@ const check = (label: string, ok: boolean, detail?: string) => {
   if (!ok) failures++;
 };
 
+/** A domain error carries its code at the top. A Postgres SQLSTATE arrives
+ *  wrapped by drizzle, so it is on the cause -- take the first code there is. */
+const codeOf = (err: unknown): string | undefined => {
+  for (let e: unknown = err, depth = 0; e && depth < 8; depth++) {
+    const c = (e as { code?: unknown }).code;
+    if (typeof c === "string") return c;
+    e = (e as { cause?: unknown }).cause;
+  }
+  return undefined;
+};
+
 async function refused(label: string, code: string, fn: () => Promise<unknown>) {
   let got = "nothing was thrown";
   try {
     await fn();
   } catch (err) {
-    got = (err as { code?: string }).code ?? `an error with no code: ${(err as Error).message}`;
+    got = codeOf(err) ?? `an error with no code: ${(err as Error).message}`;
   }
   check(label, got === code, `expected code "${code}", got "${got}"`);
 }

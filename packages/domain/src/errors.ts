@@ -35,3 +35,15 @@ export class QuotaDeferred extends DomainError {
     super(what, "quota_deferred", 202);
   }
 }
+
+/** The text Postgres RAISEd. Drizzle wraps driver errors, so the message a
+ *  caller matches on -- or shows a person -- is the deepest one, not the top. */
+export function raisedMessage(err: unknown): string {
+  let text = "";
+  for (let e: unknown = err, depth = 0; e && depth < 8; depth++) {
+    const m = (e as { message?: unknown }).message;
+    if (typeof m === "string") text = m;
+    e = (e as { cause?: unknown }).cause;
+  }
+  return text;
+}

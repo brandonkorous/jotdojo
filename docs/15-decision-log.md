@@ -4493,3 +4493,47 @@ back out of `jsonb` — on a 390px viewport.
 as an image will not carry the photograph in it. The renderer would have to embed
 the bytes, and that is a separate piece of work with its own decisions about size
 and signing. It is a gap, and it is stated here rather than discovered la
+
+### ADR-104 - A driver error arrives wrapped, so the message is on the cause
+
+**Status.** Accepted, 2026-08-24.
+
+**Context.** GitHub reported fourteen Dependabot alerts across four packages on
+2026-08-24. Two of them matter here rather than in a quarterly sweep: drizzle-orm
+had SQL injection via improperly escaped identifiers (GHSA-gpj5-g38j-94v9), and
+sharp inherited four libvips CVEs — which arrived the same week photographs
+started going on the page, so sharp is now handed bytes a stranger chose. The
+other two, postcss and esbuild, are build-time and were carried along.
+
+**Decision.** Upgrade rather than pin: drizzle-orm 0.38.4 → 0.45.2, drizzle-kit
+0.30.6 → 0.31.10, sharp 0.33.5 → 0.35.3. postcss is held at 8.5.26 by an override
+because Next depends on 8.4.31 exactly, and sharp likewise because Next carries
+its own 0.34.5.
+
+Drizzle stopped throwing the driver's error somewhere in that range. A failed
+query now arrives as `DrizzleQueryError` reading `Failed query: SELECT ...`, with
+the `PostgresError` — and the text a `RAISE` put in it — underneath on `.cause`.
+Every place that recognised a refusal by reading `err.message` therefore stopped
+recognising anything, silently, because the wrapper is still an `Error` with a
+still-plausible message.
+
+`raisedMessage` in `errors.ts` walks the cause chain and returns the deepest
+message there is. **Deepest, not joined**: `members.ts` shows that text to a
+person, and "Failed query: SELECT app_accept_invite($1...)" is not an answer to
+someone who clicked a used invite. Anything catching a Postgres `RAISE` uses it.
+
+**Consequences.** Two call sites were already wrong and are fixed —
+`claimAnonSession` and `asInviteError`. Both had passing suites that went red on
+the upgrade, which is the only reason this was found rather than shipped; a
+`NotFound` that stopped being thrown is invisible until someone claims a draft
+twice.
+
+The smoke suites read `err.code` the same way, and a Postgres SQLSTATE is now
+just as buried. Only `smoke-members.ts` asserts one (`23514`), so only it grew a
+`codeOf`; the rest assert domain codes, which are still on top.
+
+**The esbuild override is scoped to one dependent on purpose.** A blanket
+`"esbuild": "^0.25.12"` fixes the alert and drags tsx down from 0.28.2, which
+crashes it on Windows at teardown — `UV_HANDLE_CLOSING`, after every check in a
+suite has already passed. `"@esbuild-kit/core-utils>esbuild"` names the one
+deprecated dependent that pinned 0.18.20 and leaves everything else alone.
