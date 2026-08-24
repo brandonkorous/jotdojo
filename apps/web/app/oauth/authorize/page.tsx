@@ -4,6 +4,7 @@ import {
   DEFAULT_SCOPES, SCOPES, type Scope, type ClientRecord,
 } from "@jotacular/domain";
 import { requireActor } from "@/lib/session";
+import { Fallback } from "@/components/Fallback";
 
 export const dynamic = "force-dynamic";
 
@@ -168,14 +169,14 @@ export default async function Authorize({
   );
 }
 
+/** A refused grant is a dead end like any other, and gets the same shell. */
 function Problem({ title, detail }: { title: string; detail?: string }) {
   return (
-    <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-center px-5">
-      <h1 className="font-head text-xl">{title}</h1>
-      {detail && <p className="mt-2 text-sm opacity-60">{detail}</p>}
-      <p className="mt-4 text-xs opacity-50">
+    <Fallback title={title}>
+      {detail ? <p>{detail}</p> : null}
+      <p className={detail ? "mt-3" : undefined}>
         Nothing was granted. You can close this page.
       </p>
-    </main>
+    </Fallback>
   );
 }

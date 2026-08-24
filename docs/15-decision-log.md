@@ -4589,3 +4589,54 @@ always there; the migration just made it certain instead of rare.
 It also cost an hour to find something the pod log said in one line. The
 digest on the page was `2521959821`; the log had the sentence. **A digest is a
 lookup key for a log we have -- reach for the log first, not the theory.**
+
+### ADR-106 - The edges of the product should look like the product
+
+Eleven pages, and not one `error.tsx`, `not-found.tsx` or `global-error.tsx`
+anywhere in the tree. So every failure fell through to Next's own screen:
+
+    Application error: a server-side exception has occurred while loading
+    app.jotacular.com (see the server logs for more information).
+    Digest: 659896347
+
+That is the sentence a person got twice in one morning (ADR-099, ADR-101), and
+it is addressed to us, not to them. "See the server logs" is advice the reader
+cannot take. A 404 was no better -- Next's bare *404: This page could not be
+found.* served straight off the apex.
+
+**Decision.** Four boundaries and one shell.
+
+`components/Fallback.tsx` is the shell: wordmark, a sentence, something to do,
+and the digest set quietly at the bottom. A 404, a thrown error and a refused
+OAuth grant are the same moment for the reader -- they wanted something and did
+not get it -- so they get the same page and differ only in words.
+
+    app/not-found.tsx        the app's 404
+    app/error.tsx            anything thrown while rendering a route
+    app/global-error.tsx     the root layout itself throwing
+    app/site/not-found.tsx   the apex, inside the site's own bar and footer
+
+The OAuth consent screen's `Problem` was already doing this by hand and now
+shares the shell. It is where this started: the refusal that turned ChatGPT away
+(ADR-097) was a bare heading on white.
+
+**On the digest.** It stays, small and labelled *Reference*. It is the only
+handle anyone has on one specific failure, the reader is the one holding it, and
+`659896347` is what turned an hour of theorising into one `grep`. What changes is
+that it is no longer the entire message.
+
+**Consequences.** `global-error.tsx` replaces the root layout, so it carries its
+own `html`, `body` and stylesheet import, and it escapes with a plain `<a>`
+rather than `next/link` -- the router is the least trustworthy thing on a page
+the layout just threw from. That needs an eslint exception, and it has one, with
+the reason beside it.
+
+The words follow docs/11: *"This one is ours, not yours"*, and *"Nothing you
+wrote has been lost"* -- which is the only question a person actually has when a
+notes app breaks, and the one the old screen never answered.
+
+**What this does NOT do.** The page after an OAuth handoff belongs to the client,
+not to us. Codex serves *"Authentication complete. You may close this window."*
+from its own loopback listener on 127.0.0.1, and Claude Code serves its own. Our
+flow ends at the redirect. Worth writing down, because it looks like our page and
+is the natural thing to file a complaint about.
