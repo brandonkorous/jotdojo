@@ -1,7 +1,7 @@
 import { and, eq, sql } from "drizzle-orm";
 import { withActor, withoutActor, spaces, spaceMembers, users, type Tx } from "@jotacular/db";
 import { canReachSpace, type Actor } from "./actor";
-import { Forbidden } from "./errors";
+import { Forbidden, StaleSession } from "./errors";
 
 export type SpaceSummary = { id: string; name: string; kind: string; role: string };
 
@@ -51,11 +51,27 @@ export async function listSpaces(actor: Actor): Promise<SpaceSummary[]> {
   });
 }
 
+/**
+ * Does the session's user still exist?
+ *
+ * A signed cookie is not evidence that it does, and every authed page below
+ * assumed it was. ADR-105.
+ */
+export async function actorExists(actor: Actor): Promise<boolean> {
+  return withActor(actor.userId, async (tx) => {
+    const rows = await tx.select({ id: users.id }).from(users)
+      .where(eq(users.id, actor.userId)).limit(1);
+    return rows.length > 0;
+  });
+}
+
 /** The space a bare capture lands in when the user has not picked one. */
 export async function defaultSpaceId(actor: Actor): Promise<string> {
   const all = await listSpaces(actor);
   const personal = all.find((s) => s.kind === "personal") ?? all[0];
-  if (!personal) throw new Error(`user ${actor.userId} has no spaces`);
+  // No personal space means no user: provisioning creates one and nothing
+  // deletes it. So this is a stale session, not a person with an empty account.
+  if (!personal) throw new StaleSession(actor.userId);
   return personal.id;
 }
 

@@ -17,9 +17,10 @@ function safeNext(next: string | undefined): string {
 }
 
 export default async function SignIn(
-  { searchParams }: { searchParams: Promise<{ next?: string }> },
+  { searchParams }: { searchParams: Promise<{ next?: string; stale?: string }> },
 ) {
-  const redirectTo = safeNext((await searchParams).next);
+  const params = await searchParams;
+  const redirectTo = safeNext(params.next);
 
   return (
     <main className="flex min-h-dvh flex-col items-center justify-center gap-8 px-6">
@@ -29,6 +30,12 @@ export default async function SignIn(
         </h1>
         <p className="mt-2 opacity-70">{brand.line}</p>
       </div>
+
+      {params.stale ? (
+        <p className="max-w-xs text-center text-sm opacity-70">
+          You have been signed out. Sign in again to carry on.
+        </p>
+      ) : null}
 
       <form
         action={async () => {

@@ -11,6 +11,19 @@ export class NotFound extends DomainError {
   }
 }
 
+/**
+ * The session is signed and readable, and the user it names is not there.
+ *
+ * A JWT session carries no database round trip, so it outlives the rows it was
+ * minted against. Distinct from Forbidden: nothing was refused, the caller
+ * simply is not anybody.
+ */
+export class StaleSession extends DomainError {
+  constructor(userId: string) {
+    super(`No user ${userId}`, "stale_session", 401);
+  }
+}
+
 export class Forbidden extends DomainError {
   constructor(what = "You do not have access to that") {
     super(what, "forbidden", 403);

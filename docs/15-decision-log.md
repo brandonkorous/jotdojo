@@ -4537,3 +4537,55 @@ just as buried. Only `smoke-members.ts` asserts one (`23514`), so only it grew a
 crashes it on Windows at teardown — `UV_HANDLE_CLOSING`, after every check in a
 suite has already passed. `"@esbuild-kit/core-utils>esbuild"` names the one
 deprecated dependent that pinned 0.18.20 and leaves everything else alone.
+
+### ADR-105 - A signed cookie is not evidence that anybody is there
+
+Minutes after the move to jotacular's own database (ADR-100), the app returned
+Next's generic server error to the one person with a session. The log named it:
+
+    user 1c45f20f-b937-4c60-af20-edcad1e719e4 has no spaces
+    digest: '2521959821'
+
+Sessions are `strategy: "jwt"`. The whole session lives in a signed cookie and
+costs no database round trip, which is the reason to choose it -- and the reason
+it outlives the rows it was minted against. `AUTH_SECRET` did not change when the
+database did, so the cookie was still perfectly valid, still parsed, still
+carried a user id. That id belonged to a database we had just stopped using.
+
+`requireActor()` checked only the first half of "signed in": that a token exists
+and we minted it. It then handed every page an actor for somebody who was not
+there, and `/` fell over on `defaultSpaceId` three lines later.
+
+**Decision.** `requireActor()` checks both halves. If the session names a user
+who does not exist, it is not a session:
+
+    const actor = asUser(session.user.id);
+    if (!(await actorExists(actor))) redirect("/signin?stale=1");
+
+One indexed lookup on every authed render. That is a real cost and it is the
+right one: the alternative is each page discovering the same thing separately, in
+whatever way it happens to fail first, which is what just happened.
+
+`captureActor()` gets the same check and a different answer. It falls through to
+the anonymous draft rather than redirecting, because that path is somebody trying
+to write and the promise there is that writing works before there is an account
+(ADR-039).
+
+`defaultSpaceId` now throws a typed `StaleSession` rather than a bare `Error`. A
+user with no personal space is not a person with an empty account -- provisioning
+creates one and nothing deletes it -- so the condition only ever means the
+session outlived its user, and the type says so.
+
+**Consequences.** The user-facing half is a line on the sign-in page, shown only
+with `?stale=1`: *"You have been signed out. Sign in again to carry on."* It does
+not explain itself, because the reader does not have the problem we have.
+
+The trigger was ours and will not recur -- we will not swap the database under a
+live session again. The GAP was not ours and does not need us: deleting an
+account, restoring a backup, or a session simply outliving its user all produce
+the same dangling cookie, and all of them used to produce a 500. The bug was
+always there; the migration just made it certain instead of rare.
+
+It also cost an hour to find something the pod log said in one line. The
+digest on the page was `2521959821`; the log had the sentence. **A digest is a
+lookup key for a log we have -- reach for the log first, not the theory.**

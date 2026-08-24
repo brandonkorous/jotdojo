@@ -11,7 +11,7 @@ import { sql } from "drizzle-orm";
 import { withoutActor, checkNotOwner } from "@jotacular/db";
 import {
   upsertUserFromGoogle, asUser, createNote, getNote, listNotes, searchNotes,
-  defaultSpaceId, listSpaces,
+  defaultSpaceId, listSpaces, actorExists, StaleSession,
 } from "../src/index";
 
 let failures = 0;
@@ -157,6 +157,21 @@ check("no table a SECURITY DEFINER function TOUCHES is FORCE",
 const ownership = await checkNotOwner();
 check(`the app connects as a non-owner (${ownership.role})`,
   ownership.ok, `owns ${ownership.owns.join(", ")}`);
+
+// A JWT session outlives the rows it was minted against, so "this cookie parses"
+// and "this is somebody" are two different questions. ADR-105.
+const ghost = asUser("00000000-0000-4000-8000-000000000000");
+check("a user who does not exist does not exist",
+  (await actorExists(ghost)) === false);
+check("...and asking for their default space says STALE, not crash",
+  await (async () => {
+    try {
+      await defaultSpaceId(ghost);
+      return false;
+    } catch (err) {
+      return err instanceof StaleSession;
+    }
+  })());
 
 console.log(failures === 0 ? "\nRLS smoke: all checks passed" : `\nRLS smoke: ${failures} FAILED`);
 process.exit(failures === 0 ? 0 : 1);

@@ -1,13 +1,22 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { currentDraft } from "@/lib/draft";
-import { asUser, type Actor, type AnonSession } from "@jotacular/domain";
+import { actorExists, asUser, type Actor, type AnonSession } from "@jotacular/domain";
 
-/** The signed-in actor, or a redirect to sign-in. */
+/**
+ * The signed-in actor, or a redirect to sign-in.
+ *
+ * Both halves of "signed in" are checked here, because a signed cookie only
+ * proves the first: that somebody once signed in, and that we minted the token.
+ * It says nothing about whether the user it names is still there. ADR-105.
+ */
 export async function requireActor(): Promise<Actor> {
   const session = await auth();
   if (!session?.user?.id) redirect("/signin");
-  return asUser(session.user.id);
+
+  const actor = asUser(session.user.id);
+  if (!(await actorExists(actor))) redirect("/signin?stale=1");
+  return actor;
 }
 
 export async function currentUser() {
@@ -30,7 +39,12 @@ export type Capture = { actor: Actor; draft: AnonSession | null };
  */
 export async function captureActor(): Promise<Capture> {
   const session = await auth();
-  if (session?.user?.id) return { actor: asUser(session.user.id), draft: null };
+  if (session?.user?.id) {
+    // A session whose user is gone is not an identity. Fall through to the
+    // draft rather than refusing: this path is somebody trying to write.
+    const actor = asUser(session.user.id);
+    if (await actorExists(actor)) return { actor, draft: null };
+  }
 
   const draft = await currentDraft();
   if (draft) return { actor: draft.actor, draft };
