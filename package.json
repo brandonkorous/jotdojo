@@ -37,6 +37,7 @@
     "view:smoke": "pnpm --filter @jotacular/mcp smoke:view",
     "export:smoke": "pnpm --filter @jotacular/domain smoke:export",
     "changes:smoke": "pnpm --filter @jotacular/domain smoke:changes",
+    "comments:smoke": "pnpm --filter @jotacular/domain smoke:comments",
     "canvas:smoke": "pnpm --filter @jotacular/domain smoke:canvas",
     "export:http-smoke": "pnpm --filter @jotacular/web smoke:export",
     "ink:smoke": "pnpm --filter @jotacular/domain smoke:ink",

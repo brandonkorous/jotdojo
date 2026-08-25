@@ -1,7 +1,7 @@
 import { and, asc, eq } from "drizzle-orm";
 import { withActor, comments, notes, mcpClients, users } from "@jotacular/db";
 import { attribution, canReachSpace, hasScope, type Actor } from "./actor";
-import { Forbidden, NotFound } from "./errors";
+import { DomainError, Forbidden, NotFound } from "./errors";
 import { assertAgentMayWrite } from "./plans";
 import { audit } from "./note-body";
 
@@ -10,6 +10,9 @@ export type CommentView = {
   body: string;
   authorType: "user" | "agent";
   authorLabel: string;
+  /** The object on the page this is about, or null for the page as a whole.
+   *  ADR-107. */
+  anchorId: string | null;
   /** Set once somebody has dealt with it. An agent's remarks pile up on a note
    *  otherwise, and a list that only grows is a list nobody reads. */
   resolvedAt: Date | null;
@@ -24,13 +27,14 @@ export type CommentView = {
  * that what an agent writes is non-destructive and reviewable.
  */
 export async function commentOnNote(
-  actor: Actor, noteId: string, body: string,
+  actor: Actor, noteId: string, body: string, anchorId?: string | null,
 ): Promise<CommentView> {
   if (!hasScope(actor, "notes:comment")) {
     throw new Forbidden("This connection cannot leave comments");
   }
   const text = body.trim();
   if (!text) throw new NotFound("Nothing to say");
+  const anchor = anchorOf(anchorId);
 
   return withActor(actor.userId, async (tx) => {
     const found = await tx.select({ spaceId: notes.spaceId }).from(notes)
@@ -45,6 +49,7 @@ export async function commentOnNote(
       noteId,
       spaceId: note.spaceId,
       body: text,
+      anchorId: anchor,
       ...attribution(actor),
     }).returning())[0]!;
 
@@ -53,6 +58,7 @@ export async function commentOnNote(
     // the feed can say WHAT was said without a query per row.
     await audit(tx, actor, note.spaceId, "note.comment", noteId, undefined, {
       commentId: row.id,
+      ...(anchor ? { anchorId: anchor } : {}),
     });
 
     return {
@@ -60,6 +66,7 @@ export async function commentOnNote(
       body: row.body,
       authorType: row.authorType as "user" | "agent",
       authorLabel: actor.type === "agent" ? "agent" : "you",
+      anchorId: row.anchorId,
       resolvedAt: row.resolvedAt,
       createdAt: row.createdAt,
     };
@@ -79,7 +86,9 @@ export async function listNoteComments(actor: Actor, noteId: string): Promise<Co
       id: comments.id,
       body: comments.body,
       authorType: comments.authorType,
+      authorUserId: comments.authorUserId,
       agentClientId: comments.agentClientId,
+      anchorId: comments.anchorId,
       resolvedAt: comments.resolvedAt,
       createdAt: comments.createdAt,
       userName: users.displayName,
@@ -102,7 +111,10 @@ export async function listNoteComments(actor: Actor, noteId: string): Promise<Co
       authorLabel: r.authorType === "agent"
         ? [r.clientName ?? (r.agentClientId ? "An agent" : "Triage"), r.agentModel]
           .filter(Boolean).join(" · ")
-        : r.userName ?? "Someone",
+        // "you" for your own, the way commentOnNote labels one the moment it
+        // is written. Without this a comment renamed itself on the next load.
+        : r.authorUserId === actor.userId ? "you" : r.userName ?? "Someone",
+      anchorId: r.anchorId,
       resolvedAt: r.resolvedAt,
       createdAt: r.createdAt,
     }));
@@ -127,4 +139,22 @@ export async function resolveComment(actor: Actor, commentId: string): Promise<v
       throw new NotFound("That comment does not exist, or you cannot reach it");
     }
   });
+}
+
+/**
+ * The object this comment is about, checked at the boundary.
+ *
+ * Never a foreign key: the objects live inside a jsonb document, so the only
+ * thing that can be enforced here is the shape of a name. Migration 0035 holds
+ * the same rule, and an object that is later erased keeps its comments --
+ * ADR-107 says why.
+ */
+function anchorOf(given: string | null | undefined): string | null {
+  if (given === undefined || given === null) return null;
+  const id = given.trim();
+  if (!id) return null;
+  if (id.length > 64) {
+    throw new DomainError("That is not something on the page", "bad_anchor", 400);
+  }
+  return id;
 }

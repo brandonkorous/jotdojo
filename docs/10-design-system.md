@@ -336,7 +336,8 @@ and the marketing hero so the two cannot drift. ADR-044.
 | Pen colour and width | `Popover` anchored away from the writing hand |
 | Dashboard, history, search | `Sheet` over the canvas |
 | Account, space switcher | `DropdownMenu` from the rail foot avatar |
-| Agent comments | `Card` with `border-agent`, `Badge` colour `agent` naming the client |
+| Agent comments | Agent-ink rule down the left of the card, with the client named beside it |
+| A comment about one object | A pin at the object's corner, and the thread in a popup beside it — never in the drawer. ADR-107 |
 | Review inbox | `Alert` colour `agent` per pending change, with revert |
 | Confirmations | `Dialog`, sparingly |
 | Transient feedback | `Toast` — bottom on mobile, opposite the rail on desktop |

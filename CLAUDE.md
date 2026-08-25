@@ -66,3 +66,12 @@ and every split was by responsibility rather than by line count:
     ink-engine-live.ts    what another device did, of every kind
     ink-object-plane.ts   both plane layers under one owner
     use-canvas-tool.ts    which tool is in hand
+
+Comments on canvas objects (ADR-107) split two more the same day, and the seam
+was the same both times -- what is assembled once, apart from what runs:
+
+    ink-engine-build.ts   what is wired to what, at mount
+    ink-engine.ts         what the page does about a pointer
+
+    remarks.css           the drawer, which sits still
+    remark-canvas.css     the pin and the popup, which move with the camera

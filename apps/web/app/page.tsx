@@ -33,7 +33,7 @@ export default async function Home() {
     <main>
       {/* The landing page is the canvas, so this is where "open the app and
           see what your agent noticed" actually has to happen. docs/12, M5. */}
-      <CanvasStage comments={await listNoteComments(actor, note.id)}>
+      <CanvasStage noteId={note.id} comments={await listNoteComments(actor, note.id)}>
         <Canvas
           noteId={note.id}
           initialBody={note.body}

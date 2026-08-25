@@ -13,7 +13,9 @@ import { useRemarks } from "@/lib/remarks";
  */
 export function RemarksFeed() {
   const remarks = useRemarks();
-  const open = remarks?.open ?? [];
+  // AGENTS only. The line reports what happened while you were not looking,
+  // and your own comment is not news to you. ADR-107.
+  const open = (remarks?.open ?? []).filter((c) => c.authorType === "agent");
   const newest = open[open.length - 1];
 
   usePublish(

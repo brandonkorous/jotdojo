@@ -4640,3 +4640,100 @@ not to us. Codex serves *"Authentication complete. You may close this window."*
 from its own loopback listener on 127.0.0.1, and Claude Code serves its own. Our
 flow ends at the redirect. Worth writing down, because it looks like our page and
 is the natural thing to file a complaint about.
+
+### ADR-107 - A comment about the page is a comment about nothing in particular
+
+The drawer listed everything an agent had ever said about a note, newest first,
+and that was the whole model: comments belong to a NOTE.
+
+A canvas is not a note. It is a surface, and by the time somebody has used it
+for an afternoon it holds five unrelated things -- the boat, the cake, a photo
+of a parking sign, a phone number. "3 comments on this page" is an answer to a
+question nobody asked. What people want to know is *which of the five*.
+
+The drawer also could not be written into. Comments were an agent output
+(ADR-004), so the only way a person could put one on their own page was to ask
+Claude to do it.
+
+**Decision.** Three changes, one idea.
+
+**1. A comment may name one object.** `comments.anchor_id` (migration 0035) is
+the id of a text box, a photograph or a stroke inside the note's ink document.
+Null means the page as a whole, which every comment written before this is.
+
+It is `text`, not `uuid`: stroke ids are minted by clients and `validateStrokes`
+promises only a short string. It is not a foreign key and cannot be -- the
+objects live inside a jsonb document -- so **erasing the thing does not erase
+what was said about it**. That is deliberate rather than a limitation: a remark
+about a note somebody has since rubbed out is often the only record that the
+note was ever there.
+
+**2. People can write them.** `commentOnNoteAction` is the same
+`commentOnNote` the MCP server calls, with the actor's own attribution. Nothing
+in the domain layer needed changing beyond the anchor: `attribution()` already
+knew a user could be the author, because a capture token is one.
+
+**3. The conversation happens ON the page.** A pin sits at the corner of every
+commented object, and pressing it opens that thread beside it -- not in the
+drawer. Reading what somebody said about the third note in a panel at the edge
+of the screen means holding "which note was that" in your head throughout;
+here, the words and the thing they are about are in one glance.
+
+**The pins are not on the object plane.** The plane is scaled by the camera, so
+a pin drawn on it would shrink to nothing exactly when it is most needed --
+zoomed out, looking at a whole whiteboard, trying to find where the argument
+is. They are placed in SCREEN coordinates from the paint loop instead
+(`ink-pins.ts`), on every frame rather than only on camera moves, so a note
+dragged across the page carries its pin with it. The popup follows the same
+way, on a `requestAnimationFrame` loop, because the camera deliberately tells
+React nothing on a pan (docs/08) and there is no render to hang it off.
+
+**What the drawer is now.** The index, not the conversation: how much is
+outstanding, the page's own thread in full, and one row per commented object
+that takes you to it -- panning the camera there first, because the popup opens
+beside something the reader has to be able to see.
+
+**Only ever one object.** The canvas menu offers "Comment on this" when the
+selection holds exactly one thing. "These four squiggles and that photo" is not
+something a person means, and a comment pointing at five objects could not be
+drawn beside any of them.
+
+**Consequences.** `ink-engine.ts` reached the size limit and split: everything
+the engine wires up at mount moved to `ink-engine-build.ts`, which is assembly
+rather than behaviour and changes for different reasons. `live.css` split the
+same way -- `remarks.css` is the panel that sits still, `remark-canvas.css` is
+the furniture that moves with the page.
+
+The standing entry on the live line now counts AGENT comments only. The line
+reports what happened while you were not looking, and your own sentence is not
+news to you.
+
+The comment button in the chrome no longer waits for an agent to have spoken.
+It used to, on the grounds that a button for a conversation that has not
+happened teaches nothing -- but it is now the door to starting one.
+
+**What only opening a browser caught.** Two defects, both invisible to every
+suite in the repo, and worth writing down because neither could have failed any
+other way.
+
+*The pin was unclickable.* It was positioned with `transform: translate(...)`
+from the frame loop and grown with `scale: 1.12` on hover. Those are separate
+CSS properties and they compose in spec order -- translate, rotate, scale,
+transform -- so the hover `scale` multiplied the offset inside `transform` and
+threw the pin 12% of the way across the page, out from under the pointer that
+had just hovered it. It flickered, and it could never be pressed. This is
+docs/10's *"never animate `transform` on anything that also moves under a
+pointer"* arriving from the other side, and the fix is the same one: the
+position lives in `translate` now, and `scale` is left alone.
+
+*A comment could double.* The drawer appends what you just said locally rather
+than revalidating, because revalidating the canvas re-renders the page somebody
+is writing on. But `resolveCommentAction` DOES revalidate -- so pressing Done on
+your own comment brought the server's copy back alongside the optimistic one,
+and the same sentence appeared twice. The two lists are merged by id now.
+
+The pin also moved from the object's top-right corner to its top-LEFT. A text
+box is as wide as it was drawn rather than as wide as its words, so a mark on
+the right edge floated in empty paper a long way from the sentence it was
+about. The left corner is where the words start, which is where a margin note
+goes on real paper.

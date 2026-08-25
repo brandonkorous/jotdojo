@@ -139,10 +139,13 @@ Flat numeric arrays, not an object per point — a page of handwriting is thousa
       agent_client_id uuid references mcp_clients(id)
       agent_model     text                       -- best effort, e.g. claude-opus-5
       in_reply_to     uuid references comments(id)
+      anchor_id       text                       -- an object in the ink document, or null
       resolved_at     timestamptz
       created_at      timestamptz not null default now()
 
 Agent comments are first-class, not a special case. `author_type` drives both the permission checks and the visual treatment — see the ink-colour rule in [10-design-system.md](10-design-system.md).
+
+`anchor_id` names **one object on the page** — a text box, a photograph or a stroke — and null means the note as a whole. It is `text` rather than `uuid` because stroke ids are minted by clients, and it is **not** a foreign key, because the objects it names live inside a jsonb document. Erasing the object therefore leaves its comments standing, which is the intended behaviour: what somebody said about a note is often the only record that the note existed. ADR-107.
 
 ## Revisions
 

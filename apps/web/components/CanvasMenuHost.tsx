@@ -3,6 +3,8 @@
 import type { RefObject } from "react";
 import type { InkEngine, SelectionSummary } from "@/lib/ink-engine";
 import { downloadSelection } from "@/lib/export-client";
+import { bringIntoView } from "@/lib/remark-anchor";
+import { useRemarks } from "@/lib/remarks";
 import { CanvasMenu } from "./CanvasMenu";
 
 /**
@@ -29,6 +31,18 @@ export function CanvasMenuHost({
   children: React.ReactNode;
 }) {
   const at = () => engine.current;
+  const remarks = useRemarks();
+
+  /** One object, so the id IS the selection. The camera brings it to the
+   *  middle first, because the popup opens beside it. ADR-107. */
+  const comment = () => {
+    const id = selection.ids[0];
+    const held = at();
+    if (!id || !held || !remarks) return;
+    bringIntoView(held, id);
+    held.dropSelection();
+    remarks.openThread(id);
+  };
 
   return (
     <CanvasMenu
@@ -42,6 +56,7 @@ export function CanvasMenuHost({
         onExport: () => void downloadSelection(noteId, selection.ids),
         onDelete: () => at()?.selection.remove(),
         onTextBoxHere: (x, y) => at()?.textAtClient(x, y),
+        onComment: remarks ? comment : undefined,
       }}
     >
       {children}

@@ -1,100 +1,105 @@
 "use client";
 
-import { useTransition } from "react";
+import type { RefObject } from "react";
 import {
   Drawer, DrawerClose, DrawerContent, DrawerHeader, DrawerTitle,
 } from "@wizeworks/silicaui-react";
-import type { CommentView } from "@jotacular/domain";
-import { resolveCommentAction } from "@/app/actions";
+import { Icon } from "@/components/Icon";
+import type { InkEngine } from "@/lib/ink-engine";
+import { bringIntoView } from "@/lib/remark-anchor";
+import type { Thread } from "@/lib/remark-threads";
 import { useRemarks } from "@/lib/remarks";
+import { RemarkThread, threadTitle } from "./RemarkThread";
 
 /**
- * Everything the agent has said about this note, open and dealt with. ADR-061.
+ * Everything anybody has said about this page, in one list. ADR-061, ADR-107.
  *
- * A drawer rather than cards on the canvas. A remark is a piece of work with
- * its own clock -- "the MOT has a deadline" is a Thursday problem -- and work
- * you come back to needs somewhere to be kept, not somewhere to be caught.
+ * The drawer is the INDEX, not the conversation. A thread about one note is
+ * read beside that note (`RemarkPopup`), because a page can hold five
+ * unrelated ones and a panel at the edge of the screen cannot say which is
+ * which. What the drawer answers is the other question -- what is outstanding
+ * anywhere, including on the things currently off screen.
  *
- * Resolved ones stay, greyed. "I already dealt with that" is a question people
- * ask, and a list that only shows what is outstanding cannot answer it.
+ * The page's own thread is the exception and is here in full: it is about all
+ * of this, so there is nothing on the canvas to sit beside.
  */
-export function RemarksDrawer() {
+export function RemarksDrawer(
+  { engine }: { engine: RefObject<InkEngine | null> },
+) {
   const remarks = useRemarks();
-  const [pending, startTransition] = useTransition();
   if (!remarks) return null;
 
-  const { all, open, drawer, setDrawer, markDone } = remarks;
+  const { open, threads, drawer, setDrawer, openThread } = remarks;
+  const page = threads.find((t) => t.anchorId === null);
+  const things = threads.filter((t) => t.anchorId !== null);
+
+  /** Go to it, then talk about it. The camera moves first so the popup opens
+   *  on something the reader can actually see. */
+  const goTo = (thread: Thread) => {
+    const held = engine.current;
+    if (held && thread.anchorId) bringIntoView(held, thread.anchorId);
+    openThread(thread.anchorId);
+  };
 
   return (
     <Drawer open={drawer} onOpenChange={setDrawer}>
       <DrawerContent side="right" className="jd-remarks-drawer">
         <DrawerHeader sticky>
-          <DrawerTitle>
-            {open.length === 0
-              ? "Nothing outstanding"
-              : open.length === 1 ? "1 remark" : `${open.length} remarks`}
-          </DrawerTitle>
+          <div className="jd-remarks-head">
+            <DrawerTitle className="jd-remarks-title">Comments</DrawerTitle>
+            <p className="jd-remarks-count">{waiting(open.length)}</p>
+          </div>
           <DrawerClose>
-            <button type="button" className="jd-tool" aria-label="Close">{"\u2715"}</button>
+            <button type="button" className="jd-tool" aria-label="Close">
+              <Icon name="close" />
+            </button>
           </DrawerClose>
         </DrawerHeader>
 
-        {all.length === 0 && (
-          <p className="jd-remark-empty">
-            Nothing from your agent on this page yet.
-          </p>
-        )}
+        <section className="jd-remarks-section">
+          <h3 className="jd-remarks-heading">This page</h3>
+          {page && <RemarkThread thread={page} />}
+        </section>
 
-        <div className="jd-remark-list">
-          {[...all].reverse().map((c) => (
-            <Remark
-              key={c.id}
-              comment={c}
-              pending={pending}
-              onDone={() => startTransition(async () => {
-                markDone(c.id);
-                await resolveCommentAction(c.id);
-              })}
-            />
-          ))}
-        </div>
+        {things.length > 0 && (
+          <section className="jd-remarks-section">
+            <h3 className="jd-remarks-heading">
+              {things.length === 1 ? "One thing on the page" : "Things on the page"}
+            </h3>
+            <ul className="jd-remarks-things">
+              {things.map((thread) => (
+                <li key={thread.anchorId}>
+                  <ThreadRow thread={thread} onOpen={() => goTo(thread)} />
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
       </DrawerContent>
     </Drawer>
   );
 }
 
-function Remark(
-  { comment, pending, onDone }:
-  { comment: CommentView; pending: boolean; onDone: () => void },
-) {
-  const settled = comment.resolvedAt !== null;
+/** One anchored thread, as a way back to the thing it is about. */
+function ThreadRow({ thread, onOpen }: { thread: Thread; onOpen: () => void }) {
+  const newest = thread.comments[thread.comments.length - 1];
   return (
-    <article className="jd-remark" data-settled={settled}>
-      <div className="jd-remark-head">
-        <span className="badge badge-agent badge-sm">{comment.authorLabel}</span>
-        <span className="jd-remark-when">{relative(comment.createdAt)}</span>
-        {settled
-          ? <span className="jd-remark-when">Done</span>
-          : (
-            <button
-              type="button"
-              disabled={pending}
-              className="btn btn-ghost btn-xs"
-              onClick={onDone}
-            >
-              Done
-            </button>
-          )}
-      </div>
-      <p className="jd-remark-body">{comment.body}</p>
-    </article>
+    <button type="button" className="jd-remarks-thing" onClick={onOpen}>
+      <span className="jd-remarks-thing-count" data-open={thread.open > 0}>
+        {thread.comments.length}
+      </span>
+      <span className="jd-remarks-thing-what">
+        <span className="jd-remarks-thing-title">{threadTitle(thread)}</span>
+        {newest && (
+          <span className="jd-remarks-thing-said">
+            {newest.authorLabel}: {newest.body}
+          </span>
+        )}
+      </span>
+    </button>
   );
 }
 
-const relative = (date: Date) => {
-  const mins = Math.round((Date.now() - date.getTime()) / 60000);
-  if (mins < 1) return "just now";
-  if (mins < 60) return `${mins}m ago`;
-  if (mins < 1440) return `${Math.round(mins / 60)}h ago`;
-  return `${Math.round(mins / 1440)}d ago`;
-};
+const waiting = (n: number) => (n === 0
+  ? "Nothing outstanding"
+  : n === 1 ? "1 waiting" : `${n} waiting`);

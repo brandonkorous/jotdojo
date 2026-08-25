@@ -73,6 +73,9 @@ export function InkCanvas({
   /** The object plane. Outside the canvases, because scaling a canvas through
    *  a transformed ancestor blurs its bitmap. ADR-065. */
   const planeRef = useRef<HTMLDivElement>(null);
+  /** The comment pins. A layer of its own, NOT the plane: a pin must not scale
+   *  with the camera. ADR-107. */
+  const pinsRef = useRef<HTMLDivElement>(null);
   const ownEngine = useRef<InkEngine | null>(null);
   // A ref either way, so it is stable for the whole life of the component --
   // the effects below list it because the linter cannot see that, not because
@@ -126,7 +129,7 @@ export function InkCanvas({
     noteId,
     surfaces: {
       committed: committedRef, live: liveRef, shell: shellRef,
-      grid: gridRef, plane: planeRef, outer,
+      grid: gridRef, plane: planeRef, pins: pinsRef, outer,
     },
     held: { engine: engineRef, sync: syncRef, catchup: catchupRef },
     initial: { tool: ink, style, textReachable: reachable },
@@ -208,6 +211,10 @@ export function InkCanvas({
         role="img"
         aria-label="Handwriting canvas"
       />
+      {/* Above the ink, because a pin is chrome about the page rather than
+          part of it -- and pointer-transparent except on the pins themselves,
+          so a lasso drawn across one still reaches the canvas. */}
+      <div ref={pinsRef} className="jd-pin-layer" />
       <SelectionBar
         selection={selected}
         onColor={(color) => engine()?.selection.restyle({ color })}

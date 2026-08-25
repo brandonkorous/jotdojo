@@ -17,6 +17,7 @@ import { Recorder } from "./Recorder";
 import { ScribbleHint } from "./ScribbleHint";
 import { Chrome } from "./Chrome";
 import { Presence } from "./Presence";
+import { RemarkSurfaces } from "./RemarkSurfaces";
 import type { InkEngine, SelectionSummary } from "@/lib/ink-engine";
 import { NO_SELECTION } from "@/lib/ink-selection";
 import { useNoteBody } from "@/lib/use-note-body";
@@ -221,6 +222,11 @@ export function Canvas({
         />
 
         <Presence who={others} />
+
+        {/* The marks on the page, the conversation beside one of them, and the
+            list of all of it. All three ask the engine where things are, so
+            they hang off the canvas rather than off the stage. ADR-107. */}
+        <RemarkSurfaces engine={engineRef} ready={inkBlockId !== null} />
 
         <SaveIndicator state={state} />
       </div>

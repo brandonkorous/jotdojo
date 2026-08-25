@@ -32,6 +32,8 @@ export type Surfaces = {
   shell: RefObject<HTMLDivElement | null>;
   grid: RefObject<HTMLDivElement | null>;
   plane: RefObject<HTMLDivElement | null>;
+  /** The comment pins, on their own unscaled layer. ADR-107. */
+  pins: RefObject<HTMLDivElement | null>;
   /** The whole canvas shell, so the camera can be moved on every tool -- the
    *  ink surface is pointer-transparent while somebody types. ADR-102. */
   outer?: RefObject<HTMLElement | null>;
@@ -68,7 +70,8 @@ export function useInkEngine(o: MountOptions) {
     const shell = surfaces.shell.current;
     const grid = surfaces.grid.current;
     const plane = surfaces.plane.current;
-    if (!committed || !liveCanvas || !shell || !grid || !plane) return;
+    const pins = surfaces.pins.current;
+    if (!committed || !liveCanvas || !shell || !grid || !plane || !pins) return;
 
     let disposed = false;
     let engine: InkEngine | null = null;
@@ -96,6 +99,7 @@ export function useInkEngine(o: MountOptions) {
         live: liveCanvas,
         grid,
         plane,
+        pins,
         gestures: surfaces.outer?.current ?? undefined,
         // Signed on demand and never stored in the page. ADR-103.
         imageSrc: photoUrlAction,

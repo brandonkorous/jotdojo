@@ -40,6 +40,15 @@ export type EngineOptions = {
    *  and the engine is exactly what it was before ADR-065. */
   plane?: HTMLElement;
   /**
+   * Where the comment pins go. ADR-107.
+   *
+   * A layer of its own, NOT the object plane: the plane is scaled by the
+   * camera, and a mark saying where the conversation is must stay the same
+   * size when somebody zooms out to see the whole page. Omit it and comments
+   * live only in the drawer, which is what the marketing hero wants.
+   */
+  pins?: HTMLElement;
+  /**
    * Where a photograph's bytes are, signed on demand. ADR-103.
    *
    * A function rather than a URL map: the links are time-limited, the canvas

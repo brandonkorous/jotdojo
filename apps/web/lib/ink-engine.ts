@@ -1,22 +1,25 @@
-import type { ImageOnPage, InkDelta, NoteImage, Stroke, TextBox } from "@jotacular/domain";
+import type { ImageOnPage, NoteImage, Stroke, TextBox } from "@jotacular/domain";
 import type { InkTool } from "./canvas-tool";
 import { StrokeCapture } from "./ink-capture";
 import type { Bounds } from "./ink-geometry";
-import { LiveMerge } from "./ink-engine-live";
-import { InkSurface } from "./ink-surface";
+import type { LiveMerge } from "./ink-engine-live";
+import type { InkSurface } from "./ink-surface";
 import { InkInput, type InputHost } from "./ink-input";
 import { InkViewport } from "./ink-viewport";
-import { InkFraming } from "./ink-framing";
+import type { InkFraming } from "./ink-framing";
 import { StrokeIndex } from "./ink-index";
 import { ERASE_RADIUS } from "./ink-paint";
 import { type SelectionSummary } from "./ink-selection";
 import type { EngineOptions } from "./ink-engine-options";
-import { SelectionEditor } from "./ink-engine-select";
-import { Eraser } from "./ink-engine-erase";
+import { assemble } from "./ink-engine-build";
+import type { Page } from "./ink-engine-page";
+import type { SelectionEditor } from "./ink-engine-select";
+import type { Eraser } from "./ink-engine-erase";
 import { commitStroke, type Scene } from "./ink-draw";
-import { InkPainter } from "./ink-painter";
+import type { InkPainter } from "./ink-painter";
+import type { InkPins } from "./ink-pins";
 import { DEFAULT_PEN, type InkStyle } from "./ink-style";
-import { ObjectPlane } from "./ink-object-plane";
+import type { ObjectPlane } from "./ink-object-plane";
 import { clientRect, worldAt } from "./ink-screen";
 
 /**
@@ -52,48 +55,32 @@ export class InkEngine implements InputHost {
   private readonly plane: ObjectPlane | null;
   private readonly eraser: Eraser;
   readonly remote: LiveMerge;
+  /** Where the comments are. Null wherever there is no layer to draw them on --
+   *  the marketing hero, and an anonymous draft. ADR-107. */
+  readonly pins: InkPins | null;
 
   constructor(opts: EngineOptions) {
     this.opts = opts;
-    this.surface = new InkSurface(opts.committed, opts.live, this.view);
-    this.plane = opts.plane
-      ? new ObjectPlane(opts.plane, {
-        onDelta: opts.onDelta,
-        onGeometry: () => this.paintOverlay(),
-        imageSrc: opts.imageSrc ?? (async () => null),
-      })
-      : null;
-    this.painter = new InkPainter(
-      this.surface, this.view, () => this.scene, opts.grid, this.texts ?? undefined,
-    );
-    this.framing = new InkFraming(this.view, this.surface, this.painter, opts.onView);
-    this.editor = new SelectionEditor({
+    // Already wired -- ink-engine-build.ts says why that is a file of its own.
+    // `remote` is exposed rather than relayed, as `selection` is. ADR-058.
+    const parts = assemble(opts, this.view, this.index, {
       strokes: () => this.strokes,
       setStrokes: (next) => { this.strokes = next; },
-      texts: () => this.texts,
-      images: () => this.plane?.images ?? null,
-      index: this.index,
-      onDelta: opts.onDelta,
-      onChange: opts.onSelectionChange,
+      scene: () => this.scene,
+      page: () => this.objects,
+      zoom: () => this.view.k,
       repaint: () => this.repaint(),
       overlay: () => this.paintOverlay(),
-    });
-    // What another device did. Exposed rather than relayed, the same call
-    // `selection` makes and for the same reason. ADR-058, ADR-103.
-    this.remote = new LiveMerge({
-      strokes: () => this.strokes,
-      setStrokes: (next) => { this.strokes = next; },
-      plane: () => this.plane,
-      repaint: () => this.repaint(),
       dropSelection: () => this.dropSelection(),
     });
-    this.eraser = new Eraser({
-      strokes: () => this.strokes,
-      setStrokes: (next) => { this.strokes = next; },
-      zoom: () => this.view.k,
-      onDelta: opts.onDelta,
-      repaint: () => this.repaint(),
-    });
+    this.surface = parts.surface;
+    this.plane = parts.plane;
+    this.pins = parts.pins;
+    this.painter = parts.painter;
+    this.framing = parts.framing;
+    this.editor = parts.editor;
+    this.remote = parts.remote;
+    this.eraser = parts.eraser;
     this.live = opts.live;
 
     // Without this, a two-finger drag scrolls the page mid-stroke.
@@ -105,6 +92,17 @@ export class InkEngine implements InputHost {
     this.painter.cancel();
     this.input.destroy();
     this.plane?.destroy();
+    this.pins?.destroy();
+  }
+
+  /** The page as one set of objects rather than three arrays. Only comments
+   *  ask for it; `ink-engine-page.ts` is what reads it. ADR-107. */
+  get objects(): Page {
+    return {
+      strokes: this.strokes,
+      texts: this.texts?.all ?? [],
+      images: this.plane?.images.all ?? [],
+    };
   }
 
   /** The text half of the plane, which is all most call sites ever wanted. */

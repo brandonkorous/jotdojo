@@ -48,6 +48,9 @@ export type CanvasMenuActions = {
   onExport: () => void;
   onDelete: () => void;
   onTextBoxHere: (clientX: number, clientY: number) => void;
+  /** Talk about the one thing that is held. Absent -- and the item hidden --
+   *  wherever comments cannot be left. ADR-107. */
+  onComment?: () => void;
 };
 
 export function CanvasMenu({
@@ -138,6 +141,19 @@ function Selected({
               </button>
             ))}
           </div>
+          <ContextMenuSeparator />
+        </>
+      )}
+
+      {/* Only ever ONE thing. "These four squiggles and that photo" is not
+          something a person means, and a comment that pointed at five objects
+          could not be drawn beside any of them. ADR-107. */}
+      {actions.onComment && selection.count === 1 && (
+        <>
+          <ContextMenuItem onClick={actions.onComment}>
+            <Icon name="remarks" />
+            Comment on this
+          </ContextMenuItem>
           <ContextMenuSeparator />
         </>
       )}

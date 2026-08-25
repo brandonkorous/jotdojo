@@ -7,6 +7,7 @@ import {
   createNote, saveNote, listNotes, searchNotes, defaultSpaceId, setToolbarSide,
   createCaptureToken, listCaptureTokens, revokeCaptureToken, listSpaces,
   listConnections, revokeConnection, setTriage, listNoteComments, resolveComment,
+  commentOnNote, type CommentView,
   ensureInkBlock, appendStrokes, getInk, correctTranscript,
   assertAnonRoom, assertAnonInkRoom, AnonLimit, ANON_MAX_CHARS,
   startCheckout, billingPortal,
@@ -151,6 +152,19 @@ export async function setTriageAction(spaceId: string, on: boolean): Promise<voi
 
 export async function listNoteCommentsAction(noteId: string) {
   return listNoteComments(await requireActor(), noteId);
+}
+
+/**
+ * Say something about this page, or about one thing on it. ADR-107.
+ *
+ * The row comes back rather than a bare ok, so the drawer can show it without
+ * a round trip -- and without a `revalidatePath`, which on the canvas would
+ * re-render the page somebody is writing on.
+ */
+export async function commentOnNoteAction(
+  noteId: string, body: string, anchorId: string | null,
+): Promise<CommentView> {
+  return commentOnNote(await requireActor(), noteId, body, anchorId);
 }
 
 export async function resolveCommentAction(commentId: string): Promise<void> {

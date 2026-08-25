@@ -4,6 +4,7 @@ import { drawAll, drawFrame, type Scene } from "./ink-draw";
 import { FrameLoop, type Dirty } from "./ink-frame";
 import { paintGrid } from "./ink-grid";
 import type { InkTextLayer } from "./ink-text-layer";
+import type { InkPins } from "./ink-pins";
 
 /**
  * When the page gets painted, and which parts of it.
@@ -29,6 +30,10 @@ export class InkPainter {
      *  else, because text that lags the ink by one frame during a pinch is
      *  worse than text that does not move at all. ADR-065. */
     private readonly texts?: InkTextLayer,
+    /** The comment pins. Placed on EVERY painted frame rather than only on a
+     *  camera move: a note dragged across the page has to take its pin with
+     *  it. ADR-107. */
+    private readonly pins?: InkPins,
   ) {
     this.frame = new FrameLoop((dirty) => this.paint(dirty));
   }
@@ -56,6 +61,7 @@ export class InkPainter {
   now() {
     if (this.grid) paintGrid(this.grid, this.view);
     this.texts?.frame(this.view);
+    this.pins?.frame(this.view);
     drawAll(this.surface, this.scene());
   }
 
@@ -66,6 +72,7 @@ export class InkPainter {
       if (this.grid) paintGrid(this.grid, this.view);
       this.texts?.frame(this.view);
     }
+    this.pins?.frame(this.view);
     drawFrame(this.surface, dirty, this.scene());
   }
 }

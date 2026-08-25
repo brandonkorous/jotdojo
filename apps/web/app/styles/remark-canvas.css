@@ -1,0 +1,120 @@
+/* ---------------------------------------------------------------------------
+ * Comments where they happened: the pin on the object, and the conversation
+ * beside it. ADR-107.
+ *
+ * Split from remarks.css at the size limit, and along the seam that was
+ * already there: this is furniture ON THE PAGE, positioned every frame against
+ * a moving camera, while remarks.css is a panel that sits still.
+ * ------------------------------------------------------------------------ */
+
+/* --------------------------------------------------------------- pins ----
+ *
+ * On their own layer above the ink, placed in SCREEN coordinates by
+ * ink-pins.ts and never scaled -- a mark saying where the conversation is has
+ * to stay legible at any zoom. The layer is transparent to pointers so a lasso
+ * passes through it; only the pins themselves take one. */
+.jd-pin-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.jd-pin {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: grid;
+  place-items: center;
+  min-width: 1.375rem;
+  height: 1.375rem;
+  margin: -0.6875rem 0 0 -0.6875rem;
+  padding: 0 0.375rem;
+  border-radius: 9999px;
+  background: var(--color-base-100);
+  box-shadow:
+    var(--shadow-lift),
+    inset 0 0 0 1px color-mix(in oklch, var(--color-base-content) 18%, transparent);
+  color: var(--color-base-content);
+  font-family: var(--font-sans);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  line-height: 1;
+  pointer-events: auto;
+  /* `scale`, not a scale inside `transform`: ink-pins.ts writes the position
+     into `translate`, and the two compose without either overwriting the
+     other. Transitioning `transform` here would fight the frame loop. */
+  transition: scale var(--duration, 120ms) var(--ease, ease);
+}
+
+/* Something is still outstanding on that object. Agent ink, because that is
+   what an unanswered remark is -- and the number and the label say it too. */
+.jd-pin[data-open="true"] {
+  background: var(--color-agent);
+  box-shadow: var(--shadow-lift);
+  color: var(--color-agent-content);
+}
+
+.jd-pin:hover { scale: 1.12; }
+
+@media (pointer: coarse) {
+  .jd-pin { min-width: 1.75rem; height: 1.75rem; margin: -0.875rem 0 0 -0.875rem; }
+}
+
+/* -------------------------------------------------------------- popup ----
+ *
+ * Fixed, and moved every frame by RemarkPopup so it travels with the object it
+ * is about. `position: fixed` because the anchor arrives in viewport
+ * coordinates and the canvas shell is a transformed, clipped world. */
+.jd-remark-popup {
+  position: fixed;
+  z-index: 20;
+  /* Where it sits before the first frame has measured anything, and where an
+     already-erased object leaves it. Hidden until then, so it is never painted
+     once at a position the stylesheet guessed. */
+  top: 12vh;
+  left: 50%;
+  visibility: hidden;
+  display: flex;
+  width: min(88vw, 20rem);
+  max-height: min(60vh, 26rem);
+  flex-direction: column;
+  gap: 0.5rem;
+  overflow-y: auto;
+  padding: 0.875rem;
+  border-radius: var(--radius-box);
+  background: var(--color-base-200);
+  box-shadow:
+    var(--shadow-raise),
+    inset 0 0 0 1px color-mix(in oklch, var(--color-base-content) 12%, transparent);
+}
+
+.jd-remark-popup[data-placed="true"] { visibility: visible; }
+
+/* The object it belongs to has been erased. The words stay -- they may be the
+   only record of what was there -- and the popup says so rather than moving. */
+.jd-remark-adrift { display: none; font-size: 0.75rem; line-height: 1.45; }
+.jd-remark-popup[data-adrift="true"] .jd-remark-adrift { display: block; }
+
+.jd-remark-popup-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.jd-remark-popup-title {
+  flex: 1;
+  font-family: var(--font-head);
+  font-size: 0.9375rem;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+/* The way from one conversation to all of them. A link rather than a button:
+   it navigates between two views of the same thing. */
+.jd-remark-all {
+  align-self: flex-start;
+  border-bottom: 1px solid color-mix(in oklch, var(--color-base-content) 30%, transparent);
+  font-size: 0.75rem;
+}

@@ -68,8 +68,14 @@ export const comments = pgTable("comments", {
   agentClientId: uuid("agent_client_id").references(() => mcpClients.id, { onDelete: "set null" }),
   agentModel: text("agent_model"),
   inReplyTo: uuid("in_reply_to"),
+  /** One object in the note's ink document, or null for the page as a whole.
+   *  Migration 0035, ADR-107. */
+  anchorId: text("anchor_id"),
   resolvedAt: timestamp("resolved_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+// comments_anchor_idx is partial -- WHERE anchor_id IS NOT NULL -- and Drizzle
+// has no way to say so, so it is left to migration 0035 rather than described
+// wrongly here.
 }, (t) => [index("comments_note_idx").on(t.noteId, t.createdAt)]);
 
 export const noteRevisions = pgTable("note_revisions", {
