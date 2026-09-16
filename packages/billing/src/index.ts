@@ -5,4 +5,4 @@ export {
 } from "./provider";
 export { fakeBilling, signFake } from "./fake";
 export { stripeBilling, type StripeConfig } from "./stripe";
-export { resolveBilling, billing } from "./resolve";
+export { resolveBilling, billing, STRIPE_KEYS } from "./resolve";

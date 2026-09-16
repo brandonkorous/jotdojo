@@ -184,6 +184,36 @@ check("an unset provider simply means billing is off", await (async () => {
   return resolveBilling({} as NodeJS.ProcessEnv) === null;
 })());
 
+console.log("\nstripe is its keys, not a switch. ADR-114");
+{
+  const { resolveBilling, STRIPE_KEYS } = await import("@jotacular/billing");
+  const full = Object.fromEntries(STRIPE_KEYS.map((k) => [k, `v-${k}`])) as NodeJS.ProcessEnv;
+
+  check("five keys and NO switch is billing ON",
+    resolveBilling({ ...full })?.name === "stripe");
+  check("...and naming stripe as well changes nothing",
+    resolveBilling({ ...full, BILLING_PROVIDER: "stripe" })?.name === "stripe");
+
+  // The state the old shape could not express: five live keys in a vault and
+  // billing off, because a sixth entry was missing. ADR-113 found it in
+  // production; this is what makes it unrepresentable.
+  for (const dropped of STRIPE_KEYS) {
+    const partial = { ...full };
+    delete partial[dropped];
+    let refused = "";
+    try { resolveBilling(partial); } catch (e) { refused = (e as Error).message; }
+    check(`missing ${dropped} is an ERROR, never "off"`,
+      refused.includes("half-configured") && refused.includes(dropped), refused);
+  }
+
+  let typo = "";
+  try {
+    resolveBilling({ ...full, BILLING_PROVIDER: "strpe" } as NodeJS.ProcessEnv);
+  } catch (e) { typo = (e as Error).message; }
+  check("a typo in the switch is refused rather than read as off",
+    typo.includes("Unknown BILLING_PROVIDER"), typo);
+}
+
 void BillingError;
 
 console.log(failures === 0

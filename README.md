@@ -19,9 +19,12 @@ sign-in, Jotacular has its own Postgres (ADR-100), and all four model seams — 
 speech, embeddings, reason — run against a real Azure OpenAI account provisioned by sparx
 (ADR-051). The worker says which deployments it is draining against on every boot.
 
-**Billing is the one thing still off.** Every Stripe secret is in the vault and the key is
-live; `BILLING_PROVIDER` is not, so `resolveBilling` returns null and they sit inert. One
-vault entry and a redeploy — ADR-113 is why it could not have reached a container before.
+**Billing is configured and switches on at the next deploy.** Every Stripe secret is in the
+vault and the key is live. ADR-114 removed the separate switch that was keeping them inert —
+Stripe is derived from its keys, because a `BILLING_PROVIDER=stripe` beside five secrets was
+one fact stated twice, and the two disagreed. **Confirm the Stripe webhook points at
+`app.jotacular.com/api/billing/webhook` before deploying**: a key with no webhook takes
+money and grants nothing.
 
 **What nothing has done is judge the answers.** Recognition, search and triage are proven
 as pipelines and unmeasured as quality; every suite in this repo runs them against `fake`

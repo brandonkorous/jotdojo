@@ -5129,3 +5129,62 @@ docs/21-go-live.md is the runbook this produced: what to set, in what order,
 and what to check after each one. Money is last, and the check that matters is
 "you paid and the plan changed" -- because ADR-049 already found the version of
 this where a card could be charged and the space stayed free.
+
+### ADR-114 - Stripe is its keys, not a switch
+
+**Status:** accepted, 2026-09-16. Supersedes the first half of ADR-113.
+
+ADR-113 made `BILLING_PROVIDER` reachable from Key Vault and added a deploy-time
+check that a switch arrives with its keys. Brandon's question on reading the
+runbook was the right one: **why is there a switch at all?** The product takes
+money through Stripe. There is no second processor and no decision to record.
+
+He is right, and the fix is not the obvious one. Hardcoding `BILLING_PROVIDER:
+'stripe'` in the ConfigMap would make Stripe credentials MANDATORY
+infrastructure: `resolveBilling` throws when it is named a driver it cannot
+build, `billing()` is called while the account page renders, so any deployment
+without the five secrets would 500 on `/account`. A local clone would need a
+Stripe account to show a settings page.
+
+**Decision. Stripe is derived from its keys.** Three states, and they are the
+only three:
+
+    no Stripe secrets at all   billing is OFF, honestly and deliberately
+    all five                   billing is ON
+    some of them               a CONFIGURATION ERROR, thrown, never "off"
+
+The middle row is the one the old shape could not express, and it is the whole
+point. A `BILLING_PROVIDER=stripe` sitting beside five secrets was a fact the
+environment already knew, stated twice -- and two statements of one fact can
+disagree. They did: ADR-113 found five live Stripe keys inert in a vault
+because the sixth entry was missing.
+
+**This deletes that failure rather than guarding it.** ADR-113's contribution
+was a deploy-time check that the switch and the keys arrive together. There is
+now nothing to arrive together, so the check shrinks to the only thing still
+worth refusing: a PARTIAL key set. `STRIPE_KEYS` is exported from
+`packages/billing` and the release workflow reads the same list, so the two
+cannot drift.
+
+**The variable survives for exactly one value.** `BILLING_PROVIDER=fake` is how
+CI runs the production artifact without credentials (ADR-052), and it is still
+refused outright under `NODE_ENV=production`. `stripe` is accepted and ignored,
+so nothing breaks; anything else throws, because a typo that quietly meant
+"off" is how somebody ships a deployment that cannot take money and does not
+say so.
+
+**The consequence is immediate and worth stating plainly.** The five Stripe
+secrets are already in the vault and the key is a LIVE one, so with this
+change **billing is on at the next deploy**. That is the intent. It also means
+the Stripe webhook must be registered against
+`https://app.jotacular.com/api/billing/webhook` BEFORE that deploy, because a
+key with no webhook takes money and grants nothing (ADR-038, ADR-049). A vault
+listing cannot answer that question; only the Stripe dashboard can.
+
+**The general rule this is an instance of.** Configuration should say what
+cannot be inferred. A switch whose value is implied by the credentials next to
+it is not configuration, it is a second copy -- and the failure mode of a
+second copy is always the same, whichever direction it drifts.
+
+`billing:smoke` now asserts all three states, including one check per key that
+dropping it is an error rather than silence.

@@ -139,14 +139,16 @@ data:
   # offers nothing to buy, and the webhook answers 503. That is the honest
   # state for a deployment nobody has approved spend for.
   #
-  # DO NOT SET IT HERE. `BILLING_PROVIDER` now travels from Key Vault with the
-  # five secrets it needs -- STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET and the
-  # three STRIPE_PRICE_* ids -- so the switch and its keys arrive together or
-  # not at all, and release.yml refuses a deploy that has one without the
-  # others. Setting it here instead would split them up again, which is the
-  # exact failure ADR-113 exists to stop.
+  # THERE IS NO SWITCH ANY MORE. ADR-114: Stripe is derived from its keys, so
+  # billing is on exactly when STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET and the
+  # three STRIPE_PRICE_* ids are all in the vault. A partial set is an error
+  # rather than silence, which is the state the old shape could not express --
+  # five live keys inert because a sixth entry was missing (ADR-113).
   #
-  # Turning it on is therefore SIX vault entries and a redeploy, plus the
+  # `BILLING_PROVIDER` survives for one value: `fake`, which CI uses and which
+  # is refused outright in production. Do not set it here at all.
+  #
+  # Turning billing on is therefore five vault entries and a redeploy, plus the
   # webhook registered with Stripe pointing at
   # https://app.<domain>/api/billing/webhook. A deployment with the key but no
   # registered webhook takes money and grants nothing.

@@ -96,7 +96,7 @@ itself.
 
 ---
 
-## 5. Money — one vault entry away
+## 5. Money — already configured; the next deploy switches it on
 
 The live secret already holds **all five** Stripe values, and the secret key is a **live**
 one, not a test key:
@@ -107,17 +107,18 @@ one, not a test key:
     STRIPE_PRICE_FAMILY      a price id
     STRIPE_PRICE_TEAM        a price id
 
-**`BILLING_PROVIDER` is the only thing missing**, and it is the reason none of that is doing
-anything: `resolveBilling` reads the switch FIRST and returns null when it is absent, so the
-keys sit there inert. Until ADR-113 it could not even reach a container.
+**There is nothing left to set.** ADR-114 removed the switch: Stripe is derived from its
+keys, because a `BILLING_PROVIDER=stripe` sitting beside five secrets was a fact the
+environment already knew, stated twice — and the two can disagree, which is exactly how
+those five ended up inert.
 
-    az keyvault secret set --vault-name <vault> --name billing-provider --value stripe
-
-Then redeploy. That is the whole change.
+So **the next deploy turns billing on**, and the key is a live one. That is the intent, and
+it is also the reason the check below is no longer optional.
 
 ### First, confirm the webhook in Stripe
 
-The one thing a vault listing cannot tell you. The webhook must point at:
+The one thing a vault listing cannot tell you, and the one thing that must be true before
+the deploy rather than after. The webhook must point at:
 
     https://app.jotacular.com/api/billing/webhook
 

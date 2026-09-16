@@ -273,7 +273,7 @@ deployment nobody has approved spend for. The vault is what this one runs on.
 | M0 Foundation | complete | **met** — deployed, and a note survives a device change |
 | M1 The loop | complete | needs somebody to run the loop end to end and say it worked |
 | M2 Ink | complete | needs a real page of handwriting quoted back accurately |
-| M3 Spaces and money | complete | **not met** — `BILLING_PROVIDER` is unset; nobody has paid |
+| M3 Spaces and money | complete | **not met** — billing switches on at the next deploy (ADR-114); nobody has paid yet |
 | M4 Voice and images | complete | needs a real napkin photographed and read |
 | M5 Alive | code complete; suite gateway deferred by ADR-002 | needs a week of triage remarks worth reading |
 

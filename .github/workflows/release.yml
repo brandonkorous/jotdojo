@@ -245,13 +245,26 @@ jobs:
           switch_of() { grep "^$1=" /tmp/jotacular.env | head -1 | cut -d= -f2-; }
 
           bad=()
+
+          # Stripe is DERIVED from its keys (ADR-114), so there is no switch to
+          # forget and nothing to keep in step. What is left to refuse is a
+          # PARTIAL set, which `resolveBilling` throws on -- and it throws on
+          # first use, which is the account page.
+          stripe_keys=(STRIPE_SECRET_KEY STRIPE_WEBHOOK_SECRET
+                       STRIPE_PRICE_SOLO STRIPE_PRICE_FAMILY STRIPE_PRICE_TEAM)
+          present=0
+          for k in "${stripe_keys[@]}"; do have "$k" && present=$((present+1)); done
+          if [ "$present" -gt 0 ] && [ "$present" -lt "${#stripe_keys[@]}" ]; then
+            for k in "${stripe_keys[@]}"; do
+              have "$k" || bad+=("Stripe is half-configured: $k is missing")
+            done
+          fi
+
+          # The variable survives for exactly one value, and CI is its only
+          # caller. Anything else in the vault is a leftover or a typo.
           if have BILLING_PROVIDER; then
             case "$(switch_of BILLING_PROVIDER)" in
-              stripe)
-                for k in STRIPE_SECRET_KEY STRIPE_WEBHOOK_SECRET \
-                         STRIPE_PRICE_SOLO STRIPE_PRICE_FAMILY STRIPE_PRICE_TEAM; do
-                  have "$k" || bad+=("BILLING_PROVIDER=stripe needs $k")
-                done ;;
+              stripe) echo "note: BILLING_PROVIDER=stripe is redundant since ADR-114; the keys decide" ;;
               fake) bad+=("BILLING_PROVIDER=fake must never reach production") ;;
               *) bad+=("BILLING_PROVIDER is set to something no driver answers to") ;;
             esac
