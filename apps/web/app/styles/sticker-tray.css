@@ -7,6 +7,17 @@
  *
  * A panel rather than a popover, matching ToolOptions on the same surface.
  */
+/* Invisible, and only there to catch a tap outside. Not dimmed: this is a tray
+   over a canvas, not a modal over a form -- the page it is about to mark has to
+   stay visible while you choose. */
+.jd-sticker-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 29;
+  background: transparent;
+  cursor: default;
+}
+
 .jd-sticker-tray {
   /* FIXED, not absolute: the panel is centred on the SCREEN, and an absolute
      one would resolve against whatever ancestor happened to be positioned. */
@@ -56,15 +67,23 @@
   gap: 0.125rem;
 }
 
-.jd-sticker-pick {
+/* `.jd-tool` pins a button to 2rem square, which is right in the rail and wrong
+   in a grid that already sizes its own cells. Doubled up to beat it rather than
+   fought with `!important`. */
+.jd-tool.jd-sticker-pick {
   display: grid;
   place-items: center;
+  width: 100%;
+  height: auto;
   aspect-ratio: 1;
+  border-radius: 0.5rem;
   /* The glyph is drawn with a white edge, which must not be clipped. */
   overflow: visible;
 }
 
-.jd-sticker-glyph {
-  font-size: 1.5rem;
+/* Beats `.jd-tool svg`, which is one class and one element and would otherwise
+   hold every sticker in the tray at chrome size. */
+.jd-sticker-pick .jd-sticker-glyph {
+  font-size: 1.75rem;
   overflow: visible;
 }

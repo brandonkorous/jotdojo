@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   STICKER_GROUPS, type StickerGroup, type StickerName,
 } from "@jotacular/domain/stickers";
@@ -40,6 +40,17 @@ export function StickerTray({
   onPick: (name: StickerName, color: string) => void;
 }) {
   const [color, setColor] = useState(PEN_COLORS[0]!.color);
+
+  // Escape closes it. A panel over the page that can only be dismissed by
+  // finding its X reads as stuck, and this one covers what it is about to be
+  // used on.
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open, onClose]);
+
   if (!open) return null;
 
   const pick = (name: StickerName) => {
@@ -48,55 +59,65 @@ export function StickerTray({
   };
 
   return (
-    <div
-      className="jd-chrome glass jd-sticker-tray"
-      role="dialog"
-      aria-label="Stickers"
-    >
-      <div className="jd-sticker-tray-head">
-        <div role="group" aria-label="Sticker colour" className="jd-menu-swatches">
-          {PEN_COLORS.map((swatch) => (
-            <button
-              key={swatch.name}
-              type="button"
-              className="jd-tool jd-swatch"
-              title={swatch.name}
-              aria-label={swatch.name}
-              aria-pressed={swatch.color === color}
-              onClick={() => setColor(swatch.color)}
-            >
-              <span aria-hidden className="jd-chip" style={{ background: swatch.color }} />
-            </button>
+    <>
+      {/* Invisible, and only there to catch a tap outside. The page is not
+          dimmed: this is a tray over a canvas, not a modal over a form. */}
+      <button
+        type="button"
+        className="jd-sticker-scrim"
+        aria-label="Close stickers"
+        onClick={onClose}
+      />
+      <div
+        className="jd-chrome glass jd-sticker-tray"
+        role="dialog"
+        aria-label="Stickers"
+      >
+        <div className="jd-sticker-tray-head">
+          <div role="group" aria-label="Sticker colour" className="jd-menu-swatches">
+            {PEN_COLORS.map((swatch) => (
+              <button
+                key={swatch.name}
+                type="button"
+                className="jd-tool jd-swatch"
+                title={swatch.name}
+                aria-label={swatch.name}
+                aria-pressed={swatch.color === color}
+                onClick={() => setColor(swatch.color)}
+              >
+                <span aria-hidden className="jd-chip" style={{ background: swatch.color }} />
+              </button>
+            ))}
+          </div>
+          <button type="button" className="jd-tool" aria-label="Close" onClick={onClose}>
+            <Icon name="close" />
+          </button>
+        </div>
+
+        <div className="jd-sticker-tray-body">
+          {(Object.keys(STICKER_GROUPS) as StickerGroup[]).map((group) => (
+            <section key={group}>
+              <h2 className="jd-sticker-group">{HEADINGS[group]}</h2>
+              <div className="jd-sticker-grid">
+                {STICKER_GROUPS[group].map((name) => (
+                  <button
+                    key={name}
+                    type="button"
+                    className="jd-tool jd-sticker-pick"
+                    title={name}
+                    aria-label={name}
+                    onClick={() => pick(name)}
+                  >
+                    <Glyph name={name} color={color} />
+                  </button>
+                ))}
+              </div>
+            </section>
           ))}
         </div>
-        <button type="button" className="jd-tool" aria-label="Close" onClick={onClose}>
-          <Icon name="close" />
-        </button>
       </div>
-
-      <div className="jd-sticker-tray-body">
-        {(Object.keys(STICKER_GROUPS) as StickerGroup[]).map((group) => (
-          <section key={group}>
-            <h2 className="jd-sticker-group">{HEADINGS[group]}</h2>
-            <div className="jd-sticker-grid">
-              {STICKER_GROUPS[group].map((name) => (
-                <button
-                  key={name}
-                  type="button"
-                  className="jd-tool jd-sticker-pick"
-                  title={name}
-                  aria-label={name}
-                  onClick={() => pick(name)}
-                >
-                  <Glyph name={name} color={color} />
-                </button>
-              ))}
-            </div>
-          </section>
-        ))}
-      </div>
-    </div>
-  );
+      </>
+    );
 }
 
 /**
