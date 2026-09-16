@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import {
   STICKER_GROUPS, type StickerGroup, type StickerName,
 } from "@jotacular/domain/stickers";
-import { STICKER_ART, STICKER_BORDER } from "@jotacular/ink-render";
+import { placeSticker } from "@jotacular/ink-render";
 import { PEN_COLORS } from "@/lib/ink-style";
 import { Icon } from "@/components/Icon";
 
@@ -120,32 +120,39 @@ export function StickerTray({
     );
 }
 
+/** The square every preview is drawn in. Arbitrary: the element is sized in
+ *  `em` so the tray's font-size still decides how big it looks. */
+const BOX = 100;
+
 /**
  * One sticker, previewed exactly as it will land.
  *
- * The same `paint-order` die-cut edge the plane and the exporter draw, so what
- * is in the tray is what goes on the page rather than a flat icon of it.
+ * Drawn by `placeSticker`, which is also what the plane, the ghost and the
+ * exporter call -- so all four agree by construction rather than by four sets
+ * of arithmetic that match today. It carries the same `paint-order` die-cut
+ * edge, which is what makes this a sticker rather than a flat icon of one.
  */
 function Glyph({ name, color }: { name: StickerName; color: string }) {
-  const art = STICKER_ART[name];
-  if (!art) return null;
-  const longest = Math.max(art.w, art.h);
+  const p = placeSticker({ id: name, name, x: 0, y: 0, size: BOX, color });
+  if (!p) return null;
   return (
     <svg
       className="jd-sticker-glyph"
-      viewBox={`0 0 ${art.w} ${art.h}`}
-      style={{ width: `${(art.w / longest).toFixed(4)}em`, height: `${(art.h / longest).toFixed(4)}em` }}
+      viewBox={`0 0 ${BOX} ${BOX}`}
+      style={{ width: "1em", height: "1em" }}
       focusable="false"
       aria-hidden
     >
-      <path
-        d={art.d}
-        fill={color}
-        stroke="#FFFFFF"
-        strokeWidth={STICKER_BORDER * 2 * longest}
-        strokeLinejoin="round"
-        paintOrder="stroke fill"
-      />
+      <g transform={`translate(${p.tx} ${p.ty}) scale(${p.k})`}>
+        <path
+          d={p.art.d}
+          fill={color}
+          stroke="#FFFFFF"
+          strokeWidth={p.stroke}
+          strokeLinejoin="round"
+          paintOrder="stroke fill"
+        />
+      </g>
     </svg>
   );
 }

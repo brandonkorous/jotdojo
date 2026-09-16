@@ -6,6 +6,7 @@
  * somebody TAPPED, centred on that point, and nowhere else -- not in the middle
  * of the view, and not at the origin.
  */
+import { placeSticker } from "@jotacular/ink-render";
 import {
   STICKER_FRACTION, stickerCorner, stickerScreenSize,
 } from "../lib/ink-sticker-layer";
@@ -136,6 +137,47 @@ check(
     const size = worldSize({ w: 1200, h: 900 }, 0.4);
     const c = centreOf({ x: -880, y: 1240 }, size);
     return near(c.x, -880) && near(c.y, 1240);
+  })(),
+);
+
+// --- the preview and the result are drawn by ONE function -------------------
+
+/**
+ * How far the picture actually reaches inside its box, white edge included.
+ *
+ * The tray glyph, the ghost, the plane and the exporter all call
+ * `placeSticker`, so this is the one number deciding whether a preview is
+ * honest. Measured rather than asserted: the ghost once drew the artwork at the
+ * full box and let the edge hang outside it, making it 16% too big.
+ */
+const drawnExtent = (size: number): number | null => {
+  const p = placeSticker({ id: "g", name: "fire", x: 0, y: 0, size, color: "#111" });
+  if (!p) return null;
+  const longest = Math.max(p.art.w, p.art.h);
+  // Half the stroke sits under the fill; the other half is the visible edge.
+  return longest * p.k + p.stroke * p.k;
+};
+
+for (const size of [40, 96, 300]) {
+  const reach = drawnExtent(size);
+  check(
+    `a sticker of ${size} draws its white edge INSIDE its own box`,
+    reach !== null && reach <= size,
+    `reached ${reach} of ${size}`,
+  );
+  check(
+    `a sticker of ${size} still fills the box it was given`,
+    reach !== null && reach > size * 0.95,
+    `reached ${reach} of ${size}`,
+  );
+}
+
+check(
+  "the picture is placed by the size alone, so every preview scales together",
+  (() => {
+    const a = drawnExtent(100);
+    const b = drawnExtent(200);
+    return a !== null && b !== null && near(b, a * 2);
   })(),
 );
 

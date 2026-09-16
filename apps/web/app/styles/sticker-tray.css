@@ -1,9 +1,9 @@
 /**
- * The tray you pick a sticker from. ADR-115.
+ * Picking a sticker, and holding one. ADR-115.
  *
  * Separate from ink-sticker.css, and the seam is the one remarks.css and
- * remark-canvas.css already drew: this sits still on the glass, and that moves
- * with the camera as part of the page.
+ * remark-canvas.css already drew: both things here sit still on the GLASS,
+ * and that file is the object on the page, which moves with the camera.
  *
  * A panel rather than a popover, matching ToolOptions on the same surface.
  */
@@ -85,5 +85,27 @@
    hold every sticker in the tray at chrome size. */
 .jd-sticker-pick .jd-sticker-glyph {
   font-size: 1.75rem;
+  overflow: visible;
+}
+
+/* The loaded sticker, following the pointer. ADR-115.
+ *
+ * Fixed rather than absolute: the pointer is a screen fact, so no camera
+ * arithmetic reaches this at all. `.jd-canvas-shell` is `position: relative`
+ * with no transform, so the viewport is still the containing block.
+ */
+.jd-sticker-ghost {
+  position: fixed;
+  /* `left`/`top` are the pointer itself, so the artwork is pulled back by half
+     of itself. Without this the preview hangs down and right of where the tap
+     actually puts the sticker, which is the bug it exists to prevent. */
+  transform: translate(-50%, -50%);
+  z-index: 28;
+  /* It must never take the tap it is previewing. */
+  pointer-events: none;
+  /* In hand rather than put down, and no further: a preview drawn at a
+     different size or colour from the result is not a preview. */
+  opacity: 0.85;
+  /* The white die-cut edge must not be clipped. */
   overflow: visible;
 }

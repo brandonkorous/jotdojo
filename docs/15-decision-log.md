@@ -5278,6 +5278,20 @@ side of the surface DIVIDED BY THE ZOOM, so its size on the glass is the same at
 every zoom — which lets the ghost be a plain fixed-position element at a plain
 pixel size, and makes it exactly as big as the thing it is about to become.
 
+"Exactly as big" is a claim, and the first version of it was false twice over.
+The ghost had no stylesheet rule at all, so it was never fixed-positioned and
+never followed anything; and it measured the artwork itself rather than calling
+`placeSticker`, so it let the white edge hang outside the box and drew 16%
+larger than the sticker it was promising. The tray glyph had the second bug too.
+All four — the tray, the ghost, the plane and the exporter — now call
+`placeSticker`, so they agree by construction rather than by four sets of
+arithmetic that match today. `sticker-place:smoke` measures the drawn reach and
+asserts the edge lands inside the box.
+
+Neither was caught by a type, a lint rule or a suite, because a missing CSS rule
+is not a missing symbol. It was caught by reading the cascade for a class the
+component names — which is the check this repo keeps having to make by hand.
+
 **A sticker never reaches the recogniser.** It follows the `text` option in
 `toSvg`, as arrows do (ADR-108) and typed boxes do (ADR-065). A vision model
 handed a flame transcribes it as a squiggle, and that squiggle would be written
