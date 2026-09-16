@@ -55,7 +55,7 @@ const PLANS: Plan[] = [
     ],
   },
   {
-    name: "Team", price: "$19", cadence: "a month", who: "up to 5 people",
+    name: "Team", price: "$19", cadence: "a month", who: "up to 25 people",
     reads: "10,000 pages, photos or voice minutes, shared between you",
     lines: [
       "Everything in Family",
@@ -103,7 +103,7 @@ export default function Pricing() {
         </p>
 
         <p className="jd-fineprint">
-          More than five people on a team? Write to us and we will sort something out.
+          More than twenty-five people? Write to us and we will sort something out.
         </p>
       </section>
 

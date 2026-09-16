@@ -4973,3 +4973,148 @@ themes with a model. We have the embeddings and the reasoner already, and the
 triage agent (ADR-048) is the right home for it. It waits because that agent's
 prompt is a first draft nobody has tuned against real notes, and a second
 unmeasured thing on top of an unmeasured thing tells you nothing.
+
+### ADR-112 - Seats are counted, and they were never the fence
+
+**Status:** accepted, 2026-09-15
+
+The pricing page has sold "up to 6 people" since it shipped and nothing
+anywhere counted. A seventh person joined a Family space exactly as easily as a
+second. docs/12 has listed this as open since 2026-08-21, with the reason: Team
+was advertised as "up to 5, then $4/member", and per-member overage needs
+quantity-based subscriptions before a cap is honest.
+
+**Looking at it again produced a better question than the one that was open.**
+The numbers were 1 / 1 / 6 / 5 -- and **Team held fewer people than Family**.
+Nobody ships that. It is not a rounding error, it is a sign the ladder was
+never reasoned about as a ladder.
+
+**What the market does.** Six is the family number everywhere: Apple One,
+Google One and iCloud+ all land on six total, 1Password and Craft on five.
+There is no argument for a different one; six is what "a family plan" means.
+
+At the team end there are two shapes. **Per seat** -- Notion at $10/member,
+Miro at $8/member, no cap, you pay per head. And **flat rate with a generous
+cap** -- Milanote sells 50 seats for $49 a month. docs/01 rules out the first
+in its opening line: priced per space, not per seat, because "families will not
+do seat math and small businesses resent it".
+
+**The decision, and it is mostly a reframe.** 1 / 1 / 6 / 25.
+
+**SEATS ARE NOT THE FENCE.** Look at what the ladder actually sells and the
+seat counts are not in it: Free to Solo buys *the agent may write* (ADR-042),
+Solo to Family buys *pooled and shared*, Family to Team buys *five times the
+readings and the triage agent*. Readings and the write permission are the
+fence. Seats exist so that a number on a page is true, not to make anybody
+upgrade -- which is why they are set generously enough that nobody meets them.
+25 at $19 is the same shape as Milanote's 50 at $49.
+
+That reframe is what fixes Team. Once seats are a statement rather than a
+lever, there is no reason for Team's to be small, and every reason for it to be
+bigger than Family's.
+
+**A free space holds ONE person, so sharing is something you buy.** That is
+what the page has always said -- Free: "you" -- and it is the one place the cap
+does act as a fence. You can still CREATE a shared space; the first invite is
+where it says a Family space holds six.
+
+**Where it is enforced, and why in two places.**
+
+`app_plan_seats` in migration 0036 is the number, beside `app_plan_allowance`
+so a plan can never mean one thing to metering and another to seats.
+
+The cap bites at INVITE time in the domain layer and again at ACCEPT time in
+`app_accept_invite`. The duplication is the point: the database is what makes
+the cap true, and the domain check is what makes it KIND. Without the second,
+an owner sends the invite, the email goes out, and the person who clicks the
+link is the one who finds out the space is full.
+
+**Pending invites hold a seat.** Otherwise an owner sends six into a Family
+space of one, every one is valid when written, and the cap is discovered by the
+sixth person to click. Revoking gives the seat back.
+
+**Nobody is ever ejected.** A space over its number -- downgraded, or older
+than this -- keeps everybody and simply cannot grow. `app_space_seats_left`
+returns a negative number and nothing acts on it beyond refusing to add more.
+
+**The bug the suite found in this ADR's own migration.** The accept check was
+written as `left < 1` with a confident comment explaining why. It is `< 0`.
+Accepting converts a pending invite into a member and both are counted, so
+accepting never changes the total -- the seat was reserved when the invite was
+written. `< 1` refused the *last invited person on a full space*, which is
+precisely the person the reservation was for. Six joins into a six-seat family
+failed on the sixth. Found by `seats:smoke` before it left this machine.
+
+**What changed on the pages.** The marketing page now says Team is 25 people
+and "more than twenty-five? write to us". docs/01 gained a paragraph saying
+seats are not the fence, and two stale numbers came out with it -- the table
+said Solo was 300 readings where the code and the paragraph below it both said
+1,000, and it described Team's allowance as scaled by members when it is flat.
+
+`seats:smoke`, 29 checks over real SQL. `members:smoke` and `billing:smoke`
+both needed a plan bought before a second person could be put in a space, which
+is the fence showing up in the suites exactly where it should.
+
+**What this does not do.** Per-member overage above the cap. The page says
+"write to us", which is honest and manual. Quantity-based Stripe subscriptions
+would change that, and the shape here does not have to change for it: raise the
+number the function returns.
+
+### ADR-113 - A switch that cannot reach production is a feature that is off
+
+**Status:** accepted, 2026-09-15
+
+Found while making sure that pasting the Stripe keys into Key Vault would be
+enough to start taking money. It would not have been.
+
+`release.yml` builds the container environment from two allow-lists: `required`
+secrets, whose absence fails the deploy, and `optional` ones, which are copied
+across when present. The four model switches -- `VISION_PROVIDER`,
+`EMBEDDING_PROVIDER`, `SPEECH_PROVIDER`, `TRIAGE_PROVIDER` -- are on the
+optional list. **`BILLING_PROVIDER` was on neither**, and the ConfigMap has it
+commented out.
+
+So setting all five Stripe secrets in the vault and redeploying would have
+produced: every secret present, `resolveBilling` reading `BILLING_PROVIDER`,
+finding nothing, returning `null` -- and billing off. Silently. The deploy log
+would have printed `optional secret present: STRIPE_SECRET_KEY` five times.
+
+The comment directly above that list already describes this failure:
+
+> A secret that is set in the vault but absent here never reaches the
+> container, and the feature is simply off in production while the vault looks
+> right -- which is the same silent-green failure the required list above
+> exists to refuse, arriving through the back door.
+
+It was right, and it was describing the file it was written in.
+
+**Decision, in two parts.**
+
+**1. `BILLING_PROVIDER` joins the optional list**, so the switch travels with
+the keys it needs rather than living in a ConfigMap a commit away. The ConfigMap
+now says not to set it there, and why.
+
+**2. A switch without its keys fails the DEPLOY.** Every `resolve()` throws when
+named a driver it cannot build, and the throw happens on first use -- so
+half-configured is a green deploy, Running pods, and a 503 the first time
+somebody tries to pay. The release now checks the pairs before applying the
+Secret: `BILLING_PROVIDER=stripe` needs its five, `*_PROVIDER=anthropic` needs
+`ANTHROPIC_API_KEY`, `=azure` needs the endpoint and key, and `=fake` is
+refused outright at the door as well as in the code.
+
+**Absent stays fine. Half-configured does not.** That distinction is the whole
+of it: shipping with a feature off is a deliberate, documented state
+(01-config.yaml), and shipping with it broken never is.
+
+**This is the third time this shape has appeared.** ADR-090: the vault key kept
+an old name and the deploy asked for one that did not exist. ADR-091: a rename
+sweep could not see the end of a name it did not own. ADR-096: a green apex and
+Running pods while the database was unreachable. Same failure each time -- a
+signal that looks like success because the thing that would have contradicted
+it was never asked. The answer each time has been to make the deploy refuse,
+and that is the answer here.
+
+docs/21-go-live.md is the runbook this produced: what to set, in what order,
+and what to check after each one. Money is last, and the check that matters is
+"you paid and the plan changed" -- because ADR-049 already found the version of
+this where a card could be charged and the space stayed free.

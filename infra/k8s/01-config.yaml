@@ -128,15 +128,24 @@ data:
   # TRIAGE_PROVIDER: 'anthropic'
   # TRIAGE_QUIET: '15 minutes'
 
-  # --- money (ADR-038, ADR-049) --------------------------------------------
+  # --- money (ADR-038, ADR-049, ADR-113) ------------------------------------
   # Unset means BILLING IS OFF: everyone is on the free plan, the account page
   # offers nothing to buy, and the webhook answers 503. That is the honest
   # state for a deployment nobody has approved spend for.
   #
-  # `stripe` needs the four secrets above AND the webhook registered with
-  # Stripe pointing at https://app.<domain>/api/billing/webhook. A deployment
-  # with the key but no registered webhook takes money and grants nothing.
-  # BILLING_PROVIDER: 'stripe'
+  # DO NOT SET IT HERE. `BILLING_PROVIDER` now travels from Key Vault with the
+  # five secrets it needs -- STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET and the
+  # three STRIPE_PRICE_* ids -- so the switch and its keys arrive together or
+  # not at all, and release.yml refuses a deploy that has one without the
+  # others. Setting it here instead would split them up again, which is the
+  # exact failure ADR-113 exists to stop.
+  #
+  # Turning it on is therefore SIX vault entries and a redeploy, plus the
+  # webhook registered with Stripe pointing at
+  # https://app.<domain>/api/billing/webhook. A deployment with the key but no
+  # registered webhook takes money and grants nothing.
+  #
+  # See docs/21-go-live.md.
 
   # --- worker tuning -------------------------------------------------------
   WORKER_IDLE_MS: '2000'

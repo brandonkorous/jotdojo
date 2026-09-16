@@ -24,6 +24,8 @@ Everything needed to take Jotacular from empty repo to shipped product. Read in 
 | [17-shared-infrastructure.md](17-shared-infrastructure.md) | **Read before deploying.** We share sparx's cluster and SQL server: what that constrains, and the pipeline that follows |
 | [18-app-directories.md](18-app-directories.md) | Reaching people who never learned the word MCP: Claude and ChatGPT listings |
 | [19-rebrand.md](19-rebrand.md) | The rename to Jotacular: what moved, what deliberately did not, and why the domain lags |
+| [20-rename-runbook.md](20-rename-runbook.md) | The steps the rename took, including the one that failed silently |
+| [21-go-live.md](21-go-live.md) | **Read before switching anything on.** Recognition, search, voice, the triage agent and money are all built and OFF: what to set, in what order, and what to check after each |
 
 ## The one-paragraph version
 

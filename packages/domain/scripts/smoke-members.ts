@@ -10,7 +10,7 @@
 import {
   upsertUserFromGoogle, asUser, createNote, listNotes,
   createSpace, inviteToSpace, acceptInvite, listMembers, listInvites,
-  revokeInvite, setMemberRole, removeMember, listSpaces,
+  revokeInvite, setMemberRole, removeMember, listSpaces, applyBillingEvent,
 } from "../src/index";
 
 let failures = 0;
@@ -55,6 +55,20 @@ const stranger = await mk("str", "Stranger");
 console.log("\ncreating a shared space");
 const spaceId = await createSpace(owner.actor, "The Family", "family");
 check("a family space is created", typeof spaceId === "string" && spaceId.length > 0);
+
+// A space is created on the FREE plan, which holds one person (ADR-112), so
+// this one is paid for before anybody is invited into it. Through the real
+// billing door rather than an UPDATE, because that is the only thing that
+// moves `spaces.plan` in production. The cap itself is `seats:smoke`.
+await applyBillingEvent({
+  kind: "subscription",
+  spaceId,
+  subscription: {
+    customerId: "cus_members_smoke", subscriptionId: "sub_members_smoke",
+    plan: "family", status: "active",
+    currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+  },
+}, "smoke");
 const ownerSpaces = await listSpaces(owner.actor);
 check("the creator is in it", ownerSpaces.some((s) => s.id === spaceId));
 check("...as owner", ownerSpaces.find((s) => s.id === spaceId)?.role === "owner");

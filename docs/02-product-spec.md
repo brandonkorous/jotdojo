@@ -104,4 +104,11 @@ This is a safety control wearing a product feature's clothes, and it is a genuin
 Concurrent editing of the same paragraph by two people (CRDTs — live multi-device updates
 and presence DO ship, ADR-058), a rich-text document model (the markdown toolbar in ADR-045 is not one), attachments beyond images and audio, note templates, reminders and notifications, public share links, import from other apps, browser extension, offline-authoritative editing.
 
+**And everything that would make the canvas a meeting tool** (ADR-111): timers, voting,
+audio chat, music, stamps, spotlight, cursor chat, guest links, widgets, tables. These were
+weighed against FigJam deliberately and refused deliberately. Three things from that
+comparison were built, because each is a thing every canvas has or a thing an agent can
+read: arrows between objects (ADR-108), undo and redo (ADR-109), and copy/paste/duplicate
+(ADR-110).
+
 Several of these are good ideas. None of them is "the thought lands in under a second."

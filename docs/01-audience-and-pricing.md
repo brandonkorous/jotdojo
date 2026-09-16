@@ -30,22 +30,30 @@ Priced on the "affordable" value. Per **space**, not per seat — families will 
 | Plan | Price | Members | What you get |
 |---|---|---|---|
 | **Free** | $0 | 1 | Unlimited typed notes, search, **an assistant can read your notes**, 100 readings/mo (a page, a photo or a started minute is one) |
-| **Solo** | $5/mo | 1 | Everything, **an assistant can also add notes and comment**, 300 readings/mo |
-| **Family** | $9/mo | up to 6 | Solo limits, pooled, shared spaces |
-| **Team** | $19/mo | up to 5, then $4/member | Family limits scaled by members, shared spaces, triage agent |
+| **Solo** | $5/mo | 1 | Everything, **an assistant can also add notes and comment**, 1,000 readings/mo |
+| **Family** | $9/mo | up to 6 | Solo, pooled across the house, shared spaces, 2,000 readings/mo |
+| **Team** | $19/mo | up to 25 | Family, shared spaces, triage agent, 10,000 readings/mo |
+
+**Seats are not the fence, and the numbers are set so nobody meets them.** What is sold is
+READINGS and the agent's permission to write. Six is what a family plan means everywhere —
+Apple One, Google One and iCloud+ all land there — and twenty-five is a small company.
+Team used to say five, which was fewer than Family and made no sense; ADR-112 is the
+record. Priced per space, never per seat, for the reason at the top of this section.
 
 Annual equals two months free. No trial gate — the free tier is the trial and it never expires.
 
-> **What is actually enforced, as of 2026-08-21.** All four plans exist, are sellable, and
+> **What is actually enforced, as of 2026-09-15.** All four plans exist, are sellable, and
 > can now actually be BOUGHT: there is a checkout on the account page and a webhook behind
 > it (ADR-049). Until then the pricing was a leaflet -- a card could have been charged and
 > the space would have stayed free, because nothing was listening (ADR-043). **Free reads, paid writes** is enforced at use time, in the domain layer, for
 > agent actors only (ADR-042). Metering is a single "recognition units" allowance per space
 > — 100 free, 1000 solo, 2000 family, 10000 team — where a unit is a page of handwriting,
 > a photo, or a minute of audio; the separate voice-minute and image counts in the table
-> above are not modelled separately and nothing depends on them being so. **Seat counts are
-> NOT enforced**: nothing stops a seventh person joining a Family space, because Team's
-> per-member overage needs quantity-based subscriptions before a cap is honest. **The triage
+> above are not modelled separately and nothing depends on them being so. **Seat counts ARE
+> enforced** (ADR-112, migration 0036): counted at invite time and again at accept time,
+> with pending invites holding a seat so the limit belongs to the owner who set it rather
+> than to the last person to click a link. Nobody is ever ejected — a space that is over
+> its number keeps everybody and simply cannot grow. **The triage
 > agent is built** (ADR-048): Team only, off until an owner turns it on, and one run counts
 > as one recognition unit whether or not it had anything to say.
 

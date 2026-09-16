@@ -3,6 +3,7 @@ import { and, desc, eq, isNull, sql } from "drizzle-orm";
 import { withActor, spaceInvites, spaceMembers, users, type Tx } from "@jotacular/db";
 import type { Actor } from "./actor";
 import { DomainError, Forbidden, NotFound, raisedMessage } from "./errors";
+import { assertSeatFree } from "./seats";
 
 const PREFIX = "jd_inv_";
 const TTL_DAYS = 14;
@@ -92,6 +93,7 @@ export async function inviteToSpace(
 
   return withActor(actor.userId, async (tx) => {
     await assertOwner(tx, actor, spaceId);
+    await assertSeatFree(tx, spaceId, address);
     const [row] = await tx.insert(spaceInvites).values({
       spaceId, email: address, role, tokenHash: hash(token),
       invitedBy: actor.userId, expiresAt,
@@ -157,6 +159,9 @@ function asInviteError(err: unknown): Error {
     ["invite already used", "invite_used"],
     ["invite expired", "invite_expired"],
     ["different address", "invite_wrong_account"],
+    // ADR-112. The invite was good when it was sent and the space filled up
+    // before it was used, so the reason names the space rather than the link.
+    ["the space is full", "space_full"],
   ];
   for (const [needle, code] of known) {
     if (message.includes(needle)) return new InviteRejected(message, code);

@@ -128,14 +128,23 @@ submission needs no organisation. Anthropic's needs a 2-seat Team org on a busin
 until then. Remaining before either: a populated demo account, three worked prompts, icon,
 tagline, description, categories, support contact, and a plain-language docs page.
 
-**Two gaps found while writing the pricing page, one closed and one open.** The free tier
-could write over MCP — the fence docs/01 calls its most important decision was never
-implemented — and `solo` was not a plan the schema would accept. Both are fixed. **Seat
-counts are still not enforced:** Family says six and Team says five, and nothing stops a
-seventh, because Team's per-member overage needs quantity-based subscriptions to bill
-honestly.
+**Three gaps found while writing the pricing page, all now closed.** The free tier could
+write over MCP — the fence docs/01 calls its most important decision was never implemented
+— and `solo` was not a plan the schema would accept. **Seat counts are enforced as of
+2026-09-15** (ADR-112, `seats:smoke` 29): counted at invite time and again at accept time,
+with pending invites holding a seat.
+
+Looking at that last one produced a better question than the one that was open. The numbers
+were 1 / 1 / 6 / 5, so **Team held fewer people than Family** — and the fix was not a bigger
+number but the realisation that seats were never the fence. Readings and the agent's write
+permission are. Seats are now 1 / 1 / 6 / 25, set generously enough that nobody meets them,
+which is the shape Apple, Google, Craft and Milanote all use.
 
 **Exit:** a family of four shares a space, each member's own Claude reads it, and someone has paid us money.
+
+**The code is ready for that exit and the deployment is not switched on.** Billing is off in
+production until the Stripe keys are in the vault; [21-go-live.md](21-go-live.md) is the
+runbook, and ADR-113 is why setting them alone would not have been enough.
 
 ## M4 — Voice and images
 
@@ -201,7 +210,32 @@ unmeasured, and none of it has reached a Claude client.
 Concurrent editing of one paragraph by two people (CRDTs — live updates and presence
 shipped in ADR-058), native apps (see [14-native-apps.md](14-native-apps.md)), public share links, import from other apps, browser extension, rich text, templates, reminders.
 
+And the meeting half of a whiteboard — timers, voting, audio chat, music, stamps,
+spotlight, cursor chat, widgets, tables — refused on the record in ADR-111 rather than left
+unmentioned, because the comparison that raised them will be made again.
+
 Each is a reasonable feature. None is "the thought lands in under a second."
+
+## What the FigJam comparison did buy
+
+_2026-09-15._ Three gaps were real and are closed. Two of them were not FigJam features at
+all; they were things every drawing surface has had for thirty years and this one did not.
+
+- **Arrows between objects** (ADR-108, `arrows:smoke` 28, `links:smoke` 44). The one
+  diagramming primitive that changes what an *agent* can read: `Deposit -> Survey -> Offer`
+  lands in the searchable companion block, so the shape of a diagram is no longer only in
+  somebody's head. Made from the canvas menu rather than a sixth tool.
+- **Undo and redo** (ADR-109, `history:smoke` 43). The canvas had none. An eraser sweep was
+  final, on a product whose promise is that a thought is never lost.
+- **Copy, cut, paste and duplicate** (ADR-110). Copying a card meant redrawing it.
+
+Everything else that comparison turned up was refused, and ADR-111 is the record of why —
+so the same conversation does not have to be had from scratch next time.
+
+**None of this is verified in a browser yet.** The suites are green and green suites have
+missed canvas defects three times in this repo's history (ADR-047, ADR-050, ADR-107). The
+arrow's aiming state, the rubber band and the undo of a half-typed box are exactly the kind
+of thing only a person looking at the page can judge.
 
 ## The honest risk register
 
@@ -218,16 +252,36 @@ Each is a reasonable feature. None is "the thought lands in under a second."
 
 ## Where the work actually stands
 
-_Updated 2026-08-21._
+_Updated 2026-09-15._
+
+**The deploy happened.** Everything below this table that says otherwise was written on
+2026-08-21 and is kept as the record of that moment, not as a description of today. The
+apex serves, the app answers, and Jotacular has its own Postgres (ADR-096 through ADR-100
+are the story of getting there, most of it unpleasant).
+
+**What replaced it as the blocker is narrower and entirely a decision.** Every intelligent
+feature is built, tested and **switched off in production** — `VISION_PROVIDER`,
+`EMBEDDING_PROVIDER`, `SPEECH_PROVIDER`, `TRIAGE_PROVIDER` and `BILLING_PROVIDER` are all
+unset, because `infra/k8s/01-config.yaml` ships them off rather than wrong until the spend
+is approved. [21-go-live.md](21-go-live.md) is what to do about it.
 
 | Milestone | Code | Exit criterion |
 |---|---|---|
-| M0 Foundation | complete | **not met** — needs the deploy |
-| M1 The loop | complete | **not met** — needs the deploy |
-| M2 Ink | complete | **not met** — needs the deploy and a real vision model |
-| M3 Spaces and money | complete | not met — nobody has paid us, but now they CAN (ADR-049) |
-| M4 Voice and images | complete | **not met** — needs the deploy and real providers |
-| M5 Alive | code complete; suite gateway deferred by ADR-002 | **not met** — needs the deploy and a real reasoner |
+| M0 Foundation | complete | **met** — deployed, and a note survives a device change |
+| M1 The loop | complete | **not met** — needs a real model behind MCP |
+| M2 Ink | complete | **not met** — needs `VISION_PROVIDER` set |
+| M3 Spaces and money | complete | **not met** — needs `BILLING_PROVIDER` set; nobody has paid |
+| M4 Voice and images | complete | **not met** — needs the speech and vision providers |
+| M5 Alive | code complete; suite gateway deferred by ADR-002 | **not met** — needs `TRIAGE_PROVIDER` |
+
+**Every remaining "not met" is a Key Vault entry and a redeploy, not a line of code.** That
+is a materially different position from the one described below, and it is worth saying
+plainly: the question stopped being "is it built" and became "is it any good", which
+nothing has measured.
+
+---
+
+_What follows was written on 2026-08-21, before the deploy._
 
 **One fact explains most of that column: nothing has been deployed.** Four exit criteria
 end with "and Claude can read it", and no hosted client can reach a laptop. The second

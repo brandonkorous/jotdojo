@@ -1,6 +1,6 @@
 import { billing } from "@jotacular/billing";
 import {
-  billingStatus, listSpaces, spaceUsage, type Actor,
+  billingStatus, listSpaces, spaceUsage, spaceSeats, type Actor,
 } from "@jotacular/domain";
 
 /**
@@ -30,6 +30,10 @@ export type PlanView = {
   purchased: string | null;
   status: string | null;
   renewsAt: Date | null;
+  /** How many people the plan holds, and how many of those are spoken for --
+   *  members plus invites nobody has used yet. ADR-112. */
+  seats: number;
+  seatsTaken: number;
 };
 
 /** Only spaces this person owns. A member sees usage on their own screen; the
@@ -39,9 +43,10 @@ export async function ownedPlans(actor: Actor): Promise<PlanView[]> {
   const sellable = billing() !== null;
 
   return Promise.all(spaces.map(async (space) => {
-    const [usage, paperwork] = await Promise.all([
+    const [usage, paperwork, seats] = await Promise.all([
       spaceUsage(actor, space.id),
       billingStatus(actor, space.id),
+      spaceSeats(actor, space.id),
     ]);
     return {
       sellable,
@@ -55,6 +60,8 @@ export async function ownedPlans(actor: Actor): Promise<PlanView[]> {
       purchased: paperwork.purchasedPlan,
       status: paperwork.status,
       renewsAt: paperwork.currentPeriodEnd,
+      seats: seats.seats,
+      seatsTaken: seats.taken,
     };
   }));
 }

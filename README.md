@@ -14,11 +14,18 @@ authorization server, the **MCP server** on `:3402`, semantic search, handwritin
 recognition, voice and photos, shared spaces and billing, and the marketing site at the
 apex with a live-canvas hero.
 
-**Nothing has been deployed**, and that single fact is what four of the five exit criteria
-are waiting on — they all end with "and Claude can read it", and no hosted client can
-reach a laptop. Everything involving a model or a card is also proven only against `fake`
-providers, which read nothing, hear nothing, judge nothing and take no money. See
-[docs/12-roadmap.md](docs/12-roadmap.md) for what that does and does not prove.
+**It is deployed** — the apex serves, the app redirects to sign-in, and Jotacular has its
+own Postgres (ADR-100). What is NOT true is that any of it is switched on.
+
+Recognition, semantic search, voice, the triage agent and billing are all built, tested and
+**inert in production**, because [infra/k8s/01-config.yaml](infra/k8s/01-config.yaml) ships
+them off rather than wrong until somebody approves the spend. So today you can photograph a
+napkin and nothing reads it. Every one of those paths is proven only against `fake`
+providers, which read nothing, hear nothing, judge nothing and take no money.
+
+**[docs/21-go-live.md](docs/21-go-live.md) is what to do about that** — what to set, in what
+order, and what to check after each. [docs/12-roadmap.md](docs/12-roadmap.md) says what the
+green suites do and do not prove.
 
 ### Verifying
 
@@ -32,6 +39,10 @@ providers, which read nothing, hear nothing, judge nothing and take no money. Se
     pnpm marks:smoke       28 checks  — the markdown toolbar: toggling, carets, headings
     pnpm reread:smoke      24 checks  — re-reading old pages, and never a correction
     pnpm triage:smoke      42 checks  — the agent that speaks first, and what stops it
+    pnpm arrows:smoke      28 checks  — an arrow becomes a sentence, and dies with its ends
+    pnpm links:smoke       44 checks  — where an arrow runs, and what takes it away
+    pnpm history:smoke     43 checks  — undo is a delta pointed backwards, and the clipboard
+    pnpm seats:smoke       29 checks  — how many people a plan holds, counted twice
 
     pnpm api:smoke         16 checks  — the capture endpoint over real HTTP
     pnpm mcp:smoke         22 checks  — a real MCP client, real HTTP, real OAuth token

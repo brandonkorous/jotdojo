@@ -75,17 +75,29 @@ created one — corrected here rather than added, because reading order is deriv
 position now (ADR-065) and a constraint that does not exist is worse than one that never
 existed: it is a rule people write code against.
 
-**The ink layer holds two arrays, not one.** `media_assets.strokes` is
-`{v, canvas, strokes[], texts[]}` — handwriting and typed boxes on the same plane, sharing
-one `strokes_version`, one subscription and one delta protocol (ADR-058, ADR-065). They are
-kept apart inside the document on purpose: the recogniser renders `strokes` only, so typed
-text cannot reach a vision model and come back as a confidence-scored guess about words
-somebody had already typed.
+**The ink layer holds four arrays, not one.** `media_assets.strokes` is
+`{v, canvas, strokes[], texts[], images[], links[]}` — handwriting, typed boxes,
+photograph placements and arrows on the same plane, sharing one `strokes_version`, one
+subscription and one delta protocol (ADR-058, ADR-065, ADR-103, ADR-108). Every array after
+the first is **optional**, because every document written before each one shipped has no
+such key and a reader that assumed one would break every existing page.
+
+They are kept apart inside the document on purpose: the recogniser renders `strokes` only,
+so typed text and arrows cannot reach a vision model and come back as a confidence-scored
+guess about things nobody wrote by hand.
+
+**All four merge by id.** An array that leaves something out is an upsert, not a deletion;
+going is said with `remove`, which spans every kind. That is what lets two devices edit one
+page without either wiping the other, and it is the property undo is built on (ADR-109).
+
+**An arrow is the one object that dies with something else.** Removing either end removes
+it, server-side, whether or not the delta mentioned it — unlike a comment, which survives
+what it was about (ADR-107).
 
 Canvas text gets a companion `blocks` row (`kind='text'`, `artifact_id` → the layer) holding
-the boxes flattened in reading order, so `searchable`, embeddings, `inferTitle` and
-`renderBlock` all work with no new paths. `readBody` filters to `artifact_id IS NULL` so
-that copy never reaches the typing surface.
+the boxes flattened in reading order **and the arrows as sentences** (`- Deposit -> Survey`),
+so `searchable`, embeddings, `inferTitle` and `renderBlock` all work with no new paths.
+`readBody` filters to `artifact_id IS NULL` so that copy never reaches the typing surface.
 
 **The four universal fields are the architecture.** Every modality collapses to them, which is why adding video later is a new recognizer and not a schema change.
 
@@ -117,15 +129,31 @@ Ink strokes live in `jsonb` in Postgres, not Blob — they are small, they are q
       "canvas": { "w": 1024, "h": 1366 },
       "strokes": [
         {
+          "id": "…",
           "tool": "pen",
           "color": "#1A1817",
           "width": 2.0,
           "pts": [[x, y, t, pressure, tiltX, tiltY]]
         }
+      ],
+      "links": [
+        {
+          "id": "…",
+          "from": { "id": "<object id>", "x": 100, "y": 20 },
+          "to":   { "id": "<object id>", "x": 500, "y": 20 },
+          "color": "#1F2933",
+          "width": 2.2,
+          "head": "end"
+        }
       ]
     }
 
 Flat numeric arrays, not an object per point — a page of handwriting is thousands of points and the payload difference is large. `t` is milliseconds relative to stroke start.
+
+An arrow's `x`/`y` is **where that end was last seen**, not where it is. While the object it
+names is on the page the position is recomputed every frame, which is what makes the arrow
+follow a card somebody drags. The stored point is the fallback for a page still loading, and
+the only position a loose end (`id: null`) has.
 
 ## Comments and attribution
 

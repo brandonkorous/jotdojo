@@ -13,7 +13,7 @@
 import {
   upsertUserFromGoogle, asUser, createNote, defaultSpaceId, createSpace, inviteToSpace,
   acceptInvite, createInkBlock, appendStrokes, applyInkDelta, getInk, strokesSince,
-  saveNote, heartbeat, whoIsHere, leave, publish, subscribeToNote,
+  saveNote, heartbeat, whoIsHere, leave, publish, subscribeToNote, applyBillingEvent,
   type Stroke, type LiveEvent,
 } from "../src/index";
 
@@ -51,6 +51,18 @@ const A = asUser(one.id);
 const B = asUser(two.id);
 
 const shared = await createSpace(A, "The shared page", "family");  // returns the id
+// A free space holds one person (ADR-112), so it is paid for before the second
+// arrives. Through the real billing door, which is the only thing that moves
+// `spaces.plan` in production. The cap itself is `seats:smoke`.
+await applyBillingEvent({
+  kind: "subscription",
+  spaceId: shared,
+  subscription: {
+    customerId: "cus_live_smoke", subscriptionId: "sub_live_smoke",
+    plan: "family", status: "active",
+    currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+  },
+}, "smoke");
 const invite = await inviteToSpace(A, shared, `lb-${stamp}@example.test`);
 await acceptInvite(B, invite.token);
 const note = await createNote(A, shared, "two people, one page");

@@ -53,8 +53,6 @@ const mk = async (tag: string) => {
 const owner = await mk("own");
 const member = await mk("mem");
 const space = await createSpace(owner.actor, "Paying Family", "family");
-const invite = await inviteToSpace(owner.actor, space, member.email);
-await acceptInvite(member.actor, invite.token);
 
 console.log("\nbefore anyone pays");
 const initial = await billingStatus(owner.actor, space);
@@ -62,13 +60,10 @@ check("the space is on free", initial.plan === "free");
 check("nothing has been purchased", initial.purchasedPlan === null);
 check("free is a real allowance, not zero", (await spaceUsage(owner.actor, space)).allowance >= 100);
 
-console.log("\nwho may buy");
-await refused("a member cannot start a checkout", "forbidden",
-  () => startCheckout(provider, member.actor, space, "family", URLS));
-await refused("a member cannot read the billing state", "forbidden",
-  () => billingStatus(member.actor, space));
-await refused("...nor open the portal", "forbidden",
-  () => billingPortal(provider, member.actor, space, "https://app.jotacular.com"));
+// A free space holds ONE person (ADR-112), so there is no member here yet --
+// and that is the fence working rather than a gap in this suite. `seats:smoke`
+// owns the cap; what this one needs is somebody to test the paperwork against.
+console.log("\nwho may buy, before there is anything to buy");
 await refused("with no provider configured, checkout is refused cleanly", "forbidden",
   () => startCheckout(null, owner.actor, space, "family", URLS));
 await refused("a space that never paid has no portal", "not_found",
@@ -108,8 +103,21 @@ check("...and it is recorded as bought", paid.purchasedPlan === "family");
 check("...as active", paid.status === "active");
 const allowance = await spaceUsage(owner.actor, space);
 check("the allowance went up immediately", allowance.allowance > 100, String(allowance.allowance));
+
+// The seats arrived with the plan, so somebody else can be put in now. Paying
+// is what makes a shared space shareable. ADR-112.
+const inv = await inviteToSpace(owner.actor, space, member.email);
+await acceptInvite(member.actor, inv.token);
 check("a member sees the new allowance too",
   (await spaceUsage(member.actor, space)).allowance === allowance.allowance);
+
+console.log("\nwho may buy");
+await refused("a member cannot start a checkout", "forbidden",
+  () => startCheckout(provider, member.actor, space, "family", URLS));
+await refused("a member cannot read the billing state", "forbidden",
+  () => billingStatus(member.actor, space));
+await refused("...nor open the portal", "forbidden",
+  () => billingPortal(provider, member.actor, space, "https://app.jotacular.com"));
 
 console.log("\nan owner can now reach the portal");
 const portal = await billingPortal(provider, owner.actor, space, "https://app.jotacular.com");

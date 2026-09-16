@@ -196,6 +196,12 @@ jobs:
             AZURE_OPENAI_VISION_DEPLOYMENT
             AZURE_OPENAI_SPEECH_DEPLOYMENT
             AZURE_OPENAI_TRIAGE_DEPLOYMENT
+            # The fifth switch. It was MISSING from this list until ADR-113,
+            # and the other four were not -- so setting every Stripe secret in
+            # the vault turned billing on for nobody: `resolveBilling` reads
+            # BILLING_PROVIDER, found nothing, and returned null. The deploy
+            # log even said "optional secret present: STRIPE_SECRET_KEY".
+            BILLING_PROVIDER
             STRIPE_SECRET_KEY
             STRIPE_WEBHOOK_SECRET
             STRIPE_PRICE_SOLO
@@ -228,6 +234,48 @@ jobs:
               echo "optional secret present: $name"
             fi
           done
+
+          # A SWITCH WITHOUT ITS KEYS IS THE FEATURE BROKEN, NOT OFF. ADR-113.
+          #
+          # Every resolve() throws when it is named a driver it cannot build,
+          # and the throw happens on FIRST USE -- so without this the deploy is
+          # green, the pods are Running, and the failure is a 503 the first
+          # time somebody tries to pay. Absent is fine. Half-configured is not.
+          have() { grep -q "^$1=" /tmp/jotacular.env; }
+          switch_of() { grep "^$1=" /tmp/jotacular.env | head -1 | cut -d= -f2-; }
+
+          bad=()
+          if have BILLING_PROVIDER; then
+            case "$(switch_of BILLING_PROVIDER)" in
+              stripe)
+                for k in STRIPE_SECRET_KEY STRIPE_WEBHOOK_SECRET \
+                         STRIPE_PRICE_SOLO STRIPE_PRICE_FAMILY STRIPE_PRICE_TEAM; do
+                  have "$k" || bad+=("BILLING_PROVIDER=stripe needs $k")
+                done ;;
+              fake) bad+=("BILLING_PROVIDER=fake must never reach production") ;;
+              *) bad+=("BILLING_PROVIDER is set to something no driver answers to") ;;
+            esac
+          fi
+
+          for switch in VISION_PROVIDER EMBEDDING_PROVIDER SPEECH_PROVIDER TRIAGE_PROVIDER; do
+            have "$switch" || continue
+            case "$(switch_of "$switch")" in
+              anthropic) have ANTHROPIC_API_KEY || bad+=("$switch=anthropic needs ANTHROPIC_API_KEY") ;;
+              openai)    have OPENAI_API_KEY    || bad+=("$switch=openai needs OPENAI_API_KEY") ;;
+              azure)
+                for k in AZURE_OPENAI_ENDPOINT AZURE_OPENAI_API_KEY; do
+                  have "$k" || bad+=("$switch=azure needs $k")
+                done ;;
+              fake) bad+=("$switch=fake must never reach production") ;;
+              *) bad+=("$switch is set to something no driver answers to") ;;
+            esac
+          done
+
+          if [ ${#bad[@]} -gt 0 ]; then
+            printf '::error::%s\n' "${bad[@]}"
+            echo "Set the missing secret, or remove the switch to ship with the feature off."
+            exit 1
+          fi
 
       - name: Apply the Secret
         run: |

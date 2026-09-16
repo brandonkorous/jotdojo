@@ -2,6 +2,7 @@ export * from "./actor";
 export * from "./errors";
 export * from "./spaces";
 export * from "./members";
+export * from "./seats";
 export * from "./review";
 export * from "./billing";
 export * from "./plans";

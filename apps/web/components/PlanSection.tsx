@@ -96,9 +96,18 @@ export function PlanSection({ plans }: { plans: PlanView[] }) {
   );
 }
 
-/** The number people actually want: how much of the month is left. */
+/**
+ * The two numbers people actually want: how much of the month is left, and how
+ * much of the space is.
+ *
+ * Seats are only mentioned on a plan that holds more than one person. On Free
+ * and Solo "1 of 1 people" is a limit shown to somebody who has not met it and
+ * cannot, which docs/11 calls furniture. ADR-112.
+ */
 function usage(space: PlanView): string {
-  return `${space.used} of ${space.allowance.toLocaleString()} read this month`;
+  const read = `${space.used} of ${space.allowance.toLocaleString()} read this month`;
+  if (space.seats <= 1) return read;
+  return `${read} · ${space.seatsTaken} of ${space.seats} people`;
 }
 
 /**
