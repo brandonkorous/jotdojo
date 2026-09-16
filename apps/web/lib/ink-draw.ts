@@ -1,11 +1,14 @@
-import type { Stroke } from "@jotacular/domain";
+import type { Link, Stroke } from "@jotacular/domain";
 import type { InkSurface } from "./ink-surface";
 import type { InkSelection } from "./ink-selection";
 import type { StrokeCapture } from "./ink-capture";
 import type { Dirty } from "./ink-frame";
 import type { StrokeIndex } from "./ink-index";
-import { paintLasso, paintSelection, paintStroke, paintTextRect } from "./ink-paint";
+import {
+  paintAim, paintLasso, paintLink, paintSelection, paintStroke, paintTextRect,
+} from "./ink-paint";
 import type { Bounds } from "./ink-geometry";
+import type { Segment } from "@jotacular/ink-render";
 
 /**
  * Putting the page on the two canvases. ADR-030.
@@ -14,28 +17,31 @@ import type { Bounds } from "./ink-geometry";
  * is drawn are different jobs, and only one of them cares about pointer events.
  */
 
-/** The committed layer: every finished stroke that is on screen. */
-export function drawPage(surface: InkSurface, strokes: readonly Stroke[], index: StrokeIndex) {
+/** The committed layer: every finished stroke that is on screen, and the
+ *  arrows underneath them. */
+export function drawPage(surface: InkSurface, scene: Scene) {
   surface.clearCommitted();
   surface.applyView();
-  for (const stroke of index.visible(strokes, surface.visibleWorld())) {
+  // Arrows first, so handwriting drawn over one stays on top -- and so an
+  // arrow between two cards passes under them, which is what ink does. ADR-108.
+  for (const { link, seg } of scene.links()) paintLink(surface.cctx, seg, link);
+  for (const stroke of scene.index.visible(scene.strokes, surface.visibleWorld())) {
     paintStroke(surface.cctx, stroke);
   }
 }
 
-/** The live layer, minus the stroke under the pen: the lasso being drawn, or
- *  the marquee around what it caught. */
-export function drawOverlay(
-  surface: InkSurface, sel: InkSelection, k = 1, pendingText: Bounds | null = null,
-) {
+/** The live layer, minus the stroke under the pen: the lasso being drawn, the
+ *  marquee around what it caught, or the arrow being aimed. */
+export function drawOverlay(surface: InkSurface, scene: Scene) {
   surface.clearLive();
   surface.applyView();
   // The box being dragged out comes first: while it is happening there is no
   // lasso and no marquee, and it must not be hidden if there ever is.
-  if (pendingText) paintTextRect(surface.lctx, pendingText, k);
-  const path = sel.path;
-  if (path) paintLasso(surface.lctx, path, k);
-  else if (sel.marquee) paintSelection(surface.lctx, sel.marquee, k);
+  if (scene.pendingText) paintTextRect(surface.lctx, scene.pendingText, scene.k);
+  if (scene.aim) paintAim(surface.lctx, scene.aim, scene.k);
+  const path = scene.sel.path;
+  if (path) paintLasso(surface.lctx, path, scene.k);
+  else if (scene.sel.marquee) paintSelection(surface.lctx, scene.sel.marquee, scene.k);
 }
 
 /** Everything a frame might need to draw. The engine owns these; this module
@@ -49,6 +55,17 @@ export type Scene = {
   k: number;
   /** A text box being dragged out, which exists nowhere else until it lands. */
   pendingText: Bounds | null;
+  /**
+   * The arrows, resolved to lines. Resolving them is the link store's job;
+   * this module never asks where an object is. ADR-108.
+   *
+   * A THUNK, and that is not a style choice. Resolving an end walks the page's
+   * objects, and the scene is read on every frame -- including every frame of
+   * a stroke. Only `drawPage` calls it, so a pen sample costs nothing.
+   */
+  links: () => ReadonlyArray<{ link: Link; seg: Segment }>;
+  /** The arrow being aimed, which exists nowhere else until it lands. */
+  aim: Segment | null;
 };
 
 /**
@@ -58,9 +75,9 @@ export type Scene = {
  * back on top of it rather than beside it.
  */
 export function drawFrame(surface: InkSurface, dirty: ReadonlySet<Dirty>, scene: Scene) {
-  if (dirty.has("page")) drawPage(surface, scene.strokes, scene.index);
+  if (dirty.has("page")) drawPage(surface, scene);
   if (!dirty.has("overlay") && !dirty.has("live")) return;
-  drawOverlay(surface, scene.sel, scene.k, scene.pendingText);
+  drawOverlay(surface, scene);
   if (dirty.has("live") && scene.capture.active) {
     paintStroke(surface.lctx, scene.capture.preview());
   }
@@ -69,8 +86,8 @@ export function drawFrame(surface: InkSurface, dirty: ReadonlySet<Dirty>, scene:
 /** Both layers, now. Resizing destroys the backing store, and waiting a frame
  *  to redraw it is a visible flash of blank paper. */
 export function drawAll(surface: InkSurface, scene: Scene) {
-  drawPage(surface, scene.strokes, scene.index);
-  drawOverlay(surface, scene.sel, scene.k, scene.pendingText);
+  drawPage(surface, scene);
+  drawOverlay(surface, scene);
 }
 
 /** Move a finished stroke onto the durable layer, so it stops being repainted

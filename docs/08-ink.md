@@ -45,8 +45,16 @@ Four. Not fourteen.
 |---|---|---|
 | Pen | Pressure-modulated width, the default | Five colours, three widths |
 | Highlighter | Fixed width, multiply blend, low alpha | Four colours. Alpha is **always** applied |
-| Eraser | Stroke-wise, not pixel-wise. Removes whole strokes | — |
-| Select | Lasso: move, recolour, resize, delete, save as an image | Acts on what it caught |
+| Eraser | Stroke-wise, not pixel-wise. Removes whole strokes **and arrows** | — |
+| Select | Lasso: move, recolour, resize, copy, delete, save as an image | Acts on what it caught |
+
+**There is no arrow tool, and that is deliberate** (ADR-108). An arrow is made from the
+canvas menu — hold one object, "Draw an arrow from this", tap the other — rather than from
+a sixth button and a branch in the pointer hot path. Tapping the source again, tapping bare
+canvas, pressing Escape or changing tool all call it off.
+
+**The eraser takes arrows and still refuses text boxes.** The rule is not "leave objects
+alone", it is *take what was drawn and leave what was typed*. An arrow was drawn.
 
 **Style is held per tool** (ADR-045). One shared colour is what made the highlighter
 useless: it inherited the pen's near-black, and a near-black marker at 35% is a grey smear.
@@ -69,6 +77,35 @@ Reasons this matters more than it looks:
 - Vector strokes are what recognition engines consume. A PNG is a one-way door.
 
 We render a raster preview for thumbnails and for VLM-based recognition, but the vectors remain the truth.
+
+**Four arrays, not one list** (ADR-065, ADR-103, ADR-108). The layer document holds
+`strokes`, `texts`, `images` and `links` separately, and the separation is what stops the
+recognizer reading a typed note or an arrow back as handwriting — replacing a certainty with
+a confidence-scored guess. Every one of the four is merged **by id**: an array that leaves
+something out is an upsert, not a deletion, and going is said with `remove`.
+
+**An arrow is agent-readable, which is the only reason it is stored.** `links` becomes
+`- Deposit -> Survey` in the same companion `blocks` row typed text uses, so the shape of a
+diagram is lexically searchable and semantically embedded. An arrow between two things
+nobody named is left out: it is true and it says nothing. An arrow also dies with either of
+the things it ties — unlike a comment (ADR-107), because a comment has words in it and an
+arrow pointing at nothing records nothing.
+
+### Taking it back
+
+**Undo and redo are deltas pointed backwards** (ADR-109). Every local edit already leaves as
+an `InkDelta` naming objects by id, so its inverse is the objects as they were. Nothing new
+is on the wire, and an undo arriving after somebody else's edit merges with it.
+
+Two limits, stated rather than discovered: an erased stroke comes back **on top** rather
+than in its old place in paint order — a delta names things and never places, which is
+exactly what makes it commute — and the stack lives in the tab, so a reload has nothing to
+undo. The other three kinds keep their order exactly.
+
+**Copy, cut, paste and duplicate** work on a lasso selection (ADR-110), through an in-page
+clipboard rather than the system one: the system clipboard needs a permission prompt
+mid-gesture and carries no pressure. Every pasted id is minted fresh and any arrow whose
+**both** ends were copied is re-tied to the copies.
 
 **And an export is vectors too.** A page leaves as SVG rather than PNG (ADR-067), so what somebody takes with them is still the strokes they drew — re-recognizable by a better model, on their own disk, without us. A PNG export would hand them the one-way door on the way out.
 

@@ -1,9 +1,10 @@
 /**
  * Rendering ink for a model to read, and for a person to glance at.
  *
- * Four modules, four jobs: `geometry` decides where the INK is, `text-geometry`
- * where the typed notes are and what colour they have to be, `svg` what one
- * frame looks like, and `tiles` how many frames there are. ADR-053, ADR-079.
+ * Five modules, five jobs: `geometry` decides where the INK is, `text-geometry`
+ * where the typed notes are and what colour they have to be, `links` where an
+ * arrow between two of them runs, `svg` what one frame looks like, and `tiles`
+ * how many frames there are. ADR-053, ADR-079, ADR-108.
  */
 
 export {
@@ -19,3 +20,8 @@ export {
 export { toSvg, scaleFor, type RenderOptions } from "./svg";
 
 export { tiles, type Tile, type TileOptions } from "./tiles";
+
+export {
+  objectBounds, segmentFor, endsFor, tiedTo, distanceTo,
+  type Segment, type LinkPage,
+} from "./links";

@@ -106,7 +106,7 @@ export function Canvas({
 
   const { input, block, mark, heading, syncBlock, onKeyDown } = useMarks(onChange);
   const {
-    tool, setTool, styles, setStyle, choose, armTextBox,
+    tool, setTool, styles, setStyle, choose, armTextBox, aimTool,
     inkStarted, startInk, optionsOpen, closeOptions,
   } = useCanvasTool(input, hasInk);
 
@@ -179,6 +179,7 @@ export function Canvas({
             onReady={setInkBlockId}
             onDraw={writing}
             onTextPlaced={() => setTool("text")}
+            onAiming={aimTool}
             live={user !== null}
             outer={shellRef}
             held={engineRef}
@@ -199,7 +200,7 @@ export function Canvas({
           openSignal={cameraSignal}
           onPlaced={(blockId, natural) => {
             startInk();
-            engineRef.current?.placeImage(blockId, natural);
+            engineRef.current?.open.placeImage(blockId, natural);
           }}
         />
 

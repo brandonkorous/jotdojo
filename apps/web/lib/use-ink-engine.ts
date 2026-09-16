@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, type RefObject } from "react";
-import type { ImageOnPage, Stroke, TextBox } from "@jotacular/domain";
+import type { ImageOnPage, Link, Stroke, TextBox } from "@jotacular/domain";
 import { InkEngine, type SelectionSummary, type Tool } from "./ink-engine";
 import { InkSync, type SyncState } from "./ink-sync";
 import { InkCatchup } from "./ink-catchup";
@@ -58,6 +58,9 @@ export type MountOptions = {
    *  change per render. */
   onDraw: RefObject<(() => void) | undefined>;
   onTextPlaced: RefObject<(() => void) | undefined>;
+  /** An arrow is waiting for its second end, so the caller can put the select
+   *  tool in hand -- the tap that finishes it has to reach the canvas. ADR-108. */
+  onAiming: RefObject<((on: boolean) => void) | undefined>;
   onReady: RefObject<((blockId: string) => void) | undefined>;
 };
 
@@ -107,6 +110,7 @@ export function useInkEngine(o: MountOptions) {
         onDelta: (delta) => sync!.delta(delta),
         onSelectionChange: o.onSelection,
         onTextPlaced: () => o.onTextPlaced.current?.(),
+        onAiming: (on) => o.onAiming.current?.(on),
         onView: (k, home) => o.onView({ k, home }),
       });
       engine.setTool(initial.tool);
@@ -115,21 +119,22 @@ export function useInkEngine(o: MountOptions) {
       // the page opens on the text tool with every note unclickable. ADR-085.
       engine.setTextReachable(initial.textReachable);
       engine.setStyle(initial.style);
-      engine.resize(canvas.w, canvas.h);
+      engine.open.resize(canvas.w, canvas.h);
 
       // A block created a moment ago is empty, but a reload of an existing one
       // is not -- and loading after resize matters, because resize repaints.
       //
-      // Strokes OR text OR photographs: a note that is nothing but one photo
-      // has a stroke count of zero and still has a page to load. ADR-065,
-      // ADR-103.
-      if (block.strokeCount > 0 || block.hasText || block.hasImages) {
+      // Strokes OR text OR photographs OR arrows: a note that is nothing but
+      // two notes and an arrow has a stroke count of zero and still has a page
+      // to load. ADR-065, ADR-103, ADR-108.
+      if (block.strokeCount > 0 || block.hasText || block.hasImages || block.hasLinks) {
         const existing = await getInkAction(block.blockId);
         if (!disposed) {
-          engine.load(
+          engine.open.load(
             existing.document.strokes as Stroke[],
             (existing.document.texts ?? []) as TextBox[],
             (existing.document.images ?? []) as ImageOnPage[],
+            (existing.document.links ?? []) as Link[],
           );
         }
       }
@@ -145,12 +150,12 @@ export function useInkEngine(o: MountOptions) {
       if (o.owned) {
         const known = await noteImagesAction(noteId);
         if (disposed) return;
-        if (known.length > 0) engine.adoptImages(known);
+        if (known.length > 0) engine.open.adoptImages(known);
       }
 
       observer = new ResizeObserver(([entry]) => {
         if (!entry || !engine) return;
-        engine.resize(Math.round(entry.contentRect.width), Math.round(entry.contentRect.height));
+        engine.open.resize(Math.round(entry.contentRect.width), Math.round(entry.contentRect.height));
       });
       observer.observe(shell);
 

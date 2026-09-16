@@ -4,6 +4,7 @@ import { InkSelection, NO_SELECTION, type SelectionSummary } from "./ink-selecti
 import type { StrokeIndex } from "./ink-index";
 import type { InkTextLayer } from "./ink-text-layer";
 import type { InkImageLayer } from "./ink-image-layer";
+import type { InkLinks } from "./ink-engine-links";
 import { resizeSelection, tidySelection } from "./ink-engine-size";
 
 /**
@@ -27,6 +28,8 @@ export type SelectionContext = {
   texts: () => InkTextLayer | null;
   /** Null for the same reason. ADR-103. */
   images: () => InkImageLayer | null;
+  /** Null for the same reason. ADR-108. */
+  links: () => InkLinks | null;
   index: StrokeIndex;
   onDelta: (delta: InkDelta) => void;
   onChange?: (selection: SelectionSummary) => void;
@@ -163,6 +166,9 @@ export class SelectionEditor {
     this.ctx.setStrokes(without(this.ctx.strokes(), new Set(this.sel.selected)));
     this.ctx.texts()?.remove(ids);
     this.ctx.images()?.remove(ids);
+    // Locally too, because the server applies the same rule and a page that
+    // waited for the round trip would look as though the delete had failed.
+    this.ctx.links()?.remove(ids);
     this.drop();
     this.ctx.repaint();
     this.ctx.onDelta({ remove: ids, upsert: [] });

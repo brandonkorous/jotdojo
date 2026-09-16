@@ -35,6 +35,9 @@ export type EngineOptions = {
   /** A box was placed. The tool goes back to the spine straight away: placing
    *  one is a one-shot, not a mode somebody has to remember to leave. */
   onTextPlaced?: () => void;
+  /** Whether an arrow is waiting for its second end, so the page can say so.
+   *  A mode with no sign that it is on is a mystery. ADR-108. */
+  onAiming?: (on: boolean) => void;
   /** The object plane: typed text on the same surface. OUTSIDE the canvases,
    *  because scaling a canvas through a transformed ancestor blurs it. Omit it
    *  and the engine is exactly what it was before ADR-065. */

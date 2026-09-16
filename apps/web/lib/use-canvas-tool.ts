@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type RefObject } from "react";
+import { useEffect, useRef, useState, type RefObject } from "react";
 import { isInk, type CanvasTool } from "./canvas-tool";
 import { DEFAULT_STYLES, type InkStyles } from "./ink-style";
 import { rememberedTool, rememberTool } from "./tool-memory";
@@ -25,6 +25,8 @@ export function useCanvasTool(input: RefObject<HTMLTextAreaElement | null>, hasI
   /** Per tool, so the marker keeps its own colour instead of inheriting the
    *  pen's near-black and painting a grey smear. ADR-045. */
   const [styles, setStyles] = useState<InkStyles>(DEFAULT_STYLES);
+  /** What was in hand before an arrow borrowed the select tool. */
+  const borrowed = useRef<CanvasTool | null>(null);
 
   /**
    * The tool this device was last holding. ADR-101.
@@ -68,12 +70,36 @@ export function useCanvasTool(input: RefObject<HTMLTextAreaElement | null>, hasI
     setTool("textbox");
   };
 
+  /**
+   * Aiming an arrow borrows the select tool, and gives it back. ADR-108.
+   *
+   * The menu exists on every tool (ADR-102), so "Draw an arrow from this" can
+   * be asked while somebody is typing -- and the tap that finishes it has to
+   * reach the canvas, which takes no pointers on the text tool. The rail
+   * lighting up is also the only sign the mode is on.
+   *
+   * NOT `choose`: this is not the person picking a tool, so it must not be
+   * remembered for next time and must not open a palette.
+   */
+  const aimTool = (on: boolean) => {
+    if (on) {
+      borrowed.current = tool;
+      setInkStarted(true);
+      return setTool("select");
+    }
+    // Back to whatever was in hand. Aiming is a one-shot rather than a mode
+    // somebody has to remember to leave -- the call ADR-078 made for a box.
+    const was = borrowed.current;
+    borrowed.current = null;
+    if (was && was !== "select") setTool(was);
+  };
+
   const setStyle = (
     which: "pen" | "highlighter", patch: { color?: string; width?: number },
   ) => setStyles((all) => ({ ...all, [which]: { ...all[which], ...patch } }));
 
   return {
-    tool, setTool, styles, setStyle, choose, armTextBox,
+    tool, setTool, styles, setStyle, choose, armTextBox, aimTool,
     inkStarted, startInk: () => setInkStarted(true),
     optionsOpen, closeOptions: () => setOptionsOpen(false),
   };

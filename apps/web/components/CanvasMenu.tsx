@@ -3,16 +3,13 @@
 import { useRef } from "react";
 
 import {
-  ContextMenu, ContextMenuContent, ContextMenuItem,
-  ContextMenuSeparator, ContextMenuTrigger,
+  ContextMenu, ContextMenuContent, ContextMenuTrigger,
 } from "@wizeworks/silicaui-react";
-import { Icon } from "@/components/Icon";
-import { CARD_COLORS } from "@/lib/ink-cards";
 import type { SelectionSummary } from "@/lib/ink-engine";
-import type { ShapeKind } from "@/lib/ink-shapes";
+import { Empty, Selected } from "./CanvasMenuItems";
 
 /**
- * The menu on the canvas. ADR-084.
+ * WHERE the menu on the canvas opens. ADR-084.
  *
  * Right-click on a desktop, hold on a phone -- Base UI's ContextMenu carries
  * both, plus roving focus, typeahead and dismissal, which docs/10 requires and
@@ -28,14 +25,9 @@ import type { ShapeKind } from "@/lib/ink-shapes";
  * why the bottom bar was removed: a software keyboard covers the bottom of a
  * phone exactly when somebody is typing, which on this surface is most of the
  * time.
+ *
+ * WHAT it offers is CanvasMenuItems.tsx.
  */
-
-const SHAPE_NAME: Record<ShapeKind, string> = {
-  line: "a straight line",
-  circle: "a circle",
-  rectangle: "a rectangle",
-  triangle: "a triangle",
-};
 
 export type CanvasMenuActions = {
   /** Select whatever is under the pointer, before the menu opens on it. */
@@ -51,6 +43,19 @@ export type CanvasMenuActions = {
   /** Talk about the one thing that is held. Absent -- and the item hidden --
    *  wherever comments cannot be left. ADR-107. */
   onComment?: () => void;
+  /** Draw an arrow FROM the one thing that is held. The next tap on another
+   *  object finishes it. ADR-108. */
+  onArrowFrom?: () => void;
+  onCopy: () => void;
+  onDuplicate: () => void;
+  onPaste: () => void;
+  /** Whether there is anything to paste, so the item is offered rather than
+   *  shown greyed -- a menu that lists what it cannot do is noise. ADR-110. */
+  canPaste: () => boolean;
+  onUndo: () => void;
+  onRedo: () => void;
+  canUndo: () => boolean;
+  canRedo: () => boolean;
 };
 
 export function CanvasMenu({
@@ -101,101 +106,3 @@ export function CanvasMenu({
   );
 }
 
-/** What a caught object can be asked. */
-function Selected({
-  selection, actions,
-}: { selection: SelectionSummary; actions: CanvasMenuActions }) {
-  return (
-    <>
-      {/* The offer ADR-066 could only make in the moment. A person who lifted
-          the pen and only then wished the circle were round had no way back
-          until now -- and the classifier still has to be sure, so most strokes
-          never see this line at all. */}
-      {selection.shape && (
-        <>
-          <ContextMenuItem onClick={actions.onTidy}>
-            <Icon name="agent" />
-            Make this {SHAPE_NAME[selection.shape]}
-          </ContextMenuItem>
-          <ContextMenuSeparator />
-        </>
-      )}
-
-      {selection.texts > 0 && (
-        <>
-          <div role="group" aria-label="Card colour" className="jd-menu-swatches">
-            {CARD_COLORS.map(({ name, fill }) => (
-              <button
-                key={name}
-                type="button"
-                className="jd-tool jd-swatch"
-                title={fill ? `${name} card` : "No card"}
-                aria-label={fill ? `${name} card` : "No card"}
-                onClick={() => actions.onCard(fill)}
-              >
-                <span
-                  aria-hidden
-                  className={fill ? "jd-chip" : "jd-chip jd-chip-none"}
-                  style={fill ? { background: fill } : undefined}
-                />
-              </button>
-            ))}
-          </div>
-          <ContextMenuSeparator />
-        </>
-      )}
-
-      {/* Only ever ONE thing. "These four squiggles and that photo" is not
-          something a person means, and a comment that pointed at five objects
-          could not be drawn beside any of them. ADR-107. */}
-      {actions.onComment && selection.count === 1 && (
-        <>
-          <ContextMenuItem onClick={actions.onComment}>
-            <Icon name="remarks" />
-            Comment on this
-          </ContextMenuItem>
-          <ContextMenuSeparator />
-        </>
-      )}
-
-      <ContextMenuItem onClick={() => actions.onResize(true)}>
-        <Icon name="zoomIn" />
-        Bigger
-      </ContextMenuItem>
-      <ContextMenuItem onClick={() => actions.onResize(false)}>
-        <Icon name="zoomOut" />
-        Smaller
-      </ContextMenuItem>
-
-      <ContextMenuSeparator />
-
-      <ContextMenuItem onClick={actions.onExport}>
-        <Icon name="download" />
-        Save as an image
-      </ContextMenuItem>
-      <ContextMenuItem onClick={actions.onDelete}>
-        <Icon name="remove" />
-        Delete
-      </ContextMenuItem>
-    </>
-  );
-}
-
-/**
- * Bare canvas. One thing, and no filler.
- *
- * "Fit everything on screen" was here and came out: the zoom chip in the corner
- * already does it and is always visible, so the menu was offering a second door
- * to a room nobody had trouble finding. A menu that pads itself out is a menu
- * people stop reading.
- */
-function Empty({
-  at, actions,
-}: { at: () => { x: number; y: number }; actions: CanvasMenuActions }) {
-  return (
-    <ContextMenuItem onClick={() => { const p = at(); actions.onTextBoxHere(p.x, p.y); }}>
-      <Icon name="text" />
-      Put a note here
-    </ContextMenuItem>
-  );
-}

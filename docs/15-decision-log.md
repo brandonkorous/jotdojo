@@ -4737,3 +4737,239 @@ box is as wide as it was drawn rather than as wide as its words, so a mark on
 the right edge floated in empty paper a long way from the sentence it was
 about. The left corner is where the words start, which is where a margin note
 goes on real paper.
+
+### ADR-108 - An arrow is a claim about order, and an agent can read it
+
+**Status:** accepted, 2026-09-15
+
+The canvas could hold five kinds of thing and say nothing about how any of them
+related to any other. Two cards side by side are two notes. The same two cards
+with an arrow between them are a claim -- this comes before that, this causes
+that, this is part of that -- and there was no way to make it.
+
+A FigJam comparison was the prompt, and most of what that comparison turned up
+was correctly refused: templates, timers, voting, music, guest links and
+widgets are a meeting tool, and docs/00 is explicit that we are not building
+one. Arrows were the exception, for a reason that has nothing to do with
+whiteboards: **an arrow is the one diagramming primitive that changes what an
+AGENT can read.** Everything else on this canvas ends up as words already.
+`Deposit -> Survey -> Offer` is the shape of somebody's thinking, and until now
+it was in their head.
+
+**Decision.** A fourth array in the layer document, and one sentence out.
+
+**1. `links`, beside `strokes`, `texts` and `images`.** A fourth array for the
+reason `images` is a third one (ADR-103): an arrow is not something a pen drew
+and not something to recognise, and keeping the arrays apart makes confusing
+them impossible rather than merely unlikely. No migration -- the document is
+jsonb and `links` is a new optional key, exactly as `texts` and `images` were.
+
+**2. An end names an object, and is resolved at draw time.** `LinkEnd` is
+`{ id, x, y }`: the id is what it is tied to, and the point is where that was
+last seen. Nothing recalculates when a card moves, because nothing was stored
+-- `segmentFor` asks the page where the object is on every frame. That is the
+whole difference between an arrow and a line somebody drew near two things.
+
+The point is not dead weight. It is what gets drawn while a page is still
+loading, and it is the honest answer for a loose end.
+
+**3. An arrow dies with either end.** This is the one place a page disagrees
+with a comment. ADR-107 decided that erasing a note does not erase what
+somebody SAID about it, because the words are a record in their own right. An
+arrow pointing at nothing records nothing, so `orphanedBy` takes it -- server
+side, in the same transaction, whether or not the delta mentioned it.
+
+**4. It becomes a sentence.** `flattenLinks` writes `- Deposit -> Survey` into
+the same companion `blocks` row ADR-065 created for typed text, so an arrow is
+lexically searchable, semantically embedded, and visible to `view_note` and to
+export through paths that already existed. An arrow between two things nobody
+named is left out rather than rendered as "something drawn to something drawn":
+it is true and it says nothing.
+
+**5. The geometry lives in `@jotacular/ink-render`, not in the canvas.** ADR-078
+records what happened the last time the editor and the renderer each kept their
+own idea of where an object ended -- they disagreed by a tenth, and a lasso and
+an export drew different pictures of the same page. One arrow, drawn the same
+way on a phone and in a worker, or it is two features.
+
+**No new tool, and that was the hard call.** Every whiteboard makes a connector
+a mode: pick the tool, drag from one thing to another. Doing the same here
+meant a sixth button on a rail that ADR-101 had just finished unclogging, and a
+branch in `ink-input.ts` -- the file every pen sample runs through, at the
+250-line limit, in the one part of this product where latency is the feature.
+
+So an arrow is made from the menu that ADR-084 already established as *what can
+be done to this*: hold an object, "Draw an arrow from this", tap the other one.
+Two taps against FigJam's one drag, on a surface where the capture contract
+says a mode nobody asked for is worse than a gesture nobody found. Tapping the
+source again, tapping bare canvas, pressing Escape or changing tool all call it
+off, so a wrong turn costs one tap. `ink-input.ts` was not touched.
+
+**Rubbing one out is the eraser**, because an arrow is a line and that is what
+an eraser is for. The eraser still refuses text boxes -- ADR-065's rule was
+never "leave objects alone", it was *take what was drawn and leave what was
+typed*, and an arrow was drawn.
+
+**What this cost in files.** `ink-engine.ts` reached its limit for the third
+time and split twice more, by responsibility both times:
+
+    ink-engine-tap.ts    what a tap landed on, of the four things it can mean
+    ink-engine-open.ts   a page arriving, and where the camera looks
+
+and `svg.ts` and `CanvasMenu.tsx` split along the seam each had been growing:
+
+    svg-parts.ts         what one OBJECT looks like
+    svg.ts               the frame round them -- viewBox, scale, paper, order
+
+    CanvasMenuItems.tsx  what the menu offers
+    CanvasMenu.tsx       where it opens
+
+`ink-delta.ts` split too, and that one is worth naming: it is now the WIRE
+CONTRACT -- what a client may say and what is refused -- while `ink-apply.ts` is
+what saying it does to four arrays and four statements. `writeTexts`,
+`writeImages` and `writeLinks` became one `writeArray` at the same time, which
+is the line ADR-103 itself drew about `mergeById`: the third copy is when
+duplication stops being a smell.
+
+`arrows:smoke` (28 checks over real SQL) and `links:smoke` (44, pure).
+
+### ADR-109 - Undo, because a delta pointed backwards is still a delta
+
+**Status:** accepted, 2026-09-15
+
+**The canvas had no undo at all.** Native undo worked inside a text box and
+nowhere else, so an eraser sweep across a drawing was final. For a product
+whose stated promise is that a thought is never lost, that is the wrong hole to
+have -- and it is not a FigJam feature. It is a thing every drawing surface has
+had for thirty years, and this one did not.
+
+Nobody would have filed it. People do not report that undo is missing; they
+stop trusting the eraser.
+
+**Decision.** Undo is not a second way of changing the page. Every local edit
+already leaves as an `InkDelta`, and a delta that names objects by id has an
+INVERSE -- the objects as they were before it. So undo is the same wire format
+pointed backwards, and it inherits ADR-058 whole: an undo that arrives after
+somebody else's edit merges with it rather than fighting it.
+
+**The shadow is the mechanism.** `InkHistory` keeps one copy of the page as of
+the last recorded step. A delta arrives, its inverse is computed against that
+copy, the pair is pushed, and the copy moves forward. One place, one rule,
+rather than every call site remembering to record what it was about to destroy.
+
+**Everything is published through the document.** `ink-engine-build.ts` wraps
+`onDelta` once, so the selection editor, the eraser, the text layer, the image
+layer and the arrows all record without knowing they do. Drawing is the
+exception and is recorded explicitly at `commit`: a stroke goes out as an
+APPEND, and only the way back from it is a delta.
+
+**Somebody else's edit is not mine to take back.** Every remote path calls
+`observe`, which adopts the page without recording a step. An undo stack that
+offered to revert a colleague's work would be a weapon rather than a
+convenience.
+
+**Two limits, named rather than discovered later.**
+
+*An erased stroke comes back on top.* A delta names things and never places --
+that is exactly what makes it commute with somebody else's drawing -- so a
+restored stroke has no position to go back to and lands at the end of paint
+order. Restoring it properly would mean putting positions on the wire, and
+positions are the one thing that does not commute. The suite pins the behaviour
+so a change to it is deliberate. In practice it is nearly invisible: the three
+kinds where overlap is obvious -- boxes, photographs, arrows -- travel as whole
+arrays and keep their order exactly.
+
+*It is per-device.* The stack lives in the tab. Reload and there is nothing to
+undo, because there is no record of what this person did as opposed to what the
+page contains.
+
+**The bug this nearly shipped with.** `texts`, `images` and `links` look like
+whole-array fields and are not: the server merges them BY ID, so an array that
+simply leaves a new box out does not delete it. The first inverse sent the old
+array and nothing else, so undoing "a box was added" left the box sitting
+there, and undo looked as though it had done nothing. The way back has to NAME
+what was added. Found by `history:smoke`, which is why that suite asserts all
+three kinds rather than the one that happened to be convenient.
+
+### ADR-110 - Copying a card should not mean drawing it again
+
+**Status:** accepted, 2026-09-15
+
+Copying anything on the canvas meant redrawing it. Nobody files that as a bug;
+they just do the work twice, and a board of five near-identical notes is most
+of what a whiteboard is for.
+
+**Decision.** Copy, cut, paste and duplicate on a lasso selection, by keyboard
+and from the menu. "Make another one" is the menu's wording, because that is
+what people mean when they reach for it.
+
+**Not the system clipboard.** Reading it needs a permission prompt in the middle
+of a gesture, the write half is asynchronous, and neither carries a stroke's
+pressure or tilt. An in-page clipboard costs nothing, works on every browser,
+and is honest about what it is: things go between Jotacular pages, not between
+applications. It lives for the tab, so a note can be copied INTO another one.
+
+**Every id is minted fresh, and the arrows are re-tied.** That is the whole
+difficulty. An arrow copied with its old ends would be a second arrow drawn on
+top of the first, so `reborn` renames both ends through the same map that
+renames the objects. An arrow with one end left outside the selection is not
+copied at all -- it would paste pointing at the original, which nobody means.
+
+**A photograph's copy shares its bytes.** `ImageOnPage` is a placement, not a
+picture, and ADR-103 already said one photo may be put on a page twice. The new
+placement gets a new id and the same `blockId`.
+
+**The copy is selected afterwards**, so it can be dragged where it belongs
+immediately rather than found and lassoed first — **by id**, and that is not a
+detail. Every layer COPIES what it is loaded with, because a drag mutates
+objects in place and two pages sharing one would move both. Holding the objects
+`reborn` returned gave a selection whose marquee was real and whose drag moved
+nothing anybody could see. No suite would have caught it: the rule it broke
+lives in the DOM half of the canvas, and every pure assertion about the
+clipboard passed.
+
+**The keyboard moved out of InkCanvas.tsx.** `use-canvas-keys.ts` is the list of
+what each chord means, and it answers to nothing while a textarea has focus: a
+text box on the plane is a real `<textarea>` with the browser's own undo,
+selection and clipboard, and all three are better than ours inside it.
+Shift+Z and Y both redo, because a person should not have to know which
+convention we picked.
+
+`history:smoke` (43 checks, pure) covers the clipboard alongside undo -- one file
+because a paste is an edit, and an edit that cannot be undone is not finished.
+
+### ADR-111 - What the FigJam comparison did NOT buy
+
+**Status:** accepted, 2026-09-15
+
+Three things came out of comparing this canvas with FigJam and were built:
+arrows (ADR-108), undo (ADR-109) and the clipboard (ADR-110). Rather more came
+out and was refused, and the refusals are the more useful record -- because the
+same comparison will be made again, and the answers have not changed.
+
+**Meeting furniture: timers, voting, audio chat, music, stamps, emotes,
+spotlight, cursor chat.** These make a facilitation tool. docs/00 says
+Jotacular does one act properly -- capture -- and delegates the rest. A canvas
+that can run a retrospective is a canvas somebody has to schedule a meeting to
+use, and the product is for the thought that arrives in a bar.
+
+**Templates, all three hundred of them.** Named as a non-goal in docs/12 and
+still one. A template is an answer to "what should I write", and the capture
+contract is about the second between having the thought and it being safe.
+
+**Guest links with no login.** Public share links are a non-goal in docs/02.
+Everything here is fenced by a space and by RLS from the first migration; a URL
+that bypasses both is a different product with a different threat model.
+
+**Widgets and integrations -- Jira, Asana, GitHub.** ADR-002 settled this:
+integration happens in the AGENT, over MCP, not in our code. A Jira widget is
+an integration we would own, maintain and version. The agent already holds both
+servers at once, which is the whole suite argument.
+
+**Tables.** docs/00: not a wiki, not a docs tool.
+
+**One thing was deferred rather than refused:** clustering scattered notes into
+themes with a model. We have the embeddings and the reasoner already, and the
+triage agent (ADR-048) is the right home for it. It waits because that agent's
+prompt is a first draft nobody has tuned against real notes, and a second
+unmeasured thing on top of an unmeasured thing tells you nothing.

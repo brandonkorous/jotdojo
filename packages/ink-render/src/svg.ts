@@ -1,6 +1,6 @@
-import type { InkDocument, Stroke, TextBox } from "@jotacular/domain";
-import { bounds, contentBounds, control, medianWidth, widthAt, type Bounds } from "./geometry";
-import { cardBounds, inkOn } from "./text-geometry";
+import type { InkDocument } from "@jotacular/domain";
+import { bounds, contentBounds, medianWidth, type Bounds } from "./geometry";
+import { arrows, escapeAttr, n, segments, textLines } from "./svg-parts";
 
 /**
  * Strokes to SVG, for recognition and for thumbnails.
@@ -15,6 +15,9 @@ import { cardBounds, inkOn } from "./text-geometry";
  * being asked to do two jobs, and it does the second one worse.
  *
  * NOTHING HERE READS `doc.canvas`. The frame comes from the ink. ADR-053.
+ *
+ * What each OBJECT looks like is svg-parts.ts. This file is the frame round
+ * them: the viewBox, the scale, the paper, and the order they stack in.
  */
 
 export type RenderOptions = {
@@ -56,38 +59,6 @@ const MAX_UPSCALE = 4;
  *  export is looked at by a person and a page of writing has to survive it. */
 const DEFAULT_EDGE = { recognition: 2000, preview: 480, viewing: 1600 } as const;
 
-const n = (v: number) => Math.round(v * 100) / 100;
-
-const escapeAttr = (v: string) => v.replace(/[<>&"']/g, (c) =>
-  ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", "'": "&#39;", '"': "&quot;" }[c]!));
-
-/**
- * One stroke becomes one path per segment, because width follows pressure and
- * a single path can only have one stroke-width. Verbose, and the alternative
- * is a dead uniform line.
- */
-function segments(stroke: Stroke, ink: string, alpha: number): string[] {
-  const pts = stroke.pts;
-  if (pts.length === 0) return [];
-
-  if (pts.length === 1) {
-    const p = pts[0]!;
-    return [`<circle cx="${n(p[0])}" cy="${n(p[1])}" r="${n(widthAt(stroke, p[3]) / 2)}" fill="${ink}" opacity="${alpha}"/>`];
-  }
-
-  const out: string[] = [];
-  for (let i = 0; i < pts.length - 1; i++) {
-    const p1 = pts[i]!;
-    const p2 = pts[i + 1]!;
-    const c = control(pts, i);
-    out.push(
-      `<path d="M${n(p1[0])} ${n(p1[1])}C${n(c.c1x)} ${n(c.c1y)} ${n(c.c2x)} ${n(c.c2y)} ${n(p2[0])} ${n(p2[1])}"`
-      + ` fill="none" stroke="${ink}" stroke-width="${n(widthAt(stroke, (p1[3] + p2[3]) / 2))}"`
-      + ` stroke-linecap="round" stroke-linejoin="round" opacity="${alpha}"/>`,
-    );
-  }
-  return out;
-}
 
 /**
  * How much to magnify, and the one place recognition is allowed to ENLARGE.
@@ -115,52 +86,6 @@ export function scaleFor(doc: InkDocument, box: Bounds, o: RenderOptions): numbe
 /** A page with no ink on it. Valid, tiny, and never worth sending to a model. */
 const EMPTY = '<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1" viewBox="0 0 1 1"></svg>';
 
-/**
- * A text box, as SVG.
- *
- * Wrapped by hand, because SVG has no flow layout and the browser is not here.
- * The estimate is deliberately crude -- this is a picture of a page, not a
- * typesetter, and a line that breaks a word early costs nothing next to text
- * that runs off the edge of the image.
- */
-function textLines(box: TextBox, escape: (v: string) => string): string[] {
-  const perLine = Math.max(1, Math.floor(box.w / (box.size * 0.55)));
-  const out: string[] = [];
-  const ink = box.fill ? inkOn(box.fill) : box.color;
-  for (const paragraph of box.text.split("\n")) {
-    if (!paragraph.trim()) { out.push(""); continue; }
-    let line = "";
-    for (const word of paragraph.split(/\s+/)) {
-      if (line && (line.length + word.length + 1) > perLine) { out.push(line); line = word; }
-      else line = line ? `${line} ${word}` : word;
-    }
-    out.push(line);
-  }
-  // A leading dominant-baseline would fight the per-line dy below, so the first
-  // line sits one size down from the box's top edge, where a person put it.
-  const lines = out.map((line, i) =>
-    `<text x="${n(box.x)}" y="${n(box.y + box.size * (i + 1))}"`
-    + ` font-family="ui-sans-serif, system-ui, sans-serif" font-size="${n(box.size)}"`
-    + ` fill="${escape(ink)}" xml:space="preserve">${escape(line)}</text>`);
-
-  return box.fill ? [cardRect(box, escape), ...lines] : lines;
-}
-
-/**
- * The card behind the words. ADR-079.
- *
- * Flat -- no gradient, no glow, per design.md §12. The lift ADR-077 restored
- * lives in CSS on the editor's own cards and deliberately does not come here:
- * an SVG drop-shadow is a filter, filters rasterise unpredictably across
- * renderers, and a note exported as a picture wants to read as paper rather
- * than as a screenshot of an interface.
- */
-function cardRect(box: TextBox, escape: (v: string) => string): string {
-  const b = cardBounds(box);
-  const r = box.size * 0.5;
-  return `<rect x="${n(b.x)}" y="${n(b.y)}" width="${n(b.w)}" height="${n(b.h)}"`
-    + ` rx="${n(r)}" ry="${n(r)}" fill="${escape(box.fill!)}"/>`;
-}
 
 export function toSvg(doc: InkDocument, options: RenderOptions): string {
   const recognition = options.mode === "recognition";
@@ -186,6 +111,10 @@ export function toSvg(doc: InkDocument, options: RenderOptions): string {
   const typed = options.text
     ? (doc.texts ?? []).flatMap((box) => textLines(box, escapeAttr))
     : [];
+  // Arrows follow `text` for the reason typed boxes do: recognition must never
+  // see them. A vision model handed an arrow reads it as a pen stroke, and the
+  // sentence it is worth is already in the block's body. ADR-108.
+  const drawn = options.text ? arrows(doc, escapeAttr) : [];
 
   const body = doc.strokes.flatMap((stroke) => {
     // Colour is thrown away for recognition on purpose. The highlighter keeps
@@ -210,6 +139,10 @@ export function toSvg(doc: InkDocument, options: RenderOptions): string {
     // the object plane sits above both canvases. These were reversed, which
     // nothing could see while text was transparent and everything would see the
     // moment a box had a fill. ADR-078.
+    //
+    // Arrows first of all, matching the canvas: they are on the committed
+    // layer, under the ink and under the object plane. ADR-108.
+    ...drawn,
     ...body,
     ...typed,
     "</svg>",

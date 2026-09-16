@@ -1,4 +1,4 @@
-import type { ImageOnPage, NoteImage, Stroke, TextBox } from "@jotacular/domain";
+import type { ImageOnPage, Link, NoteImage, Stroke, TextBox } from "@jotacular/domain";
 import type { InkTool } from "./canvas-tool";
 import { StrokeCapture } from "./ink-capture";
 import type { Bounds } from "./ink-geometry";
@@ -13,14 +13,17 @@ import { type SelectionSummary } from "./ink-selection";
 import type { EngineOptions } from "./ink-engine-options";
 import { assemble } from "./ink-engine-build";
 import type { Page } from "./ink-engine-page";
+import type { InkDoc } from "./ink-engine-doc";
+import type { InkLinks } from "./ink-engine-links";
 import type { SelectionEditor } from "./ink-engine-select";
 import type { Eraser } from "./ink-engine-erase";
+import { InkTaps } from "./ink-engine-tap";
+import { InkOpen } from "./ink-engine-open";
 import { commitStroke, type Scene } from "./ink-draw";
 import type { InkPainter } from "./ink-painter";
 import type { InkPins } from "./ink-pins";
 import { DEFAULT_PEN, type InkStyle } from "./ink-style";
 import type { ObjectPlane } from "./ink-object-plane";
-import { clientRect, worldAt } from "./ink-screen";
 
 /**
  * The ink engine: an imperative island React mounts and then leaves alone.
@@ -58,6 +61,16 @@ export class InkEngine implements InputHost {
   /** Where the comments are. Null wherever there is no layer to draw them on --
    *  the marketing hero, and an anonymous draft. ADR-107. */
   readonly pins: InkPins | null;
+  /** The arrows, and the one being aimed. Null beside `plane`. ADR-108. */
+  readonly links: InkLinks | null;
+  /** What happened to the page, and what can be taken back. ADR-109, ADR-110. */
+  readonly doc: InkDoc;
+  /** What a tap on the page means, of the four things it can mean. ADR-108. */
+  private readonly taps: InkTaps;
+  /** Loading a page, resizing it, and pointing the camera at any of it.
+   *  Exposed rather than relayed, as `selection` and `remote` are: five
+   *  one-line wrappers only restated it. ADR-053. */
+  readonly open: InkOpen;
 
   constructor(opts: EngineOptions) {
     this.opts = opts;
@@ -69,19 +82,28 @@ export class InkEngine implements InputHost {
       scene: () => this.scene,
       page: () => this.objects,
       zoom: () => this.view.k,
+      style: () => this.style,
+      visibleWidth: () => this.view.visible(this.surface.width, this.surface.height).w,
+      reach: () => ERASE_RADIUS / this.view.k,
       repaint: () => this.repaint(),
       overlay: () => this.paintOverlay(),
       dropSelection: () => this.dropSelection(),
+      onSelection: () => this.opts.onSelectionChange?.(this.editor.sel.summary),
     });
     this.surface = parts.surface;
     this.plane = parts.plane;
     this.pins = parts.pins;
+    this.links = parts.links;
+    this.doc = parts.doc;
     this.painter = parts.painter;
     this.framing = parts.framing;
     this.editor = parts.editor;
     this.remote = parts.remote;
     this.eraser = parts.eraser;
     this.live = opts.live;
+
+    this.open = parts.open;
+    this.taps = parts.taps;
 
     // Without this, a two-finger drag scrolls the page mid-stroke.
     this.live.style.touchAction = "none";
@@ -93,10 +115,11 @@ export class InkEngine implements InputHost {
     this.input.destroy();
     this.plane?.destroy();
     this.pins?.destroy();
+    this.links?.destroy();
   }
 
-  /** The page as one set of objects rather than three arrays. Only comments
-   *  ask for it; `ink-engine-page.ts` is what reads it. ADR-107. */
+  /** The page as one set of objects rather than three arrays. Comments and
+   *  arrows both ask for it; `ink-engine-page.ts` is what reads it. ADR-107. */
   get objects(): Page {
     return {
       strokes: this.strokes,
@@ -107,10 +130,17 @@ export class InkEngine implements InputHost {
 
   /** The text half of the plane, which is all most call sites ever wanted. */
   private get texts() { return this.plane?.texts ?? null; }
+
   setTool(tool: Tool) {
     // Leaving select drops the selection: a marquee that outlives the tool that
-    // made it is a promise the next pen stroke will not keep.
-    if (tool !== "select") this.dropSelection();
+    // made it is a promise the next pen stroke will not keep. An arrow waiting
+    // for its second end goes the same way, and for the same reason -- but
+    // ARRIVING at select must not cancel one, because that is the tool aiming
+    // puts in your hand. ADR-108.
+    if (tool !== "select") {
+      this.dropSelection();
+      this.links?.cancelAim();
+    }
     this.currentTool = tool;
     this.strokeCapture.setStyle(tool, this.style.color, this.style.width);
   }
@@ -126,33 +156,11 @@ export class InkEngine implements InputHost {
     this.strokeCapture.setStyle(this.currentTool, style.color, style.width);
   }
 
-  /** Load a page and frame it: opening a note on an endless surface must never
-   *  land on empty paper miles from the writing. */
-  load(strokes: Stroke[], texts: TextBox[] = [], images: ImageOnPage[] = []) {
-    this.strokes = strokes.map((s) => ({ ...s, pts: [...s.pts] }));
-    this.plane?.load(texts, images);
-    this.dropSelection();
-    this.fitToContent();
+  /** Start an arrow from the one object that is held. The next tap on another
+   *  finishes it; tapping the same one again calls it off. ADR-108. */
+  aimFrom(id: string) {
+    this.links?.beginAim(id, { color: this.style.color, width: DEFAULT_PEN.width });
   }
-
-  /** Give a home to photographs taken before placements existed. Frames the
-   *  page again when it rescued any, because the content just grew. ADR-103. */
-  adoptImages(known: readonly NoteImage[]) {
-    const at = this.framing.contentBounds(this.strokes, this.plane?.bounds());
-    if (this.plane?.images.adoptOrphans(known, at)) this.fitToContent();
-  }
-
-  /** Put a photograph where somebody is looking. The bytes are already a
-   *  `blocks` row; the page only learns where the picture goes. ADR-103. */
-  placeImage(blockId: string, natural: { w: number; h: number }) {
-    const r = this.surface.rect();
-    this.plane?.images.place(blockId, natural, this.view, { w: r.width, h: r.height });
-    this.paintOverlay();
-  }
-
-  fitToContent() { this.framing.fitTo(this.strokes, this.plane?.bounds()); }
-
-  resize(cssWidth: number, cssHeight: number) { this.framing.resize(cssWidth, cssHeight); }
 
   dropSelection() { this.editor.drop(); }
 
@@ -168,50 +176,27 @@ export class InkEngine implements InputHost {
   get sel() { return this.editor.sel; }
   get capture() { return this.strokeCapture; }
 
-  /** Whether the text plane took the tap. The canvas draws nothing when it did,
-   *  so a stray stroke never lands under a box somebody is editing. */
-  tapText(x: number, y: number): boolean {
-    const width = this.view.visible(this.surface.width, this.surface.height).w;
-    if (!this.texts?.tapAt(x, y, this.style, width)) return false;
-    this.opts.onTextPlaced?.();
-    return true;
-  }
+  /** Whether the text plane took the tap. `ink-engine-tap.ts` owns what a tap
+   *  MEANS; everything here is only the wire into it. */
+  tapText(x: number, y: number): boolean { return this.taps.text(x, y); }
 
   /** The box being dragged out. Overlay only: an abandoned drag leaves no
    *  trace, because nothing is stored until the pointer lifts. ADR-078. */
   previewText(rect: Bounds | null) { this.pendingText = rect; }
 
   /** A box at exactly the rectangle somebody drew. ADR-078. */
-  drawText(rect: Bounds) {
-    if (this.texts?.drawAt(rect, this.style)) this.opts.onTextPlaced?.();
-  }
+  drawText(rect: Bounds) { this.taps.drawText(rect); }
 
-  /** One object, by tapping it. Same screen-space reach as the eraser, so what
-   *  you can rub out you can also pick up -- of all three kinds. ADR-084. */
-  tapSelect(x: number, y: number) {
-    const reach = ERASE_RADIUS / this.view.k;
-    this.editor.pickAt(x, y, reach, this.texts?.all ?? [], this.plane?.images.all ?? []);
-  }
+  /** One object, by tapping it -- or the far end of an arrow being aimed. */
+  tapSelect(x: number, y: number) { this.taps.select(x, y); }
 
-  /** The same, from CLIENT coordinates: React has a MouseEvent, not a document
-   *  point. `textAtClient` is its sibling for the menu's "put a note here". */
-  selectAtClient(clientX: number, clientY: number) {
-    const p = worldAt(this.surface, this.view, clientX, clientY);
-    this.tapSelect(p.x, p.y);
-  }
+  /** The three the canvas menu reaches for, all in CLIENT coordinates.
+   *  `ink-engine-tap.ts` owns the arithmetic and what each one means. */
+  selectAtClient(x: number, y: number) { this.taps.selectAtClient(x, y); }
 
-  textAtClient(clientX: number, clientY: number) {
-    const p = worldAt(this.surface, this.view, clientX, clientY);
-    this.tapText(p.x, p.y);
-  }
+  textAtClient(x: number, y: number) { this.taps.textAtClient(x, y); }
 
-  /** Where the selection is ON SCREEN, so the menu can point at the thing it
-   *  acts on rather than at the thumb that summoned it. CanvasMenu says why.
-   *  Null when nothing is selected. ADR-084. */
-  marqueeRect(): DOMRect | null {
-    const b = this.editor.sel.marquee;
-    return b ? clientRect(this.surface, this.view, b) : null;
-  }
+  marqueeRect(): DOMRect | null { return this.taps.marqueeRect(); }
 
   /** Anything with a caret in it should lose it before the pen touches down. */
   blurText() { this.texts?.blur(); }
@@ -223,6 +208,9 @@ export class InkEngine implements InputHost {
   commit(stroke: Stroke) {
     this.strokes.push(stroke);
     commitStroke(this.surface, stroke);
+    // Recorded, not published: the stroke goes out as an APPEND, and only the
+    // way back from it is a delta. ADR-109.
+    this.doc.history.record({ remove: [], upsert: [stroke] });
     this.opts.onStrokes([stroke], this.strokes.length - 1);
   }
 
@@ -236,6 +224,10 @@ export class InkEngine implements InputHost {
     return {
       strokes: this.strokes, sel: this.editor.sel, capture: this.strokeCapture,
       index: this.index, k: this.view.k, pendingText: this.pendingText,
+      // A thunk, so a frame that only repaints the overlay never resolves an
+      // arrow. `Scene` says why that matters. ADR-108.
+      links: () => this.links?.segments() ?? [],
+      aim: this.links?.aimSegment() ?? null,
     };
   }
 

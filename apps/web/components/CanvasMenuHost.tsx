@@ -44,6 +44,16 @@ export function CanvasMenuHost({
     remarks.openThread(id);
   };
 
+  /** One object again, and for the same reason: an arrow leaves exactly one
+   *  thing. The selection is dropped so the next tap is the far end. ADR-108. */
+  const arrow = () => {
+    const id = selection.ids[0];
+    const held = at();
+    if (!id || !held) return;
+    held.dropSelection();
+    held.aimFrom(id);
+  };
+
   return (
     <CanvasMenu
       selection={selection}
@@ -57,6 +67,16 @@ export function CanvasMenuHost({
         onDelete: () => at()?.selection.remove(),
         onTextBoxHere: (x, y) => at()?.textAtClient(x, y),
         onComment: remarks ? comment : undefined,
+        // Only where there is an object plane to tie an arrow to. ADR-108.
+        onArrowFrom: at()?.links ? arrow : undefined,
+        onCopy: () => { at()?.doc.copy(); },
+        onDuplicate: () => { at()?.doc.duplicate(); },
+        onPaste: () => { at()?.doc.paste(); },
+        canPaste: () => at()?.doc.canPaste ?? false,
+        onUndo: () => { at()?.doc.undo(); },
+        onRedo: () => { at()?.doc.redo(); },
+        canUndo: () => at()?.doc.canUndo ?? false,
+        canRedo: () => at()?.doc.canRedo ?? false,
       }}
     >
       {children}

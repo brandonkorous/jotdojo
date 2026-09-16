@@ -1,5 +1,6 @@
 import type { Point, Stroke } from "@jotacular/domain";
 import type { Bounds } from "./ink-geometry";
+import type { Segment } from "@jotacular/ink-render";
 
 /** 3x on a large canvas costs more than it returns. docs/08. */
 export const MAX_DPR = 2;
@@ -147,5 +148,73 @@ export function paintTextRect(ctx: CanvasRenderingContext2D, b: Bounds, k = 1) {
   ctx.rect(b.x, b.y, b.w, b.h);
   ctx.fill();
   ctx.stroke();
+  ctx.restore();
+}
+
+/** How long an arrowhead is, as a multiple of the line's width, and how wide
+ *  it opens. Tuned against a 2.2pt pen so an arrow reads at a glance. */
+const HEAD_LENGTH = 5.5;
+const HEAD_SPREAD = 0.42;
+
+/**
+ * One arrow, in world space. ADR-108.
+ *
+ * Drawn on the COMMITTED layer with the strokes, which puts it behind the
+ * object plane -- so an arrow between two cards passes under them rather than
+ * over the words. That is what a line drawn on paper does.
+ */
+export function paintLink(
+  ctx: CanvasRenderingContext2D, seg: Segment, style: LinkStyle,
+) {
+  ctx.save();
+  ctx.strokeStyle = style.color;
+  ctx.fillStyle = style.color;
+  ctx.lineWidth = style.width;
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.moveTo(seg.x1, seg.y1);
+  ctx.lineTo(seg.x2, seg.y2);
+  ctx.stroke();
+
+  if (style.head !== "none") head(ctx, seg.x2, seg.y2, seg.x1, seg.y1, style.width);
+  if (style.head === "both") head(ctx, seg.x1, seg.y1, seg.x2, seg.y2, style.width);
+  ctx.restore();
+}
+
+export type LinkStyle = { color: string; width: number; head: "end" | "both" | "none" };
+
+/** A filled triangle at (x, y), pointing away from (fromX, fromY). */
+function head(
+  ctx: CanvasRenderingContext2D,
+  x: number, y: number, fromX: number, fromY: number, width: number,
+) {
+  const angle = Math.atan2(y - fromY, x - fromX);
+  const length = width * HEAD_LENGTH;
+  ctx.beginPath();
+  ctx.moveTo(x, y);
+  ctx.lineTo(x - length * Math.cos(angle - HEAD_SPREAD), y - length * Math.sin(angle - HEAD_SPREAD));
+  ctx.lineTo(x - length * Math.cos(angle + HEAD_SPREAD), y - length * Math.sin(angle + HEAD_SPREAD));
+  ctx.closePath();
+  ctx.fill();
+}
+
+/**
+ * The arrow being aimed, before it has a second end. ADR-108.
+ *
+ * Mint and solid, the colours ADR-078 gave to something being MADE, so it
+ * cannot be mistaken for an arrow that already exists or for a selection.
+ */
+export function paintAim(ctx: CanvasRenderingContext2D, seg: Segment, k = 1) {
+  ctx.save();
+  ctx.strokeStyle = DRAW_STROKE;
+  ctx.fillStyle = DRAW_STROKE;
+  ctx.lineWidth = 2 / k;
+  ctx.setLineDash([7 / k, 5 / k]);
+  ctx.beginPath();
+  ctx.moveTo(seg.x1, seg.y1);
+  ctx.lineTo(seg.x2, seg.y2);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  head(ctx, seg.x2, seg.y2, seg.x1, seg.y1, 2 / k);
   ctx.restore();
 }

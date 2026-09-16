@@ -75,3 +75,22 @@ was the same both times -- what is assembled once, apart from what runs:
 
     remarks.css           the drawer, which sits still
     remark-canvas.css     the pin and the popup, which move with the camera
+
+On 2026-09-15 arrows, undo and the clipboard (ADR-108, ADR-109, ADR-110) hit the
+limit five more times. Every split was by responsibility:
+
+    ink-engine-tap.ts     what a tap landed on, of the four things it can mean
+    ink-engine-open.ts    a page arriving, and where the camera looks
+    ink-engine.ts         what is left: a pointer, and a frame loop
+
+    ink-delta.ts          the wire contract -- what a client may say
+    ink-apply.ts          what saying it does to four arrays
+
+    ink-text.ts           what a text box IS
+    ink-text-block.ts     the searchable row that shadows the page
+
+    svg-parts.ts          what one object looks like
+    svg.ts                the frame round them -- viewBox, scale, paper, order
+
+    CanvasMenuItems.tsx   what the menu offers
+    CanvasMenu.tsx        where it opens

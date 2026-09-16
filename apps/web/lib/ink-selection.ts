@@ -160,6 +160,22 @@ export class InkSelection {
     return this.count;
   }
 
+  /**
+   * Hold exactly these, without a loop having been drawn. ADR-110.
+   *
+   * What a paste leaves behind: the copy is selected, so it can be dragged
+   * where it belongs immediately rather than found and lassoed first.
+   */
+  hold(
+    strokes: readonly Stroke[], texts: readonly TextBox[], images: readonly ImageOnPage[],
+  ) {
+    this.lasso = null;
+    this.picked = [...strokes];
+    this.boxes = [...texts];
+    this.pics = [...images];
+    this.remeasure();
+  }
+
   /** The marquee round whatever is held, of however many kinds. */
   private remeasure() {
     this.box = mergeBounds(

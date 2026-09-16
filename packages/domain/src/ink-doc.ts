@@ -1,6 +1,7 @@
 import { DomainError } from "./errors";
 import type { TextBox } from "./ink-text";
 import type { ImageOnPage } from "./ink-image";
+import type { Link } from "./ink-link";
 
 /**
  * What an ink document IS, and what a client is allowed to send. docs/08-ink.md.
@@ -72,6 +73,17 @@ export type InkDocument = {
    * key -- and a reader that assumed one would break every existing page.
    */
   images?: ImageOnPage[];
+  /**
+   * The arrows drawn between things on the page. ADR-108.
+   *
+   * A FOURTH array for the reason `images` is a third one: an arrow is not
+   * something a pen drew and not something to recognise, and the arrays are
+   * kept apart so nothing can mistake one for the other. ink-link.ts.
+   *
+   * Optional, because every document written before this shipped has no such
+   * key -- and a reader that assumed one would break every existing page.
+   */
+  links?: Link[];
 };
 
 /** Generous, and far above a real page. A guard against a runaway client, not

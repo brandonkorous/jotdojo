@@ -2,10 +2,11 @@ import type { IconDefinition } from "@awesome.me/kit-2fb7fafdba/icons";
 
 export type { IconDefinition };
 import {
-  faAngleDown, faArrowDownToBracket, faArrowPointer, faBold, faCamera,
-  faCirclePlus, faComment, faItalic, faKeyboard, faMagnifyingGlass, faMinus,
-  faMicrophone, faPaintbrush, faPenLine, faPlus, faSparkles,
-  faText, faTrash, faUnderline, faXmark,
+  faAngleDown, faArrowDownToBracket, faArrowPointer, faArrowRight,
+  faArrowRotateLeft, faArrowRotateRight, faBold, faCamera,
+  faCirclePlus, faClipboard, faComment, faCopy, faItalic, faKeyboard,
+  faMagnifyingGlass, faMinus, faMicrophone, faPaintbrush, faPenLine, faPlus,
+  faSparkles, faText, faTrash, faUnderline, faXmark,
 } from "@awesome.me/kit-2fb7fafdba/icons/whiteboard/semibold";
 
 /**
@@ -46,6 +47,15 @@ export const ICONS = {
   collapse: faAngleDown,
   close: faXmark,
   addBox: faCirclePlus,
+  /** An arrow between two things on the page. ADR-108. */
+  arrow: faArrowRight,
+  undo: faArrowRotateLeft,
+  redo: faArrowRotateRight,
+  copy: faCopy,
+  /** Same picture as `copy`, and a different job: these keys are named for the
+   *  job so swapping the artwork never means editing a caller. ADR-110. */
+  duplicate: faCopy,
+  paste: faClipboard,
 
   /* text marks */
   bold: faBold,

@@ -4,6 +4,7 @@ import { NotFound } from "./errors";
 import { type Stroke } from "./ink-doc";
 import { type TextBox } from "./ink-text";
 import { type ImageOnPage } from "./ink-image";
+import { type Link } from "./ink-link";
 
 /**
  * Taking hold of an ink page, and putting it back. docs/08-ink.md, ADR-058.
@@ -47,14 +48,15 @@ export async function lockPageCount(tx: Tx, blockId: string): Promise<LockedPage
 /** Lock the page and read it. For edits, which have to see what they change. */
 export async function lockPage(
   tx: Tx, blockId: string,
-): Promise<LockedPage & { strokes: Stroke[]; texts: TextBox[]; images: ImageOnPage[] }> {
+): Promise<LockedPage & PageObjects> {
   const rows = await tx.execute(sql`
     SELECT b.id AS block_id, b.space_id, b.note_id, a.id AS artifact_id,
            a.strokes_version AS version,
            jsonb_array_length(a.strokes -> 'strokes') AS count,
            a.strokes -> 'strokes' AS page,
            a.strokes -> 'texts' AS texts,
-           a.strokes -> 'images' AS images
+           a.strokes -> 'images' AS images,
+           a.strokes -> 'links' AS links
       FROM blocks b
       JOIN media_assets a ON a.id = b.artifact_id
      WHERE b.id = ${blockId} AND b.kind = 'ink'
@@ -69,8 +71,19 @@ export async function lockPage(
     texts: (row.texts as TextBox[] | null) ?? [],
     // And NULL for every page written before ADR-103, which is all of them.
     images: (row.images as ImageOnPage[] | null) ?? [],
+    // And before ADR-108, likewise.
+    links: (row.links as Link[] | null) ?? [],
   };
 }
+
+/** Everything the layer document holds, of every kind. Named once because
+ *  three call sites had grown a four-way intersection type each. */
+export type PageObjects = {
+  strokes: Stroke[];
+  texts: TextBox[];
+  images: ImageOnPage[];
+  links: Link[];
+};
 
 /**
  * Lock the page and prove the caller may touch it.
@@ -132,35 +145,36 @@ export async function bumpPage(
  * changed, re-read it whole" -- exactly right for a text edit, and it needed no
  * change to the wire format at all. ADR-058, ADR-065.
  */
-export async function writeTexts(
-  tx: Tx, artifactId: string, texts: TextBox[],
-): Promise<number> {
-  const rows = await tx.execute(sql`
-    UPDATE media_assets
-       SET strokes = jsonb_set(strokes, '{texts}', ${JSON.stringify(texts)}::jsonb),
-           strokes_version = strokes_version + 1
-     WHERE id = ${artifactId}
-    RETURNING strokes_version AS version
-  `);
-  return version(rows);
-}
+export const writeTexts = (tx: Tx, artifactId: string, texts: TextBox[]) =>
+  writeArray(tx, artifactId, "texts", texts);
+
+/** Replace the page's image placements. ADR-103. */
+export const writeImages = (tx: Tx, artifactId: string, images: ImageOnPage[]) =>
+  writeArray(tx, artifactId, "images", images);
+
+/** Replace the page's arrows. ADR-108. */
+export const writeLinks = (tx: Tx, artifactId: string, links: Link[]) =>
+  writeArray(tx, artifactId, "links", links);
 
 /**
- * Replace the page's image placements. ADR-103.
+ * One array of the layer document, replaced by name.
  *
- * Its own statement rather than `writeTexts` with the path passed in. That was
- * the first attempt and Postgres rejected it outright -- a `jsonb_set` path
- * built as a nested `sql` fragment does not render as a literal, and the
- * failure is a 42601 syntax error rather than anything the types could catch.
- * Two statements that each say what they write is worth more than one that has
- * to be told.
+ * ADR-103 wrote the second of these as its own statement, because a `jsonb_set`
+ * path built as a nested `sql` fragment does not render as a literal and fails
+ * with a 42601 no type could catch. The third made the duplication a liability,
+ * which is the line ADR-103 itself drew about `mergeById`.
+ *
+ * `sql.raw` is safe here and only here: `Kind` is a CLOSED union of three
+ * literals, so nothing a caller supplies can reach it.
  */
-export async function writeImages(
-  tx: Tx, artifactId: string, images: ImageOnPage[],
+type Kind = "texts" | "images" | "links";
+
+async function writeArray(
+  tx: Tx, artifactId: string, kind: Kind, value: unknown[],
 ): Promise<number> {
   const rows = await tx.execute(sql`
     UPDATE media_assets
-       SET strokes = jsonb_set(strokes, '{images}', ${JSON.stringify(images)}::jsonb),
+       SET strokes = jsonb_set(strokes, ${sql.raw(`'{${kind}}'`)}, ${JSON.stringify(value)}::jsonb),
            strokes_version = strokes_version + 1
      WHERE id = ${artifactId}
     RETURNING strokes_version AS version

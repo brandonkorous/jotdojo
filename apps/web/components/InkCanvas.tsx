@@ -11,6 +11,7 @@ import { useInkTrouble } from "@/lib/use-ink-feed";
 import { downloadSelection } from "@/lib/export-client";
 import type { InkStyle } from "@/lib/ink-style";
 import { useInkEngine } from "@/lib/use-ink-engine";
+import { useCanvasKeys } from "@/lib/use-canvas-keys";
 import { SelectionBar } from "./SelectionBar";
 import { ZoomChip } from "./ZoomChip";
 
@@ -26,7 +27,7 @@ import { ZoomChip } from "./ZoomChip";
  */
 
 export function InkCanvas({
-  noteId, tool, style, onReady, onDraw, onTextPlaced, live = false,
+  noteId, tool, style, onReady, onDraw, onTextPlaced, onAiming, live = false,
   outer, held, onSelection,
 }: {
   noteId: string;
@@ -41,6 +42,10 @@ export function InkCanvas({
   /** Colour and width for THIS tool. Held per tool by the caller. ADR-045. */
   style: InkStyle;
   onReady?: (blockId: string) => void;
+  /** An arrow is waiting for its second end. The caller puts the select tool
+   *  in hand: the tap that finishes it has to reach the canvas, and the rail
+   *  lighting up is the only sign the mode is on. ADR-108. */
+  onAiming?: (on: boolean) => void;
   /** A text box was placed, so the caller can hand the tool back to the spine. */
   onTextPlaced?: () => void;
   /** Somebody is drawing here, for presence. Called per finished stroke, never
@@ -89,6 +94,8 @@ export function InkCanvas({
   /** In a ref for the same reason `draw` is: the engine is built once. */
   const placed = useRef(onTextPlaced);
   placed.current = onTextPlaced;
+  const aiming = useRef(onAiming);
+  aiming.current = onAiming;
   const ready = useRef(onReady);
   ready.current = onReady;
 
@@ -141,30 +148,13 @@ export function InkCanvas({
     onBlock: setBlockId,
     onDraw: draw,
     onTextPlaced: placed,
+    onAiming: aiming,
     onReady: ready,
   });
 
-  /**
-   * Delete and Backspace remove a lasso selection.
-   *
-   * Bound on the window, not the canvas: a canvas is not focusable, and giving
-   * the drawing surface a tabindex would put a focus ring around the page every
-   * time someone picked up the pen.
-   */
-  useEffect(() => {
-    if (selected.count === 0) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key !== "Delete" && e.key !== "Backspace") return;
-      const el = document.activeElement;
-      // Never steal Backspace from something being typed into.
-      if (el instanceof HTMLElement
-        && (el.isContentEditable || el.tagName === "INPUT" || el.tagName === "TEXTAREA")) return;
-      e.preventDefault();
-      engineRef.current?.selection.remove();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [selected.count, engineRef]);
+  /** Delete, undo, redo, copy, cut, paste and duplicate. `use-canvas-keys.ts`
+   *  says why they are bound on the window rather than here. */
+  useCanvasKeys(engineRef, selected.count);
 
   useInkTrouble(state, error);
 
@@ -227,7 +217,7 @@ export function InkCanvas({
       <ZoomChip
         zoom={view.k}
         home={view.home}
-        onFit={() => engine()?.fitToContent()}
+        onFit={() => engine()?.open.fit()}
       />
     </div>
   );

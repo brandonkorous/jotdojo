@@ -23,6 +23,9 @@ export type InkBlock = {
   /** How many typed boxes are on the plane. A page with text and no strokes
    *  still has to be loaded. ADR-065. */
   textCount: number;
+  /** How many arrows are drawn between things. A page that is nothing but
+   *  two notes and an arrow still has one. ADR-108. */
+  linkCount: number;
   /** How many photographs are placed on the plane. A page with a photo and
    *  nothing else still has to be loaded. ADR-103. */
   imageCount: number;
@@ -83,7 +86,8 @@ export async function createInkBlock(
 
     return {
       blockId: block.id, artifactId: asset.id, noteId, spaceId: note.spaceId,
-      strokeCount: 0, textCount: 0, imageCount: 0, version: 0, canvas, transcript: null,
+      strokeCount: 0, textCount: 0, imageCount: 0, linkCount: 0,
+      version: 0, canvas, transcript: null,
       transcriptState: block.transcriptState, transcriptSource: null, confidence: null,
     };
   });
@@ -134,6 +138,7 @@ export async function getInk(actor: Actor, blockId: string): Promise<InkBlock & 
       strokeCount: document.strokes.length,
       textCount: document.texts?.length ?? 0,
       imageCount: document.images?.length ?? 0,
+      linkCount: document.links?.length ?? 0,
       version: Number(row.strokes_version ?? 0),
       canvas: document.canvas,
       transcript: (row.transcript as string | null) ?? null,
