@@ -18,6 +18,7 @@ import { verifyLocalSignature, writeLocal } from "@jotacular/storage";
  */
 export function registerMediaRoutes(app: FastifyInstance) {
   const root = process.env.STORAGE_LOCAL_ROOT ?? ".media";
+  const appOrigin = process.env.APP_URL ?? "http://localhost:3400";
   const secret = process.env.AUTH_SECRET;
   if (!secret) throw new Error("STORAGE_PROVIDER=local needs AUTH_SECRET");
 
@@ -61,6 +62,31 @@ export function registerMediaRoutes(app: FastifyInstance) {
 
   const typeOf = (key: string): string =>
     TYPES[key.split(".").pop()?.toLowerCase() ?? ""] ?? "application/octet-stream";
+
+  /**
+   * CORS, for this route only, because the browser PUTs here from the app.
+   *
+   * The app is :3400 and this is :3401, so an upload is cross-origin, and
+   * `content-type: image/png` on a PUT is not safelisted -- the browser sends a
+   * preflight first. There was no OPTIONS handler and no headers, so every
+   * photo and every voice note failed in the browser while `media:smoke`, which
+   * never uses one, stayed green. Issue 031.
+   *
+   * On Azure the browser PUTs straight to Blob and none of this exists; Blob has
+   * its own CORS rules, set in infra.
+   */
+  const allowFrom = (reply: { header: (k: string, v: string) => void }) => {
+    reply.header("access-control-allow-origin", appOrigin);
+    reply.header("access-control-allow-methods", "PUT, GET, OPTIONS");
+    reply.header("access-control-allow-headers", "content-type");
+    reply.header("access-control-max-age", "600");
+  };
+
+  app.addHook("onSend", async (request, reply) => {
+    if (request.url.startsWith("/v1/media/")) allowFrom(reply);
+  });
+
+  app.options("/v1/media/*", async (_request, reply) => reply.code(204).send());
 
   type Params = { "*": string };
   type Query = { expires?: string; sig?: string };

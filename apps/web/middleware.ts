@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { isMarketingHost, requestHost } from "@/lib/hosts";
+import { PATH_HEADER } from "@/lib/here";
 
 /**
  * The apex is the marketing site, `app.` is the app, and one deployment serves
@@ -34,10 +35,33 @@ const PASSTHROUGH =
 
 const SITE_PREFIX = "/site";
 
+/**
+ * The consent screen is never drawn inside somebody else's page. RFC 9700.
+ *
+ * One click on it hands an agent everything a person has ever written, which is
+ * precisely the button a clickjack wants. Only a `SameSite=Lax` session cookie
+ * stood in the way, and that is a default rather than a defence. Issue 018.
+ */
+const NO_FRAME = /^\/oauth\/authorize/;
+
+/** Both headers on purpose: `frame-ancestors` is the standard and wins where it
+ *  is understood, and `X-Frame-Options` is what older browsers still read. */
+function neverFramed(res: NextResponse): NextResponse {
+  res.headers.set("X-Frame-Options", "DENY");
+  res.headers.set("Content-Security-Policy", "frame-ancestors 'none'");
+  return res;
+}
+
 export function middleware(req: NextRequest): NextResponse {
   const { pathname } = req.nextUrl;
+  if (NO_FRAME.test(pathname)) return neverFramed(NextResponse.next());
   if (PASSTHROUGH.test(pathname)) return NextResponse.next();
-  if (!isMarketingHost(requestHost(req.headers))) return NextResponse.next();
+
+  // What the browser asked for, for the auth guard to redirect back to.
+  const request = { headers: new Headers(req.headers) };
+  request.headers.set(PATH_HEADER, pathname + req.nextUrl.search);
+
+  if (!isMarketingHost(requestHost(req.headers))) return NextResponse.next({ request });
 
   /**
    * Idempotent, because the production server re-enters middleware on its own
@@ -45,12 +69,12 @@ export function middleware(req: NextRequest): NextResponse {
    * is a 404 that only appears once the app is built.
    */
   if (pathname === SITE_PREFIX || pathname.startsWith(SITE_PREFIX + "/")) {
-    return NextResponse.next();
+    return NextResponse.next({ request });
   }
 
   const url = req.nextUrl.clone();
   url.pathname = pathname === "/" ? SITE_PREFIX : SITE_PREFIX + pathname;
-  return NextResponse.rewrite(url);
+  return NextResponse.rewrite(url, { request });
 }
 
 /**

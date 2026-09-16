@@ -5,6 +5,7 @@ import type { IconName } from "@/lib/icons";
 import type { CanvasTool } from "@/lib/canvas-tool";
 import type { Block, Mark } from "@/lib/markdown-marks";
 import { MARKER_COLORS, PEN_COLORS, type InkStyles } from "@/lib/ink-style";
+import { useModKey } from "@/lib/mod-key";
 import { PenSize } from "./PenSize";
 
 /**
@@ -51,6 +52,7 @@ export function ToolOptions({
   onMark?: (mark: Mark) => void;
   onBlock?: (block: Block) => void;
 }) {
+  const mod = useModKey();
   if (tool === "eraser" || tool === "select" || tool === "textbox") return null;
   if (!open) return null;
 
@@ -64,7 +66,7 @@ export function ToolOptions({
                 key={id}
                 type="button"
                 className="jd-tool"
-                title={`${label}  ⌘${key}`}
+                title={`${label}  ${mod}${key}`}
                 aria-label={label}
                 onClick={() => onMark?.(id)}
               >

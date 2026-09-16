@@ -21,6 +21,11 @@ export const viewport: Viewport = {
     themeColor: pigment.mint,
 };
 
+/**
+ * `data-theme` pins light, and that is what keeps `paper-night` unreachable.
+ * Dropping it is issue 002's part 1 and it works -- but stored ink is not ready
+ * for a charcoal page: the DEFAULT pen measures 1.24:1 on it. Issue 043.
+ */
 export default function RootLayout({ children }: { children: React.ReactNode }) {
     return (
         <html lang="en" data-theme="paper">

@@ -20,7 +20,7 @@ export default async function Home() {
     <main className="jd-site-main">
       {/* The headline lives INSIDE the canvas and drops to the foot once
           somebody engages with it. The hero is the writing surface. */}
-      <HeroCanvas appHref={appOrigin()}>
+      <HeroCanvas>
         <h1 className="font-head">
           Don&apos;t organize it.{" "}
           <Underline className="jd-hero-turn">Just jot it.</Underline>

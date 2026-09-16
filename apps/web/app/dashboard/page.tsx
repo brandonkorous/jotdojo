@@ -34,15 +34,15 @@ export default async function Dashboard() {
       <section>
         <h2 className="mb-3 font-head text-xl">History</h2>
         {notes.length === 0 ? (
-          <p className="opacity-60">Nothing here yet. Go have a thought.</p>
+          <p className="jd-quiet">Nothing here yet. Go have a thought.</p>
         ) : (
           <ul className="divide-y divide-base-300">
             {notes.map((n) => (
               <li key={n.id}>
                 <Link href={`/n/${n.id}`} className="block py-3 hover:bg-base-200">
                   <div className="font-head">{n.title ?? "Untitled"}</div>
-                  <div className="mt-1 line-clamp-1 text-sm opacity-60">{n.preview}</div>
-                  <div className="mt-1 text-xs opacity-40">
+                  <div className="mt-1 line-clamp-1 text-sm jd-quiet">{n.preview}</div>
+                  <div className="mt-1 text-xs jd-quiet">
                     {n.updatedAt.toLocaleString()}
                   </div>
                 </Link>

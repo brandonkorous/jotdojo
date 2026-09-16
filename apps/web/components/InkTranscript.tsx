@@ -127,6 +127,12 @@ function entryFor(
     return { ...base, line: "Your ink is saved — reading it did not work" };
   }
 
+  // The allowance ran out, not the page. Same promise the account page makes,
+  // said where she is rather than where the billing is. Issue 030.
+  if (ink.transcriptState === "deferred") {
+    return { ...base, line: "Saved. It gets read when the month turns over" };
+  }
+
   if (ink.transcript === null) return { ...base, line: "This page has not been read" };
 
   const byAuthor = ink.confidence === null && Boolean(ink.transcript);

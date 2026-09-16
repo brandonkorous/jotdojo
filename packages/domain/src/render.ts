@@ -25,10 +25,17 @@ export type RenderableBlock = {
   transcriptState: string;
   confidence: number | null;
   transcriptCoverage?: number | null;
+  /** Ink only: whether anything was actually drawn on it. Issue 027. */
+  hasStrokes?: boolean;
 };
 
 export function renderBlock(b: RenderableBlock): string {
   if (b.kind === "text") return b.body ?? "";
+
+  // An ink layer is created the moment a canvas opens, so a note somebody only
+  // typed has an empty one. Calling that "handwritten, nothing legible on it"
+  // tells a person their own typed note is unreadable. Issue 027.
+  if (b.kind === "ink" && b.hasStrokes === false && !b.transcript?.trim()) return "";
 
   // Words a person would use. A reader quoting this back says "from a voice
   // note" rather than "from an audio block", which is the difference between
@@ -41,6 +48,13 @@ export function renderBlock(b: RenderableBlock): string {
   }
   if (b.transcriptState === "failed") {
     return `_[${label}, could not be read. The original is intact; only the reading failed.]_`;
+  }
+  // Waiting for the month to turn over, not unreadable. Without this a capture
+  // made after the allowance ran out was reported as "nothing legible on it",
+  // which is the one thing docs/01 promises never to say. Issue 030.
+  if (b.transcriptState === "deferred") {
+    return `_[${label}, saved but not read yet. This month's reading is used up;`
+      + ` it gets read when the month turns over.]_`;
   }
   if (!b.transcript?.trim()) return `_[${label}, nothing legible on it]_`;
 

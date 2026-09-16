@@ -1,6 +1,8 @@
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { auth } from "@/auth";
 import { currentDraft } from "@/lib/draft";
+import { PATH_HEADER } from "@/lib/here";
 import { actorExists, asUser, type Actor, type AnonSession } from "@jotacular/domain";
 
 /**
@@ -12,11 +14,27 @@ import { actorExists, asUser, type Actor, type AnonSession } from "@jotacular/do
  */
 export async function requireActor(): Promise<Actor> {
   const session = await auth();
-  if (!session?.user?.id) redirect("/signin");
+  if (!session?.user?.id) redirect(await signInUrl());
 
   const actor = asUser(session.user.id);
-  if (!(await actorExists(actor))) redirect("/signin?stale=1");
+  if (!(await actorExists(actor))) redirect(await signInUrl({ stale: true }));
   return actor;
+}
+
+/**
+ * Sign in, and come back HERE. Issue 025.
+ *
+ * `/` is left off deliberately: it is where sign-in lands anyway, and carrying
+ * it would put a `?next=%2F` on the address of everybody who simply opened the
+ * app. `safeNext` on the sign-in page is what stops this being a redirector.
+ */
+async function signInUrl(opts: { stale?: boolean } = {}): Promise<string> {
+  const here = (await headers()).get(PATH_HEADER);
+  const query = new URLSearchParams();
+  if (here && here !== "/") query.set("next", here);
+  if (opts.stale) query.set("stale", "1");
+  const q = query.toString();
+  return q ? `/signin?${q}` : "/signin";
 }
 
 export async function currentUser() {
@@ -49,5 +67,5 @@ export async function captureActor(): Promise<Capture> {
   const draft = await currentDraft();
   if (draft) return { actor: draft.actor, draft };
 
-  redirect("/signin");
+  redirect(await signInUrl());
 }

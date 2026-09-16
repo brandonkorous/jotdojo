@@ -14,7 +14,10 @@ export function useInkTrouble(state: SyncState, error: string | null) {
     error
       ? { tone: "trouble", line: `Ink could not start: ${error}` }
       : state === "retrying"
-        ? { tone: "trouble", line: "Strokes are safe here and will retry" }
+        // Not only strokes: the same queue carries text boxes, arrows, stickers
+        // and photos, and "strokes" is our word rather than theirs (docs/11).
+        // Somebody in a tunnel needs to know the PAGE is safe. Issue 034.
+        ? { tone: "trouble", line: "Saved on this device. It will send when the connection is back" }
         : null,
     [error, state],
   );

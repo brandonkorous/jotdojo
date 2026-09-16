@@ -118,6 +118,7 @@ async function blocksFor(tx: Tx, noteIds: string[]): Promise<Map<string, ExportB
 
 function shapeBlock(row: Record<string, unknown>): ExportBlock {
   const kind = String(row.kind);
+  const doc = kind === "ink" ? (row.strokes as InkDocument | null) : null;
   return {
     id: String(row.id),
     kind,
@@ -130,7 +131,11 @@ function shapeBlock(row: Record<string, unknown>): ExportBlock {
       ? null : Number(row.confidence),
     transcriptCoverage: row.transcript_coverage === null || row.transcript_coverage === undefined
       ? null : Number(row.transcript_coverage),
-    document: kind === "ink" ? (row.strokes as InkDocument | null) : null,
+    document: doc,
+    // Whether a pen was ever used, not merely that an ink layer exists. Without
+    // it a note somebody only typed exports as "handwritten, nothing legible on
+    // it". Issue 027.
+    hasStrokes: kind === "ink" ? (doc?.strokes?.length ?? 0) > 0 : undefined,
     blobUrl: kind === "ink" ? null : ((row.blob_url as string | null) ?? null),
     mimeType: (row.mime_type as string | null) ?? null,
   };

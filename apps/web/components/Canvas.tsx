@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import type { Align } from "@/lib/toolbar-side";
 import { isInk } from "@/lib/canvas-tool";
 import { useCanvasTool } from "@/lib/use-canvas-tool";
+import { useBlankTap } from "@/lib/use-blank-tap";
 import { styleFor } from "@/lib/ink-style";
 import { ToolOptions } from "./ToolOptions";
 import { useMarks } from "@/lib/use-marks";
@@ -32,10 +33,6 @@ import { useLiveNote } from "@/lib/use-live";
  * writing is live immediately, nothing blocks on the network, and a failed
  * save keeps the text and retries rather than losing it.
  */
-/** Close enough to be a tap rather than a pan, in screen pixels. The same
- *  number ink-input-select.ts uses, for the same unsteady hand. */
-const TAP_SLOP = 6;
-
 export function Canvas({
   noteId, initialBody, initialRevision, hasInk, user, toolbarPreference,
 }: {
@@ -110,28 +107,20 @@ export function Canvas({
     inkStarted, startInk, optionsOpen, closeOptions,
   } = useCanvasTool(input, hasInk);
 
-  /**
-   * Blank paper still types. ADR-102.
-   *
-   * The spine is only as tall as its words now, so most of a fresh page is
-   * canvas rather than text field -- and a tap on it has to mean what it has
-   * always meant, or ADR-008's contract is broken to buy a menu.
-   *
-   * A TAP, not any pointer-up. The camera moves on this surface too, and a
-   * two-finger pan that ended by opening the keyboard over the page somebody
-   * had just panned to would be worse than the fence it replaced.
-   */
-  const from = useRef<{ x: number; y: number } | null>(null);
+  /** A tap on bare canvas puts the caret in the spine, and a pan does not.
+   *  Its own file because that distinction is six pixels of arithmetic and a
+   *  ref that nothing else here reads. ADR-102. */
+  const blankTap = useBlankTap(input, tool);
 
-  const tapBlank = (e: React.PointerEvent) => {
-    const began = from.current;
-    from.current = null;
-    if (!began || isInk(tool) || e.target !== e.currentTarget) return;
-    if (Math.hypot(e.clientX - began.x, e.clientY - began.y) > TAP_SLOP) return;
-    const el = input.current;
-    if (!el) return;
-    el.focus();
-    el.setSelectionRange(el.value.length, el.value.length);
+  /** The Add menu PUTS a note on the page rather than arming a tap: no key
+   *  places a box and the canvas is deliberately not focusable, so arming one
+   *  left a keyboard-only person unable to write at all. Issue 012. */
+  const addTextBox = () => {
+    armTextBox();
+    requestAnimationFrame(() => {
+      const r = shellRef.current?.getBoundingClientRect();
+      if (r) engineRef.current?.textAtClient(r.left + r.width / 2, r.top + r.height / 3);
+    });
   };
 
   return (
@@ -140,13 +129,7 @@ export function Canvas({
         ref={shellRef}
         className="jd-canvas-shell"
         onPointerMove={() => dim(false)}
-        // A second finger means the camera, never the caret. Cleared rather
-        // than tracked, so the gesture cannot end as a tap on the way out.
-        onPointerDown={(e) => {
-          from.current = e.isPrimary ? { x: e.clientX, y: e.clientY } : null;
-        }}
-        onPointerUp={tapBlank}
-        onPointerCancel={() => { from.current = null; }}
+        {...blankTap}
       >
         <Spine
           input={input}
@@ -154,7 +137,11 @@ export function Canvas({
           // A prompt to start, and only that. Once there is ink on the page it
           // is showing through somebody's handwriting to tell them to begin
           // something they have visibly already begun.
-          placeholder={inkStarted ? "" : "Start jotting."}
+          // `hasInk`, not `inkStarted`: the latter is true the moment a
+          // remembered pen mounts the ink layer (ADR-047), so a brand-new
+          // empty note opened by somebody whose last tool was a pen showed
+          // a completely blank page and no invitation. Issue 037.
+          placeholder={hasInk ? "" : "Start jotting."}
           readOnly={isInk(tool)}
           autoFocus={!isInk(tool)}
           onChange={onChange}
@@ -209,7 +196,7 @@ export function Canvas({
         <Chrome align={toolbarPreference} user={user} dimmed={dimmed} tool={tool} onTool={choose}
           onCamera={() => setCameraSignal((n) => n + 1)}
           onMic={() => setMicSignal((n) => n + 1)}
-          onTextBox={armTextBox} />
+          onTextBox={addTextBox} />
 
         <ToolOptions
           tool={tool}
@@ -222,7 +209,7 @@ export function Canvas({
           onBlock={heading}
         />
 
-        <Presence who={others} />
+        <Presence who={others} align={toolbarPreference} />
 
         {/* The marks on the page, the conversation beside one of them, and the
             list of all of it. All three ask the engine where things are, so

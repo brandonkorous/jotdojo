@@ -15,7 +15,7 @@ export function ExportSection({
   return (
     <section>
       <h2 className="font-head text-xl">Take it with you</h2>
-      <p className="mb-3 mt-1 text-sm opacity-60">
+      <p className="mb-3 mt-1 text-sm jd-quiet">
         A zip of everything in a space: one markdown file per note, your
         handwriting as SVG you can open in any browser, and every photo and
         recording exactly as it arrived. Nothing is deleted by exporting it.

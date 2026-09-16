@@ -175,6 +175,13 @@ export async function readBlocks(tx: Tx, noteId: string): Promise<NoteBlock[]> {
     transcriptState: blocks.transcriptState,
     confidence: blocks.confidence,
     transcriptCoverage: blocks.transcriptCoverage,
+    // Whether a pen ever touched it, as opposed to the layer merely existing.
+    // Issue 027.
+    hasStrokes: sql<boolean>`EXISTS (
+      SELECT 1 FROM media_assets m
+       WHERE m.id = ${blocks.artifactId}::uuid
+         AND jsonb_array_length(coalesce(m.strokes -> 'strokes', '[]'::jsonb)) > 0
+    )`,
   }).from(blocks).where(eq(blocks.noteId, noteId)).orderBy(blocks.position);
 }
 

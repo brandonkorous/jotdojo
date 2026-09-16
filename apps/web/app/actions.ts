@@ -11,7 +11,7 @@ import {
   ensureInkBlock, appendStrokes, getInk, correctTranscript,
   assertAnonRoom, assertAnonInkRoom, AnonLimit, ANON_MAX_CHARS,
   startCheckout, billingPortal,
-  RevisionConflict, type NoteSummary, type CaptureTokenSummary,
+  RevisionConflict, type NoteSummary, type ListedNote, type CaptureTokenSummary,
 } from "@jotacular/domain";
 import { requireActor, captureActor } from "@/lib/session";
 import { appOrigin } from "@/lib/hosts";
@@ -63,9 +63,12 @@ export async function createNoteAction(body = ""): Promise<{ id: string; revisio
   return { id: note.id, revision: note.revision };
 }
 
-export async function listNotesAction(): Promise<NoteSummary[]> {
+/** `words` is what the ⌘K palette filters on. Without it the palette matches
+ *  the first 180 characters of a note and tells somebody the rest is not
+ *  there. Issue 016. */
+export async function listNotesAction(): Promise<ListedNote[]> {
   const actor = await requireActor();
-  return listNotes(actor, await defaultSpaceId(actor));
+  return listNotes(actor, await defaultSpaceId(actor), { words: true });
 }
 
 export async function searchNotesAction(query: string): Promise<NoteSummary[]> {

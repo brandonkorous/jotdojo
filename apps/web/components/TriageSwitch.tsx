@@ -18,7 +18,7 @@ export function TriageSwitch({ settings }: { settings: TriageSetting[] }) {
   return (
     <section>
       <h2 className="font-head text-xl">An agent that reads new notes</h2>
-      <p className="mb-4 mt-1 text-sm opacity-60">
+      <p className="mb-4 mt-1 text-sm jd-quiet">
         Once you have finished with a note it gets read, and you get a comment
         if there is a date coming up or somebody waiting on you. Most notes it
         says nothing about. It never changes a word you wrote, and switching it
@@ -32,7 +32,7 @@ export function TriageSwitch({ settings }: { settings: TriageSetting[] }) {
             className="flex items-center gap-3 rounded-xl border border-black/10 px-3 py-2"
           >
             <span className="truncate">{space.name}</span>
-            <span className="ml-auto text-xs opacity-60">{reason(space)}</span>
+            <span className="ml-auto text-xs jd-quiet">{reason(space)}</span>
             <button
               type="button"
               disabled={pending || !space.available || space.role !== "owner"}

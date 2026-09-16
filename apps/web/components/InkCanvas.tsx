@@ -163,14 +163,20 @@ export function InkCanvas({
   useEffect(() => { engineRef.current?.setStyle(style); }, [style, engineRef]);
 
   /**
-   * The last line of defence for unsaved strokes.
+   * The last line of defence for unsaved strokes AND for a sentence in progress.
    *
    * `pagehide` is the only event iOS Safari reliably fires when a tab is
    * backgrounded or the app is swiped away; `beforeunload` is not delivered
    * there. `visibilitychange` catches the more common case of switching apps.
    */
   useEffect(() => {
-    const flush = () => { void syncRef.current?.flush(); };
+    const flush = () => {
+      // A box with the caret still in it has published nothing -- text leaves
+      // on blur -- so without this the queue being flushed is empty and the
+      // half-typed sentence is gone. Issue 014.
+      engineRef.current?.blurText();
+      void syncRef.current?.flush();
+    };
     const onVisible = () => {
       if (document.visibilityState === "hidden") return flush();
       // A phone that was asleep may have had its stream suspended without ever
@@ -183,7 +189,7 @@ export function InkCanvas({
       window.removeEventListener("pagehide", flush);
       document.removeEventListener("visibilitychange", onVisible);
     };
-  }, []);
+  }, [engineRef]);
 
   const engine = () => engineRef.current;
 

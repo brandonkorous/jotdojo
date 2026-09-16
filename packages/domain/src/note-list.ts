@@ -13,8 +13,22 @@ import type { NoteSummary } from "./notes";
  * is a different job from editing the one you do.
  */
 
+/**
+ * A listed note, and everything it SAYS when the caller asks for it.
+ *
+ * `preview` is 180 characters because it is for reading. A caller that has to
+ * MATCH on the text needs all of it. Issue 016.
+ */
+export type ListedNote = NoteSummary & { words?: string };
+
+/** How much of one note a `words` list carries. Enough for any note a person
+ *  types, small enough that a hundred of them is not a download. */
+const WORDS_CAP = 2000;
+
 export type ListOptions = TimeWindow & {
   limit?: number;
+  /** Also return every block's text, joined, capped at WORDS_CAP. Issue 016. */
+  words?: boolean;
   /** Where the last page stopped. Keyset, not OFFSET. See time-window.ts. */
   after?: Cursor;
 };
@@ -29,7 +43,7 @@ export function nextCursor(page: NoteSummary[], limit: number): Cursor | null {
 
 export async function listNotes(
   actor: Actor, spaceId: string, options: ListOptions | number = {},
-): Promise<NoteSummary[]> {
+): Promise<ListedNote[]> {
   // A number is the old signature -- `listNotes(actor, space, 25)`. Kept
   // working rather than chased through every caller at once.
   const opts: ListOptions = typeof options === "number" ? { limit: options } : options;
@@ -52,6 +66,7 @@ export async function listNotes(
     const rows = await tx.execute(sql`
       SELECT n.id, n.title, n.pinned, n.updated_at, n.revision,
              coalesce(first_block.content, '') AS preview
+             ${opts.words ? sql`, coalesce(said.words, '') AS words` : sql``}
         FROM notes n
         LEFT JOIN LATERAL (
           SELECT coalesce(b.body, b.transcript) AS content
@@ -61,6 +76,7 @@ export async function listNotes(
            ORDER BY b.position
            LIMIT 1
         ) first_block ON true
+        ${opts.words ? wordsJoin() : sql``}
        WHERE n.space_id = ${spaceId}
          AND n.deleted_at IS NULL
          AND n.archived_at IS NULL
@@ -77,9 +93,22 @@ export async function listNotes(
       pinned: Boolean(r.pinned),
       updatedAt: new Date(String(r.updated_at)),
       revision: Number(r.revision),
+      ...(opts.words ? { words: String(r.words ?? "") } : {}),
     }));
   });
 }
+
+/** Every block a note has, in page order, as one string. The ORDER BY is not
+ *  decoration: without it `string_agg` may reorder between calls and the same
+ *  note filters differently on two devices. */
+const wordsJoin = () => sql`
+  LEFT JOIN LATERAL (
+    SELECT left(string_agg(coalesce(b.body, b.transcript), ' ' ORDER BY b.position),
+                ${WORDS_CAP}) AS words
+      FROM blocks b
+     WHERE b.note_id = n.id
+       AND coalesce(b.body, b.transcript, '') <> ''
+  ) said ON true`;
 
 /** Soft delete, always. Nothing in jotacular is destroyed. */
 export async function deleteNote(actor: Actor, noteId: string): Promise<void> {

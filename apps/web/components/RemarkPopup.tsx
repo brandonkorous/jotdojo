@@ -3,7 +3,7 @@
 import { useEffect, useRef, type RefObject } from "react";
 import { Icon } from "@/components/Icon";
 import type { InkEngine } from "@/lib/ink-engine";
-import { anchorRect, placeBeside } from "@/lib/remark-anchor";
+import { anchorRect, labelsFor, placeBeside } from "@/lib/remark-anchor";
 import { useRemarks } from "@/lib/remarks";
 import { RemarkThread, threadTitle } from "./RemarkThread";
 
@@ -38,8 +38,12 @@ export function RemarkPopup(
   }, [focus, remarks]);
 
   if (!remarks || focus === null) return null;
+  // Not `label: null`. A thread only exists once something has been said, so
+  // the popup that "Comment on this" just opened had no name for `this` --
+  // on a page of five notes, the one moment it matters most. Issue 045.
+  const named = engine.current ? labelsFor(engine.current, [focus])[focus] : null;
   const thread = remarks.threads.find((t) => t.anchorId === focus)
-    ?? { anchorId: focus, label: null, comments: [], open: 0 };
+    ?? { anchorId: focus, label: named ?? null, comments: [], open: 0 };
 
   return (
     <div ref={ref} className="jd-remark-popup" role="dialog" aria-label="Comments on this">

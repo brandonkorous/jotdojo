@@ -1,6 +1,7 @@
 "use client";
 
 import type { Presence as Who } from "@jotacular/domain";
+import type { Align, Side } from "@/lib/toolbar-side";
 
 /**
  * Who else is in this note, and whether they are writing right now. ADR-058.
@@ -12,12 +13,17 @@ import type { Presence as Who } from "@jotacular/domain";
  *
  * It says nothing at all when nobody else is here, which is nearly always.
  */
-export function Presence({ who }: { who: Who[] }) {
+export function Presence({ who, align }: { who: Who[]; align: Align }) {
   if (who.length === 0) return null;
 
   const writing = who.filter((p) => p.writing);
   return (
-    <div className="jd-chrome jd-presence" role="status" aria-live="polite">
+    <div
+      className="jd-chrome jd-presence"
+      data-side={opposite(align)}
+      role="status"
+      aria-live="polite"
+    >
       <span className="jd-presence-faces" aria-hidden>
         {who.slice(0, 4).map((p) => (
           <span
@@ -35,6 +41,11 @@ export function Presence({ who }: { who: Who[] }) {
     </div>
   );
 }
+
+/** Opposite the chrome, which MOVES. ADR-012 merged two rails into one pill
+ *  that the toolbar preference slides along the top edge, and a fixed top-left
+ *  then sat underneath it on the commonest setting. Issue 039. */
+const opposite = (align: Align): Side => (align === "left" ? "right" : "left");
 
 /**
  * What is happening, in the fewest words that are true.

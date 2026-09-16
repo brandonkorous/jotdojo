@@ -24,13 +24,15 @@ const SCOPE_COPY: Record<string, string> = {
   "notes:append": "Add to the end of notes",
 };
 
-const relative = (date: Date | null) => {
+/** The whole phrase, not a fragment: a null date read as "last used never used"
+ *  when the caller prefixed it. Issue 019. */
+const lastUsed = (date: Date | null) => {
   if (!date) return "never used";
   const mins = Math.round((Date.now() - date.getTime()) / 60000);
-  if (mins < 1) return "just now";
-  if (mins < 60) return `${mins}m ago`;
-  if (mins < 1440) return `${Math.round(mins / 60)}h ago`;
-  return `${Math.round(mins / 1440)}d ago`;
+  if (mins < 1) return "used just now";
+  if (mins < 60) return `last used ${mins}m ago`;
+  if (mins < 1440) return `last used ${Math.round(mins / 60)}h ago`;
+  return `last used ${Math.round(mins / 1440)}d ago`;
 };
 
 export function Connections({ connections }: { connections: Connection[] }) {
@@ -40,14 +42,14 @@ export function Connections({ connections }: { connections: Connection[] }) {
   return (
     <section>
       <h2 className="font-head text-xl">Connected agents</h2>
-      <p className="mb-4 mt-1 text-sm opacity-60">
+      <p className="mb-4 mt-1 text-sm jd-quiet">
         Every assistant you have let in, and what each one can reach. Revoking
         takes effect immediately — the agent&rsquo;s next request fails, it does not
         wait for a token to expire.
       </p>
 
       {connections.length === 0 && (
-        <p className="rounded-lg border border-dashed p-4 text-sm opacity-60">
+        <p className="rounded-lg border border-dashed p-4 text-sm jd-quiet">
           Nothing is connected. When you connect Claude, ChatGPT or another agent, it
           will appear here with exactly what it can reach.
         </p>
@@ -58,8 +60,8 @@ export function Connections({ connections }: { connections: Connection[] }) {
           <li key={c.clientId} className="rounded-lg border p-4">
             <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
               <span className="font-medium">{c.clientName ?? c.clientId}</span>
-              <span className="text-xs opacity-50">
-                connected {c.createdAt.toLocaleDateString()} · last used {relative(c.lastUsedAt)}
+              <span className="text-xs jd-quiet">
+                connected {c.createdAt.toLocaleDateString()} · {lastUsed(c.lastUsedAt)}
               </span>
             </div>
 

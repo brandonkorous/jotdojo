@@ -146,6 +146,8 @@ export function mergeById<T extends { id: string }>(
 
 /** Whether anything actually moved. A stroke-only delta must not rewrite the
  *  flattened block and re-queue an embedding for text nobody touched. */
-function changed(before: unknown[], after: unknown[]): boolean {
+/** Whether one kind of object on the page actually moved. Exported because
+ *  what to re-read, and what to BILL for re-reading, is the same question. */
+export function changed(before: unknown[], after: unknown[]): boolean {
   return before.length !== after.length || JSON.stringify(before) !== JSON.stringify(after);
 }

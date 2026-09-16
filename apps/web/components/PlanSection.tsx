@@ -13,10 +13,17 @@ import type { PlanView } from "@/lib/plans-view";
  * us money. A pricing page nobody can act on is a leaflet.
  */
 
+/**
+ * The seat numbers here must match `app_plan_seats` — solo 1, family 6, team 25.
+ *
+ * Team said "up to 5" on this screen long after ADR-112 corrected it in the
+ * database, in docs/01 and on the pricing page, so the one button somebody
+ * presses to pay offered less than the cheaper plan above it. Issue 033.
+ */
 const PRICE: Record<PaidPlan, { label: string; price: string; who: string }> = {
   solo: { label: "Solo", price: "$5", who: "just you" },
   family: { label: "Family", price: "$9", who: "up to 6 people" },
-  team: { label: "Team", price: "$19", who: "up to 5, and the agent that reads new notes" },
+  team: { label: "Team", price: "$19", who: "up to 25 people, and the agent that reads new notes" },
 };
 
 export function PlanSection({ plans }: { plans: PlanView[] }) {
@@ -26,7 +33,7 @@ export function PlanSection({ plans }: { plans: PlanView[] }) {
   return (
     <section>
       <h2 className="font-head text-xl">What you are on</h2>
-      <p className="mb-4 mt-1 text-sm opacity-60">
+      <p className="mb-4 mt-1 text-sm jd-quiet">
         One price for the space, however many people are in it. Only reading
         costs anything — pages of handwriting, photos, and minutes of audio.
         Writing notes never counts against it.
@@ -38,7 +45,7 @@ export function PlanSection({ plans }: { plans: PlanView[] }) {
             <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
               <span className="font-medium">{space.name}</span>
               <span className="badge badge-neutral badge-sm">{space.plan}</span>
-              <span className="ml-auto text-sm opacity-60">{usage(space)}</span>
+              <span className="ml-auto text-sm jd-quiet">{usage(space)}</span>
             </div>
 
             {trouble(space) && (
@@ -65,8 +72,13 @@ export function PlanSection({ plans }: { plans: PlanView[] }) {
                   >
                     Change plan or cancel
                   </button>
-                  <span className="text-sm opacity-50">
+                  {/* The second sentence is the one somebody cancelling actually
+                      wants, and this button hands them to a payment portal that
+                      cannot answer it. Measured: cancelling drops the plan to
+                      free and deletes nothing. Issue 035. */}
+                  <span className="text-sm jd-quiet">
                     Switching plans and cancelling both happen here.
+                    {" "}Your notes stay either way — nothing is deleted by cancelling.
                   </span>
                 </>
               ) : (

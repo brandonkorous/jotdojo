@@ -34,7 +34,7 @@ export function Fallback({
       {/* The digest is the only handle we have on a specific failure, and the
           reader is the one holding it. Quiet, but present. */}
       {reference ? (
-        <p className="font-mono text-xs opacity-40">Reference {reference}</p>
+        <p className="font-mono text-xs jd-quiet">Reference {reference}</p>
       ) : null}
     </main>
   );

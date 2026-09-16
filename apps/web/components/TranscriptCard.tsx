@@ -55,7 +55,7 @@ export function TranscriptCard({
           aria-label="What this says"
         />
         <div className="jd-transcript-foot">
-          <span className="text-xs opacity-60">
+          <span className="text-xs jd-quiet">
             Your version is final. Nothing will re-read this page.
           </span>
           <button type="button" className="btn btn-xs btn-ghost" onClick={() => setEditing(false)}>

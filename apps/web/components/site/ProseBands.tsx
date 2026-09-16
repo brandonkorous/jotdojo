@@ -40,7 +40,9 @@ export function Closing() {
         Catch the thought. <Underline>Keep moving</Underline>.
       </h2>
       <p className="jd-lede">{CLOSING}</p>
-      <a className="btn btn-primary btn-lg" href={appOrigin()}>Start jotting</a>
+      {/* Its own lede says "Write it in the box at the top of this page", so
+          this goes there rather than to a sign-in screen. Issue 026. */}
+      <a className="btn btn-primary btn-lg" href="#jot">Start jotting</a>
     </section>
   );
 }

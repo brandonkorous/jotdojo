@@ -1,9 +1,9 @@
-import { and, eq, isNotNull, sql } from "drizzle-orm";
-import { blocks, type Tx } from "@jotacular/db";
+import { and, eq, isNotNull, isNull, ne, sql } from "drizzle-orm";
+import { blocks, notes, type Tx } from "@jotacular/db";
 import { boxNames, flattenTexts, type TextBox } from "./ink-text";
 import { flattenLinks, type Link } from "./ink-link";
 import { flattenStickers, stickerNames, type Sticker } from "./ink-sticker";
-import { queueEmbedding } from "./note-body";
+import { inferTitle, queueEmbedding } from "./note-body";
 
 /**
  * The searchable row that shadows the canvas. ADR-065, ADR-108.
@@ -60,6 +60,25 @@ export async function syncTextBlock(
   // findable lexically and invisible to semantic search, which looks like a
   // ranking quirk rather than a missing row.
   if (body) await queueEmbedding(tx, page.noteId, 0);
+
+  await nameFromPage(tx, page.noteId, body);
+}
+
+/**
+ * A note whose only words are on the canvas takes its name from them.
+ *
+ * The typed spine wins whenever it has any, because saveBody renames from it on
+ * every save. Without this, a note started on the canvas is "Untitled" forever
+ * in the dashboard, in the palette and to an agent. Issue 008.
+ */
+async function nameFromPage(tx: Tx, noteId: string, body: string): Promise<void> {
+  const spine = await tx.select({ body: blocks.body }).from(blocks)
+    .where(and(eq(blocks.noteId, noteId), eq(blocks.kind, "text"), isNull(blocks.artifactId)))
+    .orderBy(blocks.position).limit(1);
+  if (spine[0]?.body?.trim()) return;
+
+  await tx.update(notes).set({ title: inferTitle(body) })
+    .where(and(eq(notes.id, noteId), ne(notes.titleSource, "user")));
 }
 
 /**

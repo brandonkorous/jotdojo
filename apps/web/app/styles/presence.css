@@ -1,13 +1,12 @@
 /* Who else is in this note. ADR-058.
  *
- * Top-left, opposite the tool rail and above the writing surface: it has to be
- * visible without being reached for, because its whole job is to be noticed
- * BEFORE somebody types into a paragraph another person is already in. It is
- * not rendered at all when nobody else is here, which is nearly always. */
+ * Opposite the chrome and above the writing surface: it has to be visible
+ * without being reached for, because its whole job is to be noticed BEFORE
+ * somebody types into a paragraph another person is already in. It is not
+ * rendered at all when nobody else is here, which is nearly always. */
 .jd-presence {
   position: absolute;
   top: 0.75rem;
-  left: 0.9rem;
   z-index: 16;
   display: flex;
   align-items: center;
@@ -17,6 +16,11 @@
   font-size: 0.75rem;
   pointer-events: none;
 }
+
+/* The side is the chrome's opposite, not a constant. It shared the corner with
+ * the tool pill and lost, at every width, on every screen. Issue 039. */
+.jd-presence[data-side='left'] { left: 0.9rem; }
+.jd-presence[data-side='right'] { right: 0.9rem; }
 
 .jd-presence-faces { display: flex; }
 

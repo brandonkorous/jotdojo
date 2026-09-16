@@ -26,7 +26,7 @@ export function CaptureTokens({
   return (
     <section>
       <h2 className="font-head text-xl">One-tap capture</h2>
-      <p className="mb-4 mt-1 text-sm opacity-60">
+      <p className="mb-4 mt-1 text-sm jd-quiet">
         A capture token lets an iOS Shortcut add notes without opening Jotacular. It can
         create a note in one space and nothing else — it cannot read, list, or search.
       </p>
@@ -41,7 +41,7 @@ export function CaptureTokens({
         }}
       >
         <label className="flex flex-col gap-1">
-          <span className="text-xs opacity-60">Name</span>
+          <span className="text-xs jd-quiet">Name</span>
           <input
             name="name"
             defaultValue="iPhone"
@@ -51,7 +51,7 @@ export function CaptureTokens({
         </label>
         {spaces.length > 1 && (
           <label className="flex flex-col gap-1">
-            <span className="text-xs opacity-60">Space</span>
+            <span className="text-xs jd-quiet">Space</span>
             <select name="spaceId" className="select" style={{ fontSize: 16 }}>
               {spaces.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
             </select>
@@ -85,14 +85,14 @@ export function CaptureTokens({
       )}
 
       {tokens.length === 0 ? (
-        <p className="text-sm opacity-60">No capture tokens yet.</p>
+        <p className="text-sm jd-quiet">No capture tokens yet.</p>
       ) : (
         <ul className="divide-y divide-base-300">
           {tokens.map((t) => (
             <li key={t.id} className="flex items-center gap-3 py-3">
               <div className="min-w-0">
                 <div className="font-head">{t.name}</div>
-                <div className="text-xs opacity-50">
+                <div className="text-xs jd-quiet">
                   {t.spaceName} &middot;{" "}
                   {t.lastUsedAt ? `last used ${t.lastUsedAt.toLocaleString()}` : "never used"}
                 </div>
@@ -134,7 +134,7 @@ function ShortcutRecipe({ token, apiUrl }: { token: string; apiUrl: string }) {
           the Lock Screen too.
         </li>
       </ol>
-      <p className="mt-3 text-xs opacity-60">
+      <p className="mt-3 text-xs jd-quiet">
         Works from a locked phone and while driving. Nothing is transcribed on our side —
         Apple&rsquo;s on-device dictation does the work and we receive text.
       </p>

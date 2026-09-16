@@ -8,7 +8,7 @@ import { validateLinks, type Link } from "./ink-link";
 import { validateStickers, type Sticker } from "./ink-sticker";
 import { markPageChanged, announceInk } from "./ink-recognition";
 import { lockPage } from "./ink-page";
-import { nextPage, store, type Parts } from "./ink-apply";
+import { changed, nextPage, store, type Parts } from "./ink-apply";
 
 /**
  * Changing the middle of a page: erase, move, recolour, delete. ADR-058.
@@ -95,7 +95,13 @@ export async function applyInkDelta(
     }
     const next = nextPage(row, parts);
     const version = await store(tx, row, next);
-    await markPageChanged(tx, { blockId, noteId: row.noteId }, next.strokes.length > 0);
+    // Only when the HANDWRITING moved. Typing a note onto a page that happens
+    // to have a doodle on it used to queue a fresh reading of the doodle, and a
+    // recognition is billed whether or not it had anything new to look at.
+    // Issue 022.
+    const inkMoved = changed(row.strokes, next.strokes);
+    await markPageChanged(tx, { blockId, noteId: row.noteId },
+      inkMoved && next.strokes.length > 0);
     return { ...row, strokeCount: next.strokes.length, version };
   });
 

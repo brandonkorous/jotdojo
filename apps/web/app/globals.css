@@ -125,6 +125,28 @@
     --font-hand: Caveat, ui-rounded, cursive;
 }
 
+/* UNLAYERED, and it has to be. Silica's preset re-declares `--font-sans` and
+ * `--font-mono` on `:root` in `@layer base`, which beats `@theme` outright --
+ * so the brand body face never rendered anywhere. Issue 038. */
+:root {
+    --font-sans: 'DM Sans', Inter, ui-sans-serif, system-ui, sans-serif;
+    --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+}
+
+/* Secondary ink as a REAL colour, which is what docs/10 asks for: "alpha does
+ * not produce a quieter ink -- it produces the same ink half-applied". Mixed
+ * toward base-300, the darkest surface, so it clears AA on all three. */
+:root {
+    --ink-2: color-mix(in oklab, var(--color-base-content) 70%, var(--color-base-300));
+}
+
+/* The app's half of "Text you must read is not dimmed". The site got this in
+ * ADR-076 and ADR-082; 33 rules in the app still dimmed, and `opacity-40` on
+ * 12px measured 2.5:1 against the AA gate docs/10 §Accessibility sets. */
+.jd-quiet {
+    color: var(--ink-2);
+}
+
 /* Every icon in the product. ADR-083.
  *
  * One em tall, and as wide as its own artwork -- the width comes inline from

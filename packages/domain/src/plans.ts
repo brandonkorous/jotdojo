@@ -22,6 +22,11 @@ export class PlanRequired extends DomainError {
 
 const READ_ONLY = new Set(["free", "anon"]);
 
+/** Whether an agent may write in a space on this plan. Exported so a screen can
+ *  describe the fence rather than guess at it, and so both answers come from
+ *  the same set. Issue 017. */
+export const agentMayWrite = (plan: string): boolean => !READ_ONLY.has(plan);
+
 /**
  * Checked at USE time rather than granted at consent time.
  *
@@ -42,7 +47,11 @@ export async function assertAgentMayWrite(
   const plan = String((rows as unknown as Array<Record<string, unknown>>)[0]?.plan ?? "free");
   if (!READ_ONLY.has(plan)) return;
 
+  // The second sentence is the whole point: a refusal that names the fence and
+  // not the gate sends somebody off to hunt for a pricing page from inside a
+  // chat window, which is where they stop. Issue 021.
   throw new PlanRequired(
-    "This space is on the free plan, where an agent can read but not write",
+    "This space is on the free plan, where an agent can read but not write. "
+    + "Solo and up can — change it in Jotacular under Account, What you are on.",
   );
 }

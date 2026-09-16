@@ -34,6 +34,13 @@
   background: var(--color-base-100);
 }
 
+/* Silica bleeds a first-child DrawerHeader into the panel's inset with
+   `margin-block-start: -1.5rem`, so it reserves 1.5rem less room than it
+   paints. Harmless until `sticky` pins it: then it sits ON the first heading. */
+.drawer-header-sticky:first-child {
+  margin-block-start: 0;
+}
+
 .jd-remarks-head { display: grid; gap: 0.0625rem; }
 
 .jd-remarks-title {

@@ -87,11 +87,14 @@ export class InkPlane {
     for (const box of boxes) {
       seen.add(box.id);
       const node = this.nodes.get(box.id) ?? this.create(box);
-      this.place(node, box);
       // NEVER overwrite the field somebody is typing into. React's controlled
       // -input problem, arriving through a different door: a remote update
       // landing mid-word would move the caret to the end of it.
       if (this.editing !== box.id && node.value !== box.text) node.value = box.text;
+      // AFTER the text, never before: `place` measures scrollHeight, and a box
+      // measured while still empty is one line tall with the rest clipped off
+      // the bottom for as long as the page stays open. Issue 009.
+      this.place(node, box);
     }
 
     for (const [id, node] of this.nodes) {

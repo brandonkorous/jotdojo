@@ -92,7 +92,11 @@ export function noteMarkdown(note: ExportNote, attachments: Attachment[]): strin
   if (attachments.length === 0) return `${body}\n`;
 
   const lines = attachments.map(({ block, path }) => {
-    const label = { ink: "handwriting", image: "photo", audio: "recording" }[block.kind]
+    // An ink SVG is offered for a page with text boxes on it and no strokes,
+    // and calling that "handwriting" is wrong in the one file somebody hands
+    // to whoever takes over from them. Issue 027.
+    const drawn = (block.document?.strokes.length ?? 0) > 0;
+    const label = { ink: drawn ? "handwriting" : "the page", image: "photo", audio: "recording" }[block.kind]
       ?? block.kind;
     return `- ${label}: [${path.split("/").pop()}](../${path})`;
   });

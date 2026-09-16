@@ -107,3 +107,12 @@ was the same each time -- what a thing IS, apart from what happens to it:
     ink.css               the writing surface and the furniture round it
     ink-sticker.css       one object that sits on it, and moves with the camera
     sticker-tray.css      the tray you pick from, which sits still on the glass
+
+Later the same day, a one-word fix to the spine's invitation (issue 037) pushed
+Canvas.tsx to 251, and it split on a seam the file had already named for itself:
+
+    use-blank-tap.ts      whether a pointer on bare paper was a tap or a pan
+    Canvas.tsx            what is on the page
+
+The gesture took its own constant, its own ref and its own ADR-102 paragraph with
+it. It is six pixels of arithmetic that nothing else in the component read.

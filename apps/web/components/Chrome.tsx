@@ -12,6 +12,7 @@ import { listNotesAction, createNoteAction } from "@/app/actions";
 import { ToolRail } from "./ToolRail";
 import { AddMenu } from "./AddMenu";
 import { useNarrow } from "@/lib/use-narrow";
+import { useModKey } from "@/lib/mod-key";
 
 /**
  * All of the app's chrome: one floating pill, top of the canvas.
@@ -50,6 +51,7 @@ export function Chrome({
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  const mod = useModKey();
   const narrow = useNarrow();
   // Only ever false on a phone -- CSS keeps every mode showing above the
   // breakpoint, and a rail that cannot collapse must not pretend it is shut.
@@ -72,34 +74,47 @@ export function Chrome({
   const [notes, setNotes] = useState<CommandItem[]>([]);
   const [, startTransition] = useTransition();
 
-  // Preloaded once so filtering is instant with no round trip. When a
-  // collection outgrows this, the palette gains a "search everything" command
-  // that calls searchNotesAction instead of filtering locally.
+  // Reloaded whenever the palette opens, then filtered locally with no round
+  // trip. Loading it once per mount listed the note somebody wrote a minute
+  // ago as "Untitled", because the chrome never unmounts. Issue 010.
   useEffect(() => {
+    if (!open) return;
     startTransition(async () => {
       const recent = await listNotesAction();
       setNotes(recent.slice(0, 100).map((n) => ({
         id: n.id,
         label: n.title ?? "Untitled",
         description: n.preview,
+        // The palette matches label, description and keywords. `preview` stops
+        // at 180 characters, so without this a word she typed in the middle of
+        // a long note is answered with "not in your jots". Issue 016.
+        keywords: n.words ? [n.words] : undefined,
         group: "Notes",
         onSelect: () => router.push(`/n/${n.id}`),
       })));
     });
-  }, [router]);
+  }, [router, open]);
 
   const items: CommandItem[] = [
     {
       id: "new",
       label: "New note",
       group: "Actions",
-      shortcut: "\u2318N",
+      shortcut: `${mod}N`,
       onSelect: () => startTransition(async () => {
         const { id } = await createNoteAction();
         router.push(`/n/${id}`);
       }),
     },
     { id: "dashboard", label: "Dashboard", group: "Actions", onSelect: () => router.push("/dashboard") },
+    // The way to the promise on the consent screen. Issue 029.
+    {
+      id: "review",
+      label: "What agents did",
+      group: "Actions",
+      keywords: ["agent", "claude", "revert", "undo", "review"],
+      onSelect: () => router.push("/review"),
+    },
     { id: "account", label: "Account and capture tokens", group: "Actions", onSelect: () => router.push("/account") },
     ...notes,
   ];
@@ -128,7 +143,7 @@ export function Chrome({
           type="button"
           onClick={() => setOpen(true)}
           aria-label="Search notes and commands"
-          title="Search notes, or jump somewhere  ⌘K"
+          title={`Search notes, or jump somewhere  ${mod}K`}
           className="jd-tool"
         >
           <Icon name="search" />

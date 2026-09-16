@@ -16,11 +16,26 @@ function safeNext(next: string | undefined): string {
   return next;
 }
 
+/**
+ * Why she is on this screen, when there is a reason worth saying.
+ *
+ * A jot handed over on the apex is the highest-anxiety moment in the funnel and
+ * the screen that asks for an email said nothing about it. Issue 005.
+ */
+function reason(next: string, stale: string | undefined): string | null {
+  if (next.startsWith("/claim")) {
+    return "Your jot is waiting. Signing in is what keeps it.";
+  }
+  if (stale) return "You have been signed out. Sign in again to carry on.";
+  return null;
+}
+
 export default async function SignIn(
   { searchParams }: { searchParams: Promise<{ next?: string; stale?: string }> },
 ) {
   const params = await searchParams;
   const redirectTo = safeNext(params.next);
+  const why = reason(redirectTo, params.stale);
 
   return (
     <main className="flex min-h-dvh flex-col items-center justify-center gap-8 px-6">
@@ -31,10 +46,8 @@ export default async function SignIn(
         <p className="mt-2 opacity-70">{brand.line}</p>
       </div>
 
-      {params.stale ? (
-        <p className="max-w-xs text-center text-sm opacity-70">
-          You have been signed out. Sign in again to carry on.
-        </p>
+      {why ? (
+        <p className="max-w-xs text-center text-sm opacity-70">{why}</p>
       ) : null}
 
       <form
@@ -59,7 +72,7 @@ export default async function SignIn(
             });
           }}
         >
-          <p className="text-xs opacity-50">
+          <p className="text-xs jd-quiet">
             Developer sign-in. Local only, and refuses to run in production.
           </p>
           <input

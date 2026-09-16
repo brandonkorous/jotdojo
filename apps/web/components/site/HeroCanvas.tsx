@@ -25,15 +25,9 @@ const PLACEHOLDER = "The thing you would rather not forget…";
  * than staying put because the ink layer maps pointers against an axis-aligned
  * bounding box -- see the note in site-hero.css.
  */
-type Props = {
-  children: React.ReactNode;
-  /** The app's origin, resolved on the server. `appOrigin()` reads an env var
-   *  that is not in the client bundle, so calling it here would render one URL
-   *  on the server and a different one in the browser. */
-  appHref: string;
-};
+type Props = { children: React.ReactNode };
 
-export function HeroCanvas({ children, appHref }: Props) {
+export function HeroCanvas({ children }: Props) {
   const { body, noteId, hasInk, ready, state, limit, saves, onChange, ensureNote } = useDraft();
   const [tool, setTool] = useState<CanvasTool>("text");
   const [inkStarted, setInkStarted] = useState(false);
@@ -74,8 +68,25 @@ export function HeroCanvas({ children, appHref }: Props) {
     }
   };
 
+  /**
+   * The button does what it says. Issue 026.
+   *
+   * It used to link to the app, which walls a first-time visitor at sign-in --
+   * two inches under "Nothing to sign up for." The canvas it puts the caret in
+   * is the same one, saving to the same draft, directly below the button.
+   */
+  const startJotting = () => {
+    setTouched(true);
+    const el = input.current;
+    if (!el) return;
+    el.focus({ preventScroll: true });
+    el.setSelectionRange(el.value.length, el.value.length);
+    el.scrollIntoView({ behavior: "smooth", block: "center" });
+  };
+
   return (
     <div
+      id="jot"
       className="jd-hero"
       data-engaged={engaged}
       // Capture, so a pen touching the ink layer counts as engaging too.
@@ -85,7 +96,9 @@ export function HeroCanvas({ children, appHref }: Props) {
       <div className="jd-hero-titles">
         {children}
         <div className="jd-hero-cta">
-          <a className="btn btn-primary btn-lg" href={appHref}>Start jotting</a>
+          <button type="button" className="btn btn-primary btn-lg" onClick={startJotting}>
+            Start jotting
+          </button>
           <a className="jd-hero-note" href="#how">See how it works &darr;</a>
         </div>
       </div>

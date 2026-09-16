@@ -7,6 +7,7 @@ import { CaptureTokens } from "@/components/CaptureTokens";
 import { TriageSwitch } from "@/components/TriageSwitch";
 import { PlanSection } from "@/components/PlanSection";
 import { ownedPlans } from "@/lib/plans-view";
+import { agentMayWrite } from "@jotacular/domain";
 import { Connections } from "@/components/Connections";
 import { ConnectToClaude } from "@/components/ConnectToClaude";
 import { ExportSection } from "@/components/ExportSection";
@@ -41,7 +42,7 @@ export default async function Account() {
 
       <section className="mb-10">
         <h2 className="font-head text-xl">Toolbar position</h2>
-        <p className="mb-3 mt-1 text-sm opacity-60">
+        <p className="mb-3 mt-1 text-sm jd-quiet">
           Where the chrome sits along the top of the canvas. Auto centres it.
           Pick a side if you write with a pencil and want it clear of your hand.
         </p>
@@ -68,7 +69,7 @@ export default async function Account() {
       </div>
 
       <div className="mb-10">
-        <ConnectToClaude mcpUrl={mcpUrl} />
+        <ConnectToClaude mcpUrl={mcpUrl} mayWrite={plans.some((p) => agentMayWrite(p.plan))} />
       </div>
 
       <div className="mb-10">

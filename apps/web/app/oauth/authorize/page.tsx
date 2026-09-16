@@ -18,6 +18,24 @@ const SCOPE_LABELS: Record<Scope, string> = {
   "notes:append": "add new notes and add to existing ones",
 };
 
+/** The one MCP server this deployment runs, as tokens are bound to it. */
+const mcpResource = () => process.env.MCP_RESOURCE ?? "http://localhost:3402/mcp";
+
+/** A trailing slash is the difference between two spellings of one address,
+ *  never between two servers. */
+const servedHere = (resource: string): boolean =>
+  resource.replace(/\/+$/, "") === mcpResource().replace(/\/+$/, "");
+
+/** The host somebody is really granting to. Never the whole URL: a path is
+ *  where a phisher hides `?next=`, and the host is the part that is checked. */
+function hostOf(redirectUri: string): string {
+  try {
+    return new URL(redirectUri).host;
+  } catch {
+    return redirectUri;
+  }
+}
+
 export default async function Authorize({
   searchParams,
 }: { searchParams: Promise<Params> }) {
@@ -41,6 +59,19 @@ export default async function Authorize({
   if (!resource) {
     return <Problem title="A resource parameter is required" detail="RFC 8707. Tokens are bound to the server they are for." />;
   }
+  // Checked HERE, not at first use. A token minted for a server we do not run is
+  // refused by every server, and the person has already pressed Allow by then --
+  // so the failure lands in their agent as "not valid for this server". Issue 020.
+  if (!servedHere(resource)) {
+    return <Problem
+      title="That address is not this server"
+      detail={`This Jotacular serves ${mcpResource()}. Give your assistant that address instead.`} />;
+  }
+
+  // An https client_id is a Client ID Metadata Document, which is fetched from
+  // the client's own origin -- so that name IS attested. A `jd_client_…` came
+  // from open registration and its name is self-chosen. Issue 028.
+  const cimd = clientId.startsWith("https://");
 
   let client: ClientRecord | null = null;
   try {
@@ -109,9 +140,18 @@ export default async function Authorize({
         {client.clientName ?? "An application"} wants access to Jotacular
       </h1>
 
+      {/* The NAME is whatever the client called itself when it registered, and
+          anything may register. The address is the one fact nobody can forge:
+          it is where the key goes, and it is checked against what was
+          registered. Issue 028. */}
+      <p className="mt-3 text-sm opacity-70">
+        It will be sent to <strong className="font-medium">{hostOf(redirectUri)}</strong>
+        {cimd ? ". That address verified the name above." : ". Jotacular has not checked who owns that address."}
+      </p>
+
       <form action={approve} className="mt-6">
         <fieldset className="mb-6">
-          <legend className="mb-2 text-sm opacity-60">It will be able to</legend>
+          <legend className="mb-2 text-sm jd-quiet">It will be able to</legend>
           <ul className="space-y-2">
             {scopes.map((scope) => (
               <li key={scope} className="flex items-start gap-2">
@@ -120,7 +160,12 @@ export default async function Authorize({
                   name="scope"
                   value={scope}
                   id={`scope-${scope}`}
-                  defaultChecked
+                  // Ticked only if it is one of DEFAULT_SCOPES — read and
+                  // comment. Writing arrives unticked, because ADR-004 says on
+                  // that constant "an agent gets edit rights only by a
+                  // deliberate act", and pre-ticking it is not deliberate. The
+                  // space list below has always worked this way. Issue 036.
+                  defaultChecked={(DEFAULT_SCOPES as readonly string[]).includes(scope)}
                   className="checkbox mt-0.5"
                 />
                 <label htmlFor={`scope-${scope}`}>{SCOPE_LABELS[scope]}</label>
@@ -130,7 +175,7 @@ export default async function Authorize({
         </fieldset>
 
         <fieldset className="mb-6">
-          <legend className="mb-2 text-sm opacity-60">In these spaces</legend>
+          <legend className="mb-2 text-sm jd-quiet">In these spaces</legend>
           <ul className="space-y-2">
             {spaces.map((space) => (
               <li key={space.id} className="flex items-center gap-2">
@@ -147,7 +192,7 @@ export default async function Authorize({
                 <label htmlFor={`space-${space.id}`}>
                   {space.name}
                   {space.kind !== "personal" && (
-                    <span className="ml-2 text-xs opacity-60">shared</span>
+                    <span className="ml-2 text-xs jd-quiet">shared</span>
                   )}
                 </label>
               </li>
@@ -161,7 +206,7 @@ export default async function Authorize({
         </div>
       </form>
 
-      <p className="mt-6 text-xs opacity-50">
+      <p className="mt-6 text-xs jd-quiet">
         You can revoke this at any time from Account. Nothing an agent does to your
         notes is permanent.
       </p>

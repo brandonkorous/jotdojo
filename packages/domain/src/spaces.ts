@@ -1,4 +1,4 @@
-import { and, eq, sql } from "drizzle-orm";
+import { and, asc, eq, sql } from "drizzle-orm";
 import { withActor, withoutActor, spaces, spaceMembers, users, type Tx } from "@jotacular/db";
 import { canReachSpace, type Actor } from "./actor";
 import { Forbidden, StaleSession } from "./errors";
@@ -45,7 +45,10 @@ export async function listSpaces(actor: Actor): Promise<SpaceSummary[]> {
     })
       .from(spaces)
       .innerJoin(spaceMembers, eq(spaceMembers.spaceId, spaces.id))
-      .where(eq(spaceMembers.userId, actor.userId));
+      .where(eq(spaceMembers.userId, actor.userId))
+      // Oldest first, and never unordered: without this the row order is
+      // whatever Postgres feels like, and defaultSpaceId picks from it. Issue 007.
+      .orderBy(asc(spaces.createdAt));
     // An agent sees only what it was granted, not everything its user can reach.
     return rows.filter((r) => canReachSpace(actor, r.id));
   });
@@ -65,7 +68,13 @@ export async function actorExists(actor: Actor): Promise<boolean> {
   });
 }
 
-/** The space a bare capture lands in when the user has not picked one. */
+/**
+ * The space a bare capture lands in when the user has not picked one.
+ *
+ * The personal space they have had LONGEST, because somebody who jotted on the
+ * apex before signing up got that space first and their thought is in it. Their
+ * provisioned `Personal` is a minute younger and empty. Issue 007.
+ */
 export async function defaultSpaceId(actor: Actor): Promise<string> {
   const all = await listSpaces(actor);
   const personal = all.find((s) => s.kind === "personal") ?? all[0];

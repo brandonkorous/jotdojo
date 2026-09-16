@@ -7,12 +7,15 @@ import { brand } from "@/lib/brand";
  * bitmap would be soft at five of them. The mint dot is a drawn element, so no
  * font could carry this even if the letterforms matched.
  *
- * Charcoal ink only, deliberately. A white variant exists at
- * `/brand/wordmark-dark.svg` and is NOT swapped in on `prefers-color-scheme`,
- * because the page it would swap on is still light: `paper-night` is scoped
- * `:root:not([data-theme])` and layout.tsx sets `data-theme="paper"`, so the
- * dark theme never activates. When dark mode is made to work, this is the
- * second half of that change.
+ * Charcoal ink only, because the page is always light: `layout.tsx` pins
+ * `data-theme="paper"` until issue 043 is answered. A white variant is ready at
+ * `/brand/wordmark-dark.svg` and this is where it goes.
+ *
+ * NOT via `<picture media="(prefers-color-scheme: dark)")`. That was tried and
+ * it is the wrong instrument: it asks the OPERATING SYSTEM, which is only the
+ * same question as "is this page dark" while nothing pins the theme. With the
+ * pin in place it served the white mark onto a white header, and the wordmark
+ * simply vanished. Whatever swaps this has to read the theme, not the OS.
  */
 export function Wordmark({ className = "" }: { className?: string }) {
   return (
