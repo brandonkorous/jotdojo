@@ -6,7 +6,7 @@
 **Surface:** app › Dashboard › Spaces · app › Account › Capture tokens · Account › Export
 **Filed:** 2026-09-16
 **Fixed:** 2026-09-16
-**Confirmed by:** `rename:smoke`, 10 of 10 · 2026-09-16
+**Confirmed by:** P05 Kwabena, on his dashboard · 2026-09-16
 **Blocked on:** —
 
 ## What happened
@@ -112,7 +112,36 @@ the Dashboard's Ease score moved.
 
 ## Confirmed by
 
-—
+**2026-09-16, driven as Kwabena Ballantyne-Osei on the dashboard.** He is the right
+person for this one: his own run ended with the line *"his space is called
+`Personal`, which is the exact word for what a family space is not."*
+
+He clicked the badge, which turned into a focused input, and typed his own words for
+what he wanted — with sloppy spacing, on purpose:
+
+```
+typed    "  House   stuff  "        padded, and three spaces in the middle
+badge    House stuff
+database House stuff                11 characters
+```
+
+**Trimmed and collapsed**, which is `renameSpace`'s cleaning arriving on the screen
+rather than in a script.
+
+Then the two ways to not rename it:
+
+| | |
+| --- | --- |
+| all spaces, then Enter | refused, editor closed, name still **House stuff** |
+| a real name, then **Escape** | cancelled, nothing written, name still **House stuff** |
+
+The blank case says nothing and simply reverts, which is right — there is no error
+to explain, only a name that was never a name.
+
+**Escape had never been tested by anything.** `rename:smoke` cannot press it.
+
+`rename:smoke` still holds the cap and the API-level cases, 10 of 10, and it is the
+support rather than the confirmation.
 
 ## Rating effect
 

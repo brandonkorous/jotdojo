@@ -2160,6 +2160,27 @@ chrome carries them afterwards, and appears only once an agent has ever spoken a
   canvas.css documents at length. Glass surfaces declare `--u-accent`, `--glass-tint` and the
   shadow themselves.
 
+**The keyset cursor got its first screen on 2026-09-16, three months after it was built**
+(issue 053). `nextCursor` and `ListOptions.after` were written here, tested in
+`smoke-changes`, and called by nothing a person could reach — the Dashboard asked for a flat
+100 and the ⌘K palette for the default 50. P08 is the only persona with enough notes for that
+to matter, and at 115 notes fifteen of hers were unreachable from any screen.
+
+The fix is `NoteHistory`, which holds the server's first page and grows it, and the part
+worth keeping is not the paging:
+
+> **Show older** · 100 so far, and there are older ones.
+
+A list that stops is fine. A list that stops **silently** is the defect, because a truncated
+list and a complete one render identically — and the control disappears when `nextCursor`
+returns null, so its absence is itself the statement that there is no more.
+
+**`searchNotesAction` was deleted in the same change.** It wrapped the real full-text
+`searchNotes`, had zero callers, and could not gain one: Silica's `CommandPalette` filters
+`items` itself and exposes no query. The domain function stays and is what the MCP
+`search_notes` tool calls — so an agent could search her whole space while she could not,
+which is the sentence that made the issue a `major`.
+
 ### ADR-064 — A link is a capture, and a photo goes round us
 
 **Date:** 2026-08-22

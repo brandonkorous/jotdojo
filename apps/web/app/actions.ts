@@ -68,12 +68,9 @@ export async function createNoteAction(body = ""): Promise<{ id: string; revisio
  *  there. Issue 016. */
 export async function listNotesAction(): Promise<ListedNote[]> {
   const actor = await requireActor();
-  return listNotes(actor, await defaultSpaceId(actor), { words: true });
-}
-
-export async function searchNotesAction(query: string): Promise<NoteSummary[]> {
-  const actor = await requireActor();
-  return searchNotes(actor, await defaultSpaceId(actor), query);
+  // The palette slices this to 100 and was being handed listNotes's default of
+  // 50, so it searched half of what it said it did. Issue 053.
+  return listNotes(actor, await defaultSpaceId(actor), { words: true, limit: 100 });
 }
 
 export async function setToolbarSideAction(side: "auto" | "left" | "right") {

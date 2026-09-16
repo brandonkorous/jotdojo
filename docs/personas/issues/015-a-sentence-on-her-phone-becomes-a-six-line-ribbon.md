@@ -6,7 +6,7 @@
 **Surface:** app › A note (the canvas) — a new text box
 **Filed:** 2026-09-16
 **Fixed:** 2026-09-16
-**Confirmed by:** `box-width:smoke`, 7 of 7 · 2026-09-16
+**Confirmed by:** a box placed and typed into at 360px · 2026-09-16
 **Blocked on:** —
 
 ## What happened
@@ -85,7 +85,44 @@ case works, because that is the case it does not reach.
 
 ## Confirmed by
 
-—
+**2026-09-16, on a real 360px canvas** — not a resized window, which Chrome clamps
+at about 500px, but a same-origin frame that reports itself as a phone:
+
+```
+window.innerWidth                    360
+matchMedia("(max-width: 30rem)")     true
+```
+
+A note was put on the page the way a person does it — **hold the paper, *Put a note
+here*** — and her sentence typed into it:
+
+> infiltration test booked for the 14th, tell Lorna
+
+```
+box width          618.93 world units   ->   331 of 360 screen pixels   = 92%
+her sentence in it                           2 lines
+the same sentence at the old 120            4 lines
+```
+
+**331 of 360.** The box uses the phone.
+
+The old arithmetic was `max(120, visibleWidth * 0.33)`, and at this width the
+fraction came out at about 222 world units — **119 screen pixels**, so the `120`
+floor was what every new box on a phone actually got. The ribbon was not a rounding
+error; it was the phone case being the one the fraction could never reach.
+
+**The laptop branch was measured on the same page**, before narrowing: a new box
+came out at **275px on a 1426px window**, which is the third-of-a-column it was
+always meant to be. One function, two answers, and neither is the other's default.
+
+`box-width:smoke` holds the arithmetic at 7 of 7 and is the support rather than the
+confirmation.
+
+**One note on the harness, for whoever runs this next.** The Add menu's items do not
+respond to a scripted click — Base UI wants a trusted one. **The canvas menu does**,
+because its trigger is a plain `onContextMenu`: dispatch `contextmenu` on the shell
+and the pane opens. That is the route this was driven through, and it is the same
+route a person holding a phone uses.
 
 ## Rating effect
 

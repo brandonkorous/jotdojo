@@ -4,7 +4,7 @@
 **Author:** Brandon Korous
 **Last Updated:** 2026-09-16
 
-**Status:** done for the conditions · the two-year history needs backdating
+**Status:** acts 2 and 4 run on 2026-09-16 — act 2 found issue 053 · acts 1 and 3 still need the dates backdated
 **Run:** 2026-09-16
 **Plan:** solo → family → cancelled → free
 **Door:** she is already inside. She has been using it for two years.
@@ -337,11 +337,96 @@ P03 measured the paid branch, and Ruth measured the return.
 | | Why |
 | --- | --- |
 | **Act 1 — 60+ notes across 14+ dates over two years** | The same date wall as P01, P02 and P05: a run may not write `created_at`, and it cannot wait two years. **Everything downstream of it is therefore unchecked**, which is most of her |
-| **Act 2 — the Dashboard at sixty notes on a phone** | Needs act 1. Whether it paginates, or loads everything at once, is **not known** — and it is the only place in this roster that would have found out |
+| ~~**Act 2 — the Dashboard at sixty notes**~~ | **RUN on 2026-09-16, and it found the biggest defect of the day.** See below |
 | **Act 3 — finding a note from the first week** | Needs act 1. This was the real test of a two-year-old account and nothing in the roster has now done it |
-| **Act 4 — the export of a mature space** | P02 exported a 13-note space and it was excellent (issue 027). A 60-note, two-year, mixed-media export is **not the same test** and was not run |
+| ~~**Act 4 — the export of a mature space**~~ | **RUN on 2026-09-16 at 115 notes.** It gave her every one. See below |
 | **Proration and refunds** | `BILLING_PROVIDER=fake`. What she was charged, credited or refunded is decided by Stripe, and **no money moved here** |
 | **A stale session** | Not reached |
 
 **Her acts 1 to 4 are the single biggest gap left in this exercise**, and they all
 unlock together the moment those fourteen dates can be backdated.
+
+---
+
+## Act 2, run 2026-09-16 — the volume half, without the dates
+
+Act 1 needs fourteen dates spread over two years and a run may not write
+`created_at`, so **the dates are still owed**. But act 2's question was never about
+dates. It was *"does the Dashboard paginate, or load everything at once"*, and that
+needs **notes**, not history.
+
+Her space was grown to **115** notes of her own work — site notes, plant lists,
+nursery invoices, the client who hates yellow — written through `createNote`, the
+same door every smoke script uses.
+
+**The answer was: neither.** It loaded 100 and stopped, with no control of any
+kind and nothing saying the list was cut.
+
+```
+notes in her space   115
+rows on screen       100
+a way to the rest    none
+⌘K palette            50   — notes (56) to (105); typing an older word found nothing
+```
+
+**Fifteen of her notes could not be reached from any screen**, and the ⌘K ceiling
+was half what its own code claimed. Worse, the capability to fix it was already
+built, tested and green:
+
+| Built | Tested by | Called by a screen |
+| --- | --- | --- |
+| `nextCursor` + `ListOptions.after` (ADR-063) | `smoke-changes` | **no** |
+| `searchNotesAction` → `searchNotes` | the MCP tools use `searchNotes` | **no** |
+
+**An agent connected to her account could search all 115. Ruth could not search her
+own.** That is
+[053](issues/053-at-a-hundred-notes-her-oldest-are-unreachable.md), and it is
+fixed: the Dashboard pages now, and the first press took her from 100 rows to 115
+and reached her oldest note.
+
+**What she proves that nobody else could.** Every other persona was building, and
+none of them had enough notes for a limit to matter. **She is the only one for whom
+the product had to remember something.** The other seven could have run forever
+without finding this.
+
+**Acts 1, 3 and 4 are still owed** and still need backdating. Act 3 — *find a note
+from the first week* — is now reachable by scrolling rather than by searching, and
+that distinction is written into 053 rather than called fixed.
+
+## Act 4, run 2026-09-16 — she can get her stuff out, all of it
+
+Her first question is *"Can I get my stuff out if I stop paying?"*, and P02 had
+only answered it for a 13-note space. This is the same question at **115**.
+
+```
+GET /export/space/…      200  application/zip   56,073 bytes   4.4s
+entries                  116  — README.txt + 115 markdown files
+files                    notes/0001-… to notes/0115-untitled-e3e24831.md
+```
+
+**Nothing was truncated.** The README states the count itself:
+
+> 115 notes, exported 2026-09-16.
+> notes/ one markdown file per note, newest first · ink/ your handwriting, as SVG.
+> Opens in any browser. · artifacts/ the photos and recordings
+
+Each file carries its own provenance — `# Untitled`, then
+`_note e3e24831 · revision 1 · updated 2026-09-16T16:52:54.802Z_` — and an empty
+note says `_(empty)_` rather than arriving as a blank file somebody has to guess at.
+
+**The contrast with the Dashboard is the finding.** On the same account, on the
+same afternoon:
+
+| | What she could reach |
+| --- | --- |
+| Dashboard, before [053](issues/053-at-a-hundred-notes-her-oldest-are-unreachable.md) | **100 of 115** |
+| ⌘K palette | **50 of 115** |
+| the export | **115 of 115** |
+
+**The way out was always more complete than the way in.** For a person auditing
+before she renews that is the right way round — but it also means the export was
+the only surface telling her the truth about how much she had.
+
+**Not checked:** a MIXED-media export. Her 115 are text. The `ink/` and
+`artifacts/` folders are described in the README and were not exercised, because
+her space has no handwriting and no photos in it.

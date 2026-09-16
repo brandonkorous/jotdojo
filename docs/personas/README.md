@@ -117,11 +117,11 @@ is special about Jotacular is something she will never touch, including the only
 stated reason to pay.** She is a free customer forever, by design. That is a
 business fact rather than a defect, and it is the thing only she could show.
 
-**Fifty-two issues filed. Fifty-one are fixed and re-proved. One is a decision for Brandon.**
+**Fifty-three issues filed. Fifty-two are fixed and re-proved. One is a decision for Brandon.**
 
 | | |
 | --- | --- |
-| **Fixed** | 001 002 003 004 005 006 007 008 009 010 011 012 013 014 015 016 017 018 019 020 021 022 023 024 025 026 027 028 029 030 031 032 033 034 035 036 037 038 039 040 041 042 043 044 045 046 047 048 049 050 052 |
+| **Fixed** | 001 002 003 004 005 006 007 008 009 010 011 012 013 014 015 016 017 018 019 020 021 022 023 024 025 026 027 028 029 030 031 032 033 034 035 036 037 038 039 040 041 042 043 044 045 046 047 048 049 050 052 053 |
 | **Open** | **051** — he paid for six, then made a space that seats one. Blocked on a decision: what a plan buys, one space or an account |
 
 ### The blocker is gone, and it was never missing logic
@@ -289,7 +289,7 @@ the answer to "what has nobody looked at?"
 
 ### The pattern worth naming
 
-**Four issues are the same shape**, and it is the shape this exercise was built to
+**Five issues are the same shape**, and it is the shape this exercise was built to
 find: a complete, tested domain feature with **no product caller at all**.
 
 | | The feature | Its only caller |
@@ -298,14 +298,26 @@ find: a complete, tested domain feature with **no product caller at all**.
 | [013](issues/013-a-note-she-started-by-mistake-can-never-be-removed.md) | `deleteNote` | one smoke script — **now the Dashboard's rows** |
 | [016](issues/016-her-agent-can-search-her-notes-and-she-cannot.md) | `searchNotesAction` | nothing — the MCP server uses the domain call directly |
 | [029](issues/029-the-agent-wrote-a-note-and-nothing-said-so-and-nothing-takes-it-back.md) | `listAgentChanges`, `revertRevision` | one smoke script — **now wired to `/review`** |
+| [053](issues/053-at-a-hundred-notes-her-oldest-are-unreachable.md) | `nextCursor`, `ListOptions.after` — keyset paging since ADR-063 | one smoke script — **now the Dashboard's *Show older*** |
 
 Every one of them was green in the suites. **A green badge over a function with no
 caller is the single most reliable defect in this codebase**, and a grep for callers
 outside `scripts/` would find the rest of them in an afternoon.
 
-**All four now have screens.** 001 was the largest: eight domain functions, RLS, seat
-caps and six distinguishable rejection codes, and the only thing missing at either end
-was somewhere to click. Nothing about the logic changed.
+**All five now have screens**, except the one that could not have one:
+`searchNotesAction` was **deleted** in 053, because Silica's `CommandPalette`
+filters `items` itself and exposes no query, so there was nowhere to hang it. The
+domain's `searchNotes` stays and is what the MCP tool calls.
+
+001 was the largest: eight domain functions, RLS, seat caps and six distinguishable
+rejection codes, and the only thing missing at either end was somewhere to click.
+Nothing about the logic changed.
+
+**053 is the one that needed VOLUME rather than a screen.** Nothing was missing
+from the Dashboard's markup — it simply asked for a flat 100 on an account with
+115 notes. **Only P08 has enough notes for any limit to bite**, and the other seven
+personas could have run forever without finding it. A fresh test account is always
+small; that is the blind spot.
 
 ### What P03 could not do, and only Brandon can
 
@@ -321,19 +333,29 @@ test. **P04 is blocked the same way**, on both of its model seams.
 granted it. Migration 0038 applied, issue 023 is closed, and `structure:smoke` is
 green.
 
-1. **Backdate P01's fourteen notes.** They are all on one day. The 23:58 boundary
-   check and the "search for it yesterday" check are recorded as `not checked`
-   rather than passed, because a run may not write to the database.
+1. **Backdate P01's fourteen notes, and P08's.** They are all on one day. The 23:58
+   boundary check, "search for it yesterday", and the whole of P08's two-year
+   history are recorded as `not checked` rather than passed, because a run may not
+   write to the database.
+2. **Decide [051](issues/051-he-paid-for-six-then-made-a-space-that-seats-one.md).**
+   Kwabena pays £9 for *"up to 6 people"*, makes the space he actually wants to
+   share, and it arrives on the free plan seating one and asking for £9 again. The
+   Family plan card says *"Shared spaces, one bill"*. **This is what to charge for,
+   not a broken control**, so it is filed and left open rather than guessed at.
 
 ### Where the suites stand
 
-**45 of 45 pass**, with `pnpm typecheck`, `pnpm lint` and `pnpm web:build` — the
-first time every signal has been green in this exercise. `structure` was the last
-red one and migration 0038 closed it.
+**50 of 50 pass**, with `pnpm typecheck` and `pnpm lint` clean and no file over the
+250-line limit. The suite count grew with the exercise: `rename`, `undelete`,
+`invite` and `box-width` were written to hold the fixes this roster produced.
 
-(Five of them — `api`, `share`, `mcp`, `mcp:check`, `site` — fetch over HTTP and
-report `ECONNREFUSED` if the dev server is down. That is "not run", not "failing",
-and it is worth knowing before reading a red board.)
+(Five of them — `live:http`, `api`, `share`, `oauth:http`, `mcp` — fetch over HTTP
+and report `ECONNREFUSED` if the dev server is down. That is "not run", not
+"failing", and it is worth knowing before reading a red board.)
+
+**Read pass/fail from the exit code, not from the output.** A grep for the word
+`fail` marks eight suites red that are green: several print passing assertions like
+`ok  nothing failed`. That mistake was made and corrected on 2026-09-16.
 
 ## Screen coverage
 

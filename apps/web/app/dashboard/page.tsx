@@ -1,8 +1,11 @@
 import Link from "next/link";
-import { listNotes, defaultSpaceId, listSpaces, listDeletedNotes, DELETED_DAYS } from "@jotacular/domain";
+import {
+  listNotes, defaultSpaceId, listSpaces, listDeletedNotes, DELETED_DAYS, nextCursor,
+} from "@jotacular/domain";
 import { requireActor } from "@/lib/session";
 import { SpaceName } from "@/components/SpaceName";
-import { RemoveNote, RestoreNote } from "@/components/NoteBin";
+import { RestoreNote } from "@/components/NoteBin";
+import { NoteHistory } from "@/components/NoteHistory";
 
 export const dynamic = "force-dynamic";
 
@@ -12,8 +15,11 @@ export const dynamic = "force-dynamic";
 export default async function Dashboard() {
   const actor = await requireActor();
   const spaceId = await defaultSpaceId(actor);
+  // The first page, not the whole list: a space bigger than this used to end
+  // here with nothing saying so. Issue 053.
+  const FIRST_PAGE = 100;
   const [notes, spaces, binned] = await Promise.all([
-    listNotes(actor, spaceId, 100),
+    listNotes(actor, spaceId, FIRST_PAGE),
     listSpaces(actor),
     listDeletedNotes(actor, spaceId),
   ]);
@@ -38,24 +44,11 @@ export default async function Dashboard() {
 
       <section>
         <h2 className="mb-3 font-head text-xl">History</h2>
-        {notes.length === 0 ? (
-          <p className="jd-quiet">Nothing here yet. Go have a thought.</p>
-        ) : (
-          <ul className="divide-y divide-base-300">
-            {notes.map((n) => (
-              <li key={n.id} className="flex items-center gap-3">
-                <Link href={`/n/${n.id}`} className="block flex-1 py-3 hover:bg-base-200">
-                  <div className="font-head">{n.title ?? "Untitled"}</div>
-                  <div className="mt-1 line-clamp-1 text-sm jd-quiet">{n.preview}</div>
-                  <div className="mt-1 text-xs jd-quiet">
-                    {n.updatedAt.toLocaleString()}
-                  </div>
-                </Link>
-                <RemoveNote id={n.id} />
-              </li>
-            ))}
-          </ul>
-        )}
+        <NoteHistory
+          spaceId={spaceId}
+          first={notes}
+          firstCursor={nextCursor(notes, FIRST_PAGE)}
+        />
       </section>
 
       {binned.length > 0 && (

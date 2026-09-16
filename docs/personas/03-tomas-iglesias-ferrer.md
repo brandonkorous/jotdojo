@@ -4,7 +4,7 @@
 **Author:** Brandon Korous
 **Last Updated:** 2026-09-16
 
-**Status:** partial — 6 of 9 acts
+**Status:** partial — 6 of 9 acts · the dark pass it owed was paid on 2026-09-16
 **Run:** 2026-09-16
 **Plan:** solo — £5/mo, because he needs his agent to write back
 **Door:** the apex on an iPad, in a site hut
@@ -261,7 +261,7 @@ not need hardware and a model this machine does not have, and they are listed as
 | **The photo, dragging a multi-object selection, the clipboard** | Not reached. **Zoom came off this list on 2026-09-16**, driven during the dark pass: panned off home to summon the chip, read `100%`, clicked it to come back |
 | **Act 9 — the site hut on bad signal** | A device and a network this environment does not have |
 | **His three questions against handwriting** | The transcripts are canned, so there is nothing honest to measure |
-| **Dark mode** | Unreachable **at the time of this run** — issue 002, now fixed (ADR-116). The canvas measures 0 AA failures in both themes, but this run's panes were not re-composed in dark. **A dark pass is owed.** |
+| **Dark mode** | ~~owed~~ — **paid on 2026-09-16.** All four of this run's panes re-composed in dark and audited element by element. See below. |
 
 ### The numbers
 
@@ -480,3 +480,43 @@ an agent says and not for what an agent writes** — and writing is the half tha
 
 **Not run.** The barn, the site hut and the bad signal are a device and a network
 this environment does not have. Recorded as not checked.
+
+
+---
+
+## The dark pass, 2026-09-16
+
+This run scored its panes in light, because dark mode did not come on until issue
+[002](issues/002-dark-mode-never-comes-on.md) was fixed later the same day.
+
+**The line above said a dark pass was owed, and that line was out of date.**
+`rating.md` already carried `dark: PAID 2026-09-16` on every one of this run's rows
+— the pass was done when 002 closed and this file was not updated to match. What
+follows is a SECOND pass, driven independently, and it agrees with the first. The
+stale sentence is the finding worth keeping: two files disagreed about whether work
+had been done, and the one a person reads first was the wrong one.
+
+Driven as Tomás on his own note — *"2.04m  NO — check with Lorna"*, the one with a
+remark on it — with `data-theme="paper-night"` and `--paper` resolving to the
+charcoal `#111418` that ADR-116 moved the writing surface to.
+
+| Pane | Text nodes audited | AA failures |
+| --- | --- | --- |
+| the canvas itself | 5 | **0** |
+| the comments drawer, opened from the chip | 13 | **0** |
+| the canvas menu **on an object** | 22 | **0** |
+| the canvas menu **on bare paper** | 15 | **0** |
+| the sticker tray | 21 | **0** |
+
+Every item in both canvas menus measures **16.68:1** — warm paper ink on the
+charcoal panel, which is the same pair ADR-116 gives the Charcoal pen.
+
+**How the panes were opened matters for the next run.** The Add menu will not open
+from a script: its items are Base UI menu items and they want a trusted click.
+**The canvas menu will**, because its trigger is a plain `onContextMenu` — dispatch
+`contextmenu` on `.jd-canvas-shell` and the pane opens, on an object or on bare
+paper depending on where the point lands. *Add a sticker* on the bare-paper menu is
+how the tray was reached.
+
+**Act 4 and act 9 are still not run**, and the reasons in the table above have not
+changed: `VISION_PROVIDER=fake`, and there is no iPad and no site hut.

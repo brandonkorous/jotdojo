@@ -87,6 +87,10 @@ export function Chrome({
   // Reloaded whenever the palette opens, then filtered locally with no round
   // trip. Loading it once per mount listed the note somebody wrote a minute
   // ago as "Untitled", because the chrome never unmounts. Issue 010.
+  //
+  // It holds the hundred most recent and no more: Silica's CommandPalette
+  // filters `items` itself and exposes no query, so there is nowhere to hang a
+  // server search. Past a hundred notes the Dashboard is the way back. Issue 053.
   useEffect(() => {
     if (!open) return;
     startTransition(async () => {
