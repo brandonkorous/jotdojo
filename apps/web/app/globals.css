@@ -69,6 +69,7 @@
     --color-primary-content: #08201c;
     --color-accent: #6a39ff;
     --color-accent-content: #ffffff;
+    --color-agent: #6a39ff;
 
     --depth: 1; /* paper lifts off the desk. ADR-077 */
     --noise: 1; /* paper grain on the themed surface */
@@ -92,6 +93,7 @@
     --color-primary-content: #08201c;
     --color-accent: #8a63ff; /* violet lifted, so it clears charcoal */
     --color-accent-content: #0b0716;
+    --color-agent: #8a63ff; /* the agent IS the violet, so it lifts with it */
 
     --depth: 1;
     --noise: 1;
@@ -103,7 +105,9 @@
 
 @theme {
     /* Agent ink is the brand's violet. design.md §11 gives violet the "AI/agent
-   * association", which is the job this token already had. ADR-072. */
+   * association", which is the job this token already had. ADR-072.
+   * The per-theme values live in the two theme blocks above and beat this one,
+   * because `@layer base` comes after `@layer theme`. This registers it. */
     --color-agent: #6a39ff;
 
     /* One elevation scale, used by the site. Warm-tinted rather than neutral
@@ -133,11 +137,50 @@
     --font-mono: 'JetBrains Mono', ui-monospace, monospace;
 }
 
+/* The writing surface, named apart from the panels it sits among. ADR-116.
+ *
+ * Light it is base-300, the warmest paper, which is what it always was. Dark
+ * it is base-100, the TRUE charcoal -- not base-300, which at night is the
+ * LIGHTEST of the three and cost every ink a full step of contrast. */
+:root {
+    --paper: #ece6da;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme]) {
+        --paper: #111418;
+    }
+}
+
+/* And when somebody CHOSE dark rather than inheriting it. Both selectors,
+   because the media query cannot see an attribute and the attribute cannot
+   see the OS. ADR-116. */
+:root[data-theme='paper-night'] {
+    --paper: #111418;
+}
+
 /* Secondary ink as a REAL colour, which is what docs/10 asks for: "alpha does
  * not produce a quieter ink -- it produces the same ink half-applied". Mixed
  * toward base-300, the darkest surface, so it clears AA on all three. */
 :root {
     --ink-2: color-mix(in oklab, var(--color-base-content) 70%, var(--color-base-300));
+}
+
+/* Mint when it is INK rather than a ground. The brand mint is a fill colour --
+ * 8:1 on charcoal, 2.04:1 on paper -- so a mint LINK on a light page fails AA
+ * badly. Same hue, deep enough to read. Issue 042. */
+:root {
+    --mint-ink: #237465;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme]) {
+        --mint-ink: #00c2a8;
+    }
+}
+
+:root[data-theme='paper-night'] {
+    --mint-ink: #00c2a8;
 }
 
 /* The app's half of "Text you must read is not dimmed". The site got this in

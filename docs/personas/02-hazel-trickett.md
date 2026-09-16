@@ -232,7 +232,10 @@ Expected: not found.
   made her wait" finding is about the interface, not the network.
 - **A real Moto G.** 360px in a desktop Chrome iframe is the viewport, not the
   device. Touch targets were checked by size and position, never by thumb.
-- **Dark mode.** Unreachable — issue 002.
+- **Dark mode.** Unreachable when this run happened — issue 002 — so every screen
+  here is a light-mode score. **002 is fixed as of 2026-09-16.** Her routes measure
+  0 AA failures in both themes, which is a measurement and not a score. **A dark
+  pass is owed on this run's rows.**
 - **The on-screen keyboard.** The "without a mouse" check became thumbs-only taps,
   which was done throughout. **Whether the phone keyboard covers anything important
   is not checked**, because a desktop browser has no on-screen keyboard.

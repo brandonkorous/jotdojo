@@ -868,7 +868,7 @@ attack, and never fed.** Middleware now puts the requested path on the request a
 | Acts completed | **10 of 10** |
 | Issues filed | **22** — 004 to 025 |
 | Issues fixed and confirmed | **19** — 004, 005, 006, 007, 008, 009, 010, 011, 012, 014, 016, 017, 018, 019, 020, 021, 022, 023, 025 |
-| Issues blocked, and on what | **013** and **001** blocked on scope, they are screens that do not exist · **015** blocked on taste · **024** blocked on a 564-line file split · **002** and **003** open from discovery. **023 is no longer among them** — Brandon stopped the dev server on 2026-09-16 and granted the migration; see below |
+| Issues blocked, and on what | **None are blocked any more.** As filed: **013** and **001** on scope (screens that did not exist), **015** on taste, **024** on a 564-line file split, **002** and **003** from discovery, **023** on the dev server. **All six were closed on 2026-09-16**, and 001 turned out to need two screens and no new logic — see [the invite re-run](#the-invite-re-run-2026-09-16) below |
 | Screens scored | **14 of 65** |
 | **Not checked** | see below, in full |
 
@@ -883,8 +883,11 @@ attack, and never fed.** Middleware now puts the requested path on the request a
   boundary is not checked, and "search for it yesterday" is not checked.** A short
   backdating script over those fourteen rows would unblock both, and it is Brandon's
   to run.
-- **Dark mode.** Unreachable on every screen — issue 002. Checked, and that is the
-  answer; every row says `dark: unreachable (002)` rather than "not checked".
+- **Dark mode.** Was unreachable when this run happened — issue 002 — so every
+  screen here was scored in light only. **002 is fixed as of 2026-09-16** and dark
+  is on (ADR-116). The routes this run opened measure **0 AA contrast failures in
+  both themes**, but a contrast audit is not a score: these panes were not
+  re-composed in dark. **A dark pass is owed on this run's rows.**
 - **The paid-plan branch of issue 017's copy.** No space in this run is on a paid
   plan. The sentence is the one that was already there, moved behind a condition.
   Reasoned, not measured.
@@ -952,3 +955,44 @@ says she did not decide.
 - **Accounts that must stay.** `p01.marisol` is the persona. `p01.scratch`,
   `p01.retest` and `p01.onespace` are evidence for issues 006 and 007. **Never sign
   in as `loopback-check@example.test`.**
+
+---
+
+## The invite re-run, 2026-09-16
+
+Act 3 asked Marisol to put her husband in a space. When P01 first ran, she could
+not: issue **001** was filed and the act was left blocked. The functions existed;
+nothing called them. Both screens were built later that day, and this is the act
+re-driven as her, on them.
+
+**What she did, on the screen:**
+
+1. Made *The Okonkwo house*, a family space. It seated **1**, and said so.
+2. On the family plan it seated **6**.
+3. Typed an address and pressed **Make an invite**. Seats went **1 → 2 of 6** and
+   she got a link.
+4. Opened that link **as herself** — *"That invite was sent to a different
+   address."*
+5. Tolu signed in, opened it, and landed on the dashboard with *The Okonkwo house*
+   in his list. Two members in the database, invite marked used.
+6. Opened it a second time — *"That invite has already been used. If it was you,
+   you are in already."*
+7. A made-up token — *"That link is not one of ours."*
+8. Made an invite, pressed **Take it back**, opened it — *"That invite was taken
+   back."*
+
+**Four of the six refusals are now proved from the screen**, in her words rather
+than a code. The other two — expired, and the space filling up first — are proved
+in `invite:smoke`, because neither can be reached by waiting in a browser.
+
+**Two defects came out of the re-run**, and both needed her real data to appear:
+
+- **[049](issues/049-she-took-the-invite-back-and-the-link-is-still-on-screen.md)** —
+  taking an invite back left the dead link, its sentence and its **Copy** button on
+  screen. She would have sent it.
+- **[050](issues/050-take-it-back-is-off-the-side-of-her-phone.md)** — at 360px
+  the **Take it back** button sat 74px off the right edge, because a real address is
+  long and a `flex-1` item will not shrink below its own text. A short test address
+  fitted, which is exactly why it survived this long.
+
+**Act 3: done.** She holds a shared space with a second person in it.

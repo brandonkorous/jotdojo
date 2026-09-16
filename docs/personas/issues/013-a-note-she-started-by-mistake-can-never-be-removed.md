@@ -1,13 +1,13 @@
 # 013 — A note she started by mistake can never be removed
 
-**Status:** open
+**Status:** fixed
 **Severity:** major
 **Found by:** P01 Marisol · act 5 · 2026-09-16
 **Surface:** app › everywhere. There is no control for this anywhere
 **Filed:** 2026-09-16
-**Fixed:** —
-**Confirmed by:** —
-**Blocked on:** scope
+**Fixed:** 2026-09-16
+**Confirmed by:** `undelete:smoke` 14/14, and the dashboard · 2026-09-16
+**Blocked on:** —
 
 ## What happened
 
@@ -130,3 +130,92 @@ at all.
 
 None yet. It is part of the gap to 10 on `Dashboard` and on the ⌘K palette, and both
 are noted there.
+
+---
+
+## Fixed, 2026-09-16 — Option A, and the list the policy already promised
+
+Brandon took this off the blocked list. This issue had already worked out that the
+decision was made: `deleteNote` soft-deletes, docs/13 promises **30 days then a
+purge**, so *"what is missing is not a decision, it is a control and a list."* Both
+now exist.
+
+**The control — Option A, on the Dashboard's History rows.** Each row gains
+`Remove`, which **asks before it acts**:
+
+> Throw this away?  **Remove**  **Keep**
+
+`Keep` rather than `Cancel`, because it says what happens rather than what does not
+— the same word Account's *Disconnect Marisol's Claude?* already settled on. A list
+row is an easy thing to hit by accident, which is why a one-tap delete on one would
+have been the wrong shape.
+
+**The list — *Thrown away*.** A section that appears only when there is something in
+it, saying plainly:
+
+> Kept for 30 days, then gone for good. Put one back any time before that.
+
+Each row shows the title, its first words and when it went, with **Put it back**.
+The 30 is `DELETED_DAYS`, exported from the domain, so the sentence cannot drift
+from the query that enforces it.
+
+**Two new domain functions**, in `note-list.ts` beside `deleteNote`:
+
+- `listDeletedNotes(actor, spaceId)` — what is still inside the window, newest
+  first, each with the same first-words preview the live list uses. Without the
+  preview a bin of *Untitled* rows is not a list anybody can act on.
+- `restoreNote(actor, noteId)` — which **refuses a note that was never deleted**,
+  so the button cannot quietly do nothing.
+
+`actions.ts` reached 253 lines taking these, so it split on the seam they revealed:
+`dashboard-actions.ts` is what the dashboard does to a **list** — the only place
+somebody acts on something they are not looking at.
+
+## The cheaper partial fix was NOT taken
+
+This issue also floated *"do not create the note until there is something in it"*.
+It is deliberately not done. It would remove the commonest cause and leave the
+person who deliberately writes something and then wants it gone with nothing — and
+that person is the one the privacy policy is making a promise to.
+
+## Confirmed by
+
+**2026-09-16.** `pnpm undelete:smoke`, a new suite — **14 of 14**:
+
+```
+ok    the window is the thirty days the policy promises
+ok    a deleted note leaves the list
+ok    ...and the one she meant to keep is still there
+ok    ...and it is in the bin, with its words so she can tell which it was
+ok    the note itself is not reachable while deleted
+ok    restoring puts it back in the list
+ok    ...and takes it out of the bin
+ok    ...and it opens again
+ok    restoring a note that was never deleted is refused
+ok    a stranger's view of somebody else's bin is EMPTY, not an error
+ok    ...nor restore out of it
+ok    ...and it is still in the owner's bin
+```
+
+**The isolation check changed the code's mind rather than the other way round.** It
+was written expecting a stranger to be REFUSED, and a stranger gets an empty list
+instead — RLS answers it. Empty is the better answer, because it does not tell a
+stranger whether the space exists, and it is the same shape `listNotes` already has.
+The assertion was corrected to what is true and safe, not the code to what the test
+guessed.
+
+**And driven on the real dashboard**, on a real note, both ways round:
+
+```
+click Remove          -> "Throw this away?  Remove  Keep"      it asks first
+confirm               -> History reads "Nothing here yet."
+                      -> "Thrown away" appears, saying 30 days
+click "Put it back"   -> the bin disappears, the note is in History again
+```
+
+Checked in the database afterwards: `deleted_at` is null and the note is whole.
+
+## Rating effect
+
+`Dashboard` scored 7 / 6 → 7 with this as a named gap. Re-scored in
+[rating.md](../rating.md).

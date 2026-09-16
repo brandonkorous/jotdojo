@@ -6,11 +6,15 @@ import {
 import { CaptureTokens } from "@/components/CaptureTokens";
 import { TriageSwitch } from "@/components/TriageSwitch";
 import { PlanSection } from "@/components/PlanSection";
+import { ThemeChoice } from "@/components/ThemeChoice";
 import { ownedPlans } from "@/lib/plans-view";
 import { agentMayWrite } from "@jotacular/domain";
 import { Connections } from "@/components/Connections";
 import { ConnectToClaude } from "@/components/ConnectToClaude";
 import { ExportSection } from "@/components/ExportSection";
+import { SpacePeople } from "@/components/SpacePeople";
+import { NewSpace } from "@/components/NewSpace";
+import { peopleBySpace } from "@/lib/people-view";
 import { requireActor, currentUser } from "@/lib/session";
 import { setToolbarSideAction } from "@/app/actions";
 import { signOut } from "@/auth";
@@ -20,13 +24,14 @@ export const dynamic = "force-dynamic";
 export default async function Account() {
   const actor = await requireActor();
   const user = await currentUser();
-  const [side, tokens, spaces, connections, triage, plans] = await Promise.all([
+  const [side, tokens, spaces, connections, triage, plans, people] = await Promise.all([
     getToolbarSide(actor),
     listCaptureTokens(actor),
     listSpaces(actor),
     listConnections(actor),
     listTriageSettings(actor),
     ownedPlans(actor),
+    peopleBySpace(actor),
   ]);
   const apiUrl = process.env.API_URL ?? "http://localhost:3401";
   const mcpUrl = process.env.MCP_RESOURCE ?? "http://localhost:3402/mcp";
@@ -38,7 +43,7 @@ export default async function Account() {
         <Link href="/" className="btn btn-ghost btn-sm ml-auto">Back to the canvas</Link>
       </header>
 
-      <p className="mb-8 opacity-70">{user?.email}</p>
+      <p className="mb-8 break-words opacity-70">{user?.email}</p>
 
       <section className="mb-10">
         <h2 className="font-head text-xl">Toolbar position</h2>
@@ -60,9 +65,21 @@ export default async function Account() {
         </div>
       </section>
 
+      <ThemeChoice />
+
       <div className="mb-10">
         <PlanSection plans={plans} />
       </div>
+
+      <section className="mb-10">
+        <h2 className="font-head text-xl">Who is in your spaces</h2>
+        <p className="mb-3 mt-1 text-sm jd-quiet">
+          A space is what you share. Invite somebody and you get a link to send
+          them — it lasts a fortnight and only works for the address you typed.
+        </p>
+        {people.map((sp) => <SpacePeople key={sp.spaceId} {...sp} />)}
+        <NewSpace />
+      </section>
 
       <div className="mb-10">
         <TriageSwitch settings={triage} />

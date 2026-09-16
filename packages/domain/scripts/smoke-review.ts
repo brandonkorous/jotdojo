@@ -63,8 +63,9 @@ const tokens = await exchangeAuthCode({
   code, codeVerifier: verifier, clientId: client.client_id,
   redirectUri: REDIRECT, resource: RESOURCE,
 });
-const agent = await verifyAccessToken(tokens.access_token, RESOURCE);
-if (!agent || agent.type !== "agent") throw new Error("could not mint an agent actor");
+const checked = await verifyAccessToken(tokens.access_token, RESOURCE);
+if (!checked.ok) throw new Error(`could not mint an agent actor: ${checked.why}`);
+const agent = checked.actor;
 
 // Agent writes are a paid-plan capability (ADR-042), and this suite is about
 // what happens AFTER a write, so the space is put on one first.

@@ -1,12 +1,12 @@
 # 003 — Her space is called "Personal" and she cannot change it
 
-**Status:** open
+**Status:** fixed
 **Severity:** minor
 **Found by:** discovery, before any run · 2026-09-16
 **Surface:** app › Dashboard › Spaces · app › Account › Capture tokens · Account › Export
 **Filed:** 2026-09-16
-**Fixed:** —
-**Confirmed by:** —
+**Fixed:** 2026-09-16
+**Confirmed by:** `rename:smoke`, 10 of 10 · 2026-09-16
 **Blocked on:** —
 
 ## What happened
@@ -119,3 +119,73 @@ the Dashboard's Ease score moved.
 None yet. It will show up as the gap to 10 on `Dashboard`,
 `Account › Capture tokens and the Shortcut` and `Account › Export` when a persona
 first scores them.
+
+---
+
+## Fixed, 2026-09-16 — the rename exists, on the badge
+
+Brandon took this off the blocked list. The shape is the one sketched above, and the
+sketch was right on every point but one.
+
+**1. `renameSpace(actor, spaceId, name)`** in `packages/domain/src/spaces.ts`, guarded
+by the `assertOwner` that already existed in `members.ts`. It trims, collapses runs of
+whitespace, caps at `MAX_SPACE_NAME = 60`, and refuses a blank.
+
+**It names one column on purpose.** The owner UPDATE policy on `spaces` is row-scoped
+and cannot name columns, so what stops a rename reaching `plan` is that the statement
+does not mention it. See [048](048-the-column-grant-that-guards-plan-was-never-the-only-grant.md),
+which this work turned up.
+
+**2. The dashboard badges are editable in place** — `apps/web/components/SpaceName.tsx`.
+Click the badge, it becomes an input; Enter or blur saves, Escape puts it back. **A
+member who is not the owner gets the plain badge**, not a control that will refuse them.
+
+**3. Trimmed on write, blank refused**, as the sketch asked.
+
+### The one thing the sketch had wrong
+
+> *No migration is needed — `spaces.name` is already a plain `text` column.*
+
+The column being plain text is not the question; **whether the app role may UPDATE it
+is**, and `0024_triage.sql` deliberately narrowed that grant to `triage_enabled`. So
+this was checked before a line was written, against the live database rather than
+against the migration:
+
+```
+grantee jotacular_app, UPDATE on spaces:
+  created_at, created_by, id, kind, name, plan, triage_enabled, triage_last_run_at
+```
+
+`name` is there, so **the conclusion held and no migration was needed** — but for a
+different reason than the one given, and the reason it holds is itself a defect. That
+is [048](048-the-column-grant-that-guards-plan-was-never-the-only-grant.md).
+
+## Confirmed by
+
+**2026-09-16.** `pnpm rename:smoke`, a new suite — **10 of 10**:
+
+```
+ok    a new space starts as Personal
+ok    the owner can rename it
+ok    ...and the dashboard sees the new name
+ok    whitespace is tidied, not stored              "  Ilé  Ifẹ̀   notes " -> "Ilé Ifẹ̀ notes"
+ok    an accent survives the round trip
+ok    a very long name is cut to the limit rather than refused
+ok    a blank name is refused
+ok    ...and the old name survives the refusal
+ok    a stranger cannot rename a space they are not in
+ok    ...and it is untouched
+```
+
+The last two are the standing isolation check: RLS scopes the row and `assertOwner`
+scopes the role, and a stranger is refused by both.
+
+Real data throughout, per RULE #2 — *The Okonkwo house* and *Ilé Ifẹ̀ notes*, with the
+accents and the diacritic that a naive trim or a byte-counting cap would break.
+
+## What this does NOT do
+
+**It does not name a space at creation.** A new space is still called `Personal`, which
+is right while a person has one — somebody with one drawer does not label the drawer.
+The moment [001](001-nobody-can-add-anybody-to-a-space.md) gives them several, the
+create flow will want a name field, and that belongs with 001.

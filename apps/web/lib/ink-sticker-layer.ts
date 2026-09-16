@@ -1,5 +1,4 @@
 import type { Sticker, StickerName } from "@jotacular/domain";
-import type { ViewSnapshot } from "./ink-viewport";
 import type { Bounds } from "./ink-geometry";
 import { stickersBounds } from "./ink-rects";
 import { InkStickerPlane } from "./ink-sticker-plane";
@@ -17,13 +16,35 @@ import { InkStickerPlane } from "./ink-sticker-plane";
  * coordinates, and `InkStickerPlane` owns the elements.
  */
 
-/** A new sticker, as a fraction of the shorter side of what is on screen. A
- *  sticker is a mark on something, so it starts small enough to be one. */
-const FRACTION = 0.12;
+/**
+ * A new sticker, as a fraction of the shorter side of what is on screen.
+ *
+ * A mark on something, so it starts small enough to be one. Divided by the
+ * zoom, which makes the on-screen size CONSTANT at every zoom -- and that is
+ * what lets the ghost that follows the pointer be a plain fixed-size element
+ * with no camera arithmetic in it at all. ADR-115.
+ */
+export const STICKER_FRACTION = 0.12;
 
-/** How far each one steps when it would land on top of the last. In document
- *  units, and the same distance a paste offsets by. */
-const CASCADE = 24;
+/** How big a new sticker is on the glass, in screen pixels. The ghost and the
+ *  thing it becomes are the same size by construction. */
+export const stickerScreenSize = (screen: { w: number; h: number }) =>
+  Math.min(screen.w, screen.h) * STICKER_FRACTION;
+
+/** Which sticker is loaded and in what colour. Carried from the tray to the
+ *  tap that puts it down. ADR-115. */
+export type ArmedSticker = { name: StickerName; color: string };
+
+/**
+ * Where a sticker's TOP-LEFT goes so that its centre lands on the tap.
+ *
+ * The whole of click-to-place, and its own function because it is the one line
+ * that was wrong when this shipped: a sticker stored by its corner and placed at
+ * the raw point sits down and to the right of what somebody aimed at. ADR-115.
+ */
+export const stickerCorner = (
+  at: { x: number; y: number }, size: number,
+): { x: number; y: number } => ({ x: at.x - size / 2, y: at.y - size / 2 });
 
 export type StickerLayerHost = {
   /** A sticker changed and the page should hear about it. */
@@ -76,43 +97,28 @@ export class InkStickerLayer {
   }
 
   /**
-   * Stick one on the page, in the middle of what somebody is looking at.
+   * Stick one on the page, CENTRED ON THE POINT somebody clicked. ADR-115.
    *
-   * The middle of the VIEW, not of the document: an endless canvas has no
-   * middle, and a sticker that landed at the origin would be somewhere else
-   * entirely by the time anybody had panned twice. `InkImageLayer.place` makes
-   * the same call for the same reason.
+   * Not the middle of the view, which is where this landed them until the
+   * first person tried it. A sticker is a mark on something, and one that
+   * always arrived in the centre had to be dragged onto the thing it was about
+   * every single time -- which is doing the job twice.
+   *
+   * `size` is decided by the caller, from the same screen fraction the ghost
+   * that followed the pointer was drawn at, so the sticker lands exactly as
+   * big as the thing under the cursor promised.
    */
   place(
-    name: StickerName, color: string, view: ViewSnapshot,
-    screen: { w: number; h: number },
+    name: StickerName, color: string, at: { x: number; y: number }, size: number,
   ): Sticker {
-    const size = Math.min(screen.w, screen.h) * FRACTION / view.k;
-    const spot = this.free(
-      (screen.w / 2 - view.x) / view.k - size / 2,
-      (screen.h / 2 - view.y) / view.k - size / 2,
-    );
-    const sticker: Sticker = { id: crypto.randomUUID(), name, ...spot, size, color };
+    const sticker: Sticker = {
+      id: crypto.randomUUID(), name, ...stickerCorner(at, size), size, color,
+    };
     this.stickers = [...this.stickers, sticker];
     this.plane.render(this.stickers);
     this.publish();
     this.host.onGeometry();
     return sticker;
-  }
-
-  /**
-   * Somewhere nothing is already sitting.
-   *
-   * Without this, marking a page with six stickers puts all six on the same
-   * square and looks like five of them failed.
-   */
-  private free(x: number, y: number): { x: number; y: number } {
-    const taken = new Set(this.stickers.map((s) => `${Math.round(s.x)},${Math.round(s.y)}`));
-    let step = 0;
-    while (taken.has(`${Math.round(x + step)},${Math.round(y + step)}`) && step < CASCADE * 40) {
-      step += CASCADE;
-    }
-    return { x: x + step, y: y + step };
   }
 
   /** Every sticker, as the delta carries them. */

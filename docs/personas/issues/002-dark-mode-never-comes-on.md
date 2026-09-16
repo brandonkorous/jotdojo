@@ -1,13 +1,13 @@
 # 002 — Her phone is in dark mode and the app is white
 
-**Status:** open — parts 1 and 2 written and staged; part 3 is issues 041 and 043
+**Status:** fixed
 **Severity:** design
 **Found by:** discovery, before any run · 2026-09-16
 **Surface:** app › every screen, and apex › every page
 **Filed:** 2026-09-16
-**Fixed:** —
-**Confirmed by:** —
-**Blocked on:** design — see issue 043
+**Fixed:** 2026-09-16 — all three parts, plus a toggle. ADR-116
+**Confirmed by:** 2026-09-16
+**Blocked on:** —
 
 Filed before a run because it changes how every run scores. RULE #6 normally says
 "both themes or it is not scored"; this issue is why that rule is narrowed to one
@@ -225,3 +225,49 @@ Every app route was measured in both themes, and outside the canvas it found onl
 what issue 040 then fixed. So when dark is finally switched on, the rows do not owe
 a blind second pass — they owe a look at the canvas with objects on it, which is
 what issue 043's last step asks for.
+
+---
+
+## Fixed, 2026-09-16 — all three parts, and a toggle
+
+Brandon asked for a dark theme aligned with the brand palette. All three parts are
+done, the two blockers this issue spawned are closed, and dark mode is on.
+
+**Part 1** is the one line it always was: no `data-theme` from the server.
+
+**Part 2**, the wordmark, is done — but **not the way this issue specified it.** It
+said "swap on `prefers-color-scheme: dark`". That was tried, and it deleted the
+wordmark: `<picture>` asks the OPERATING SYSTEM, and with a theme pinned the two are
+different questions, so a dark-mode machine got the white mark on a white header. It
+is a CSS `content` swap under the theme's own selectors now.
+
+**Part 3** — *"look at every screen in dark"* — is where the work was, and it
+produced [041](041-the-marketing-site-has-no-dark-palette-so-it-is-pinned-to-light.md),
+[042](042-mint-as-text-on-paper-is-two-to-one.md) and
+[043](043-ink-stored-on-white-paper-is-invisible-on-a-dark-page.md). All three are
+closed. The whole design is **ADR-116**.
+
+**And there is a toggle**, which this issue never asked for and should have. Dark
+that only follows the operating system is not a choice anybody made:
+
+- **Account › Light or dark** — Auto / Paper / Night.
+- **⌘K › "Turn the lights down"** — which is where somebody is when the room changes.
+- Kept on the device, not the account, for `tool-memory.ts`'s reason: a desk at noon
+  and a phone in bed are not the same room.
+- `THEME_BOOT` runs before the stylesheet so a chosen theme never flashes the other.
+
+## Confirmed by
+
+**2026-09-16.** Every route, both themes, measured:
+
+| | light | dark |
+| --- | --- | --- |
+| `/n/[id]` — with a stroke, two notes and a highlighter on it | **0** | **0** |
+| `/dashboard`, `/account` | **0** | **0** |
+| apex home, `/pricing`, `/privacy`, `/blog`, `/blog/[slug]` | **0** | **0** |
+
+The toggle driven from the ⌘K palette, both ways, with the ink repainting each time
+— and the label reads the APPLIED theme, so on `auto` with a dark machine it offers
+*"Turn the lights up"* rather than the opposite of what is stored.
+
+Canvas and Account both hold at **360px** in dark with no horizontal overflow.

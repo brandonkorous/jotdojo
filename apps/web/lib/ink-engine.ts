@@ -18,6 +18,7 @@ import type { InkLinks } from "./ink-engine-links";
 import type { SelectionEditor } from "./ink-engine-select";
 import type { Eraser } from "./ink-engine-erase";
 import { InkTaps } from "./ink-engine-tap";
+import type { ArmedSticker } from "./ink-sticker-layer";
 import { InkOpen } from "./ink-engine-open";
 import { commitStroke, type Scene } from "./ink-draw";
 import type { InkPainter } from "./ink-painter";
@@ -156,6 +157,13 @@ export class InkEngine implements InputHost {
     this.style = style;
     this.strokeCapture.setStyle(this.currentTool, style.color, style.width);
   }
+
+  /** Which sticker is loaded, if any. The tap handler holds it; this is only
+   *  the door React pushes it through. ADR-115. */
+  setSticker(sticker: ArmedSticker | null) { this.taps.setSticker(sticker); }
+
+  /** InputHost: put the loaded sticker down here. ADR-115. */
+  stampSticker(x: number, y: number) { this.taps.sticker(x, y); }
 
   /** Start an arrow from the one object that is held. The next tap on another
    *  finishes it; tapping the same one again calls it off. ADR-108. */

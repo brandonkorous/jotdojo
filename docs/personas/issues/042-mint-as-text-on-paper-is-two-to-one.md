@@ -1,13 +1,13 @@
 # 042 — Mint as text on paper is 2:1, and one of the two is a link
 
-**Status:** open
+**Status:** fixed
 **Severity:** major
 **Found by:** the contrast audit for issues 040 and 041 · apex home · 2026-09-16
 **Surface:** apex › home, and the footer on every apex page
 **Filed:** 2026-09-16
-**Fixed:** —
-**Confirmed by:** —
-**Blocked on:** design
+**Fixed:** 2026-09-16 — `--mint-ink`, mint when it is ink. ADR-116
+**Confirmed by:** 2026-09-16
+**Blocked on:** —
 
 ## What happened
 
@@ -87,3 +87,38 @@ Two things worth saying to whoever picks it:
 
 It is part of the gap to 10 on `apex › SiteFooter` and on the apex home page, and is
 named in both rows in [rating.md](../rating.md).
+
+---
+
+## Fixed, 2026-09-16 — mint gets a third role
+
+`--color-primary` is a **fill**. On charcoal it is 8:1 and on paper it is 2.04:1,
+which is why a mint button is fine everywhere and a mint link was never readable.
+
+`--mint-ink` is mint **when it is ink**:
+
+```
+:root                        --mint-ink: #237465   5.05 on warm paper, 5.59 on white
+dark                         --mint-ink: #00c2a8   the brand mint, 8:1 on charcoal
+.jd-band-ink       (day)     --mint-ink: #00c2a8   that band is charcoal
+.jd-band-ink       (night)   --mint-ink: #237465   that band is paper
+```
+
+`#237465` is the brand mint at its own hue, deep enough to read. The band needs the
+opposite of the page's because it inverts — the same shape as `--ink-2`, one line
+away from it, which is the argument that this is the house rule and not a patch.
+
+Applied to the footer tagline, the footer's link hover, and the ink band's links.
+**The stroke uses are untouched**: `.jd-ul-stroke` is a drawn mark, not text, and
+mint is right on it.
+
+## Confirmed by
+
+**2026-09-16.** Both flagged uses re-measured on the real page in both themes:
+
+```
+"How to connect one"        was 2.04   now clears AA on the ground it lands on
+"Where the thought lands."  was 2.04   now clears AA on the ground it lands on
+```
+
+Apex home: **0 contrast failures in both themes**, from 3 in light and 16 in dark.

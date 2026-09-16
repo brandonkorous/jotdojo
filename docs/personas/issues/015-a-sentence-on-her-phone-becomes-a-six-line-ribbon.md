@@ -1,13 +1,13 @@
 # 015 — A sentence on her phone becomes a six-line ribbon
 
-**Status:** open
+**Status:** fixed
 **Severity:** minor
 **Found by:** P01 Marisol · act 5 · 2026-09-16
 **Surface:** app › A note (the canvas) — a new text box
 **Filed:** 2026-09-16
-**Fixed:** —
-**Confirmed by:** —
-**Blocked on:** taste
+**Fixed:** 2026-09-16
+**Confirmed by:** `box-width:smoke`, 7 of 7 · 2026-09-16
+**Blocked on:** —
 
 ## What happened
 
@@ -91,3 +91,64 @@ case works, because that is the case it does not reach.
 
 It is the named gap on `A note (the canvas)`'s Design score in
 [rating.md](../rating.md), which is 8 rather than 9 for this and for issue 002.
+
+---
+
+## Fixed, 2026-09-16 — the narrow version, which Brandon chose
+
+He took this one off the blocked list, so the taste question is answered. The fix
+is the narrow version sketched above: **the laptop is untouched.**
+
+```ts
+export const NEW_WIDTH_FRACTION = 0.33;
+export const PHONE_WIDTH_FRACTION = 0.92;
+export const MIN_NEW_WIDTH = 120;
+
+export function newBoxWidth(visibleWidth: number, onPhone: boolean): number {
+  const fraction = onPhone ? PHONE_WIDTH_FRACTION : NEW_WIDTH_FRACTION;
+  return Math.max(MIN_NEW_WIDTH, visibleWidth * fraction);
+}
+```
+
+**It is a fraction, not a subtraction, and that is deliberate.** The sketch in this
+issue used `visible - 2 * MARGIN`, which is wrong once the canvas is zoomed:
+`visibleWidth` is **world** units, a margin is **screen** pixels, and subtracting one
+from the other means a zoomed-in phone gets a box with no gutter and a zoomed-out one
+gets a box that is mostly gutter. A fraction scales with the world, as a world
+measurement should.
+
+**For the same reason `onPhone` is a separate argument rather than a threshold on
+`visibleWidth`.** Whether somebody is on a phone is a fact about the SCREEN and
+`visibleWidth` cannot answer it — a laptop zoomed out has a wide world and is still a
+laptop. `ink-text-layer.ts` answers it with `matchMedia(NARROW)`, reusing the house
+breakpoint from `use-narrow.ts` rather than inventing a second 480.
+
+**And the comment stopped lying.** It used to say a third was "a paragraph on a phone",
+which was the one case it never reached.
+
+## Confirmed by
+
+**2026-09-16.** The rule lives in its own module so it can be asserted rather than
+eyeballed, and `apps/web/scripts/smoke-box-width.ts` does it — registered as
+`pnpm box-width:smoke`, **7 of 7**:
+
+```
+ok    the OLD rule never reached the phone case        360 * 0.33 = 118.8 < 120
+ok    on a phone a new box uses the phone              360 -> 331.2
+ok    ...which is more than twice what a phone used to get
+ok    a laptop is untouched -- still a third           1400 -> 462
+ok    the floor still catches a tiny viewport          100 -> 120, both ways
+ok    a zoomed-OUT laptop is still a laptop            4000 -> 1320
+ok    a zoomed-IN phone is still a phone               180 -> 165.6
+```
+
+**331.2 instead of 120**, on the 360px screen this issue was filed about.
+
+The assertions were written into `smoke-objects.ts` first and pushed it to **259
+lines**, so they were split out as the rule requires — that file is about what a
+lasso CATCHES, and how wide a box BEGINS is a different question.
+
+## Rating effect
+
+It was the named gap on `A note (the canvas)`'s Design score. Re-scored in
+[rating.md](../rating.md).

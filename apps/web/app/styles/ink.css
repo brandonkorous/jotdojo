@@ -163,6 +163,19 @@
      the shrinking. */
   min-height: 1em;
   caret-color: var(--color-primary, currentColor);
+  /* Ink on the page, not a fixed hex. The plane writes both values onto the
+     node and the browser picks -- so the flip needs no repaint. ADR-116. */
+  color: var(--jd-ink);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) .jd-text-box {
+    color: var(--jd-ink-night);
+  }
+}
+
+:root[data-theme='paper-night'] .jd-text-box {
+  color: var(--jd-ink-night);
 }
 
 /* A note with a colour behind it. ADR-079.

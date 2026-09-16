@@ -35,7 +35,8 @@ edited or split after the fact.
 These predate the rule and must be split the next time they are edited for any other
 reason. Do not batch-refactor them for their own sake.
 
-    packages/domain/src/oauth.ts    564
+**The list is empty.** `packages/domain/src/oauth.ts` was the last one, and it came
+off on 2026-09-16 -- see the end of this file.
 
 `packages/domain/src/ink.ts` came off this list on 2026-08-22. It was edited for another
 reason, so it was split as the rule requires: `ink-doc.ts` is what an ink document IS,
@@ -116,3 +117,56 @@ Canvas.tsx to 251, and it split on a seam the file had already named for itself:
 
 The gesture took its own constant, its own ref and its own ADR-102 paragraph with
 it. It is six pixels of arithmetic that nothing else in the component read.
+
+On 2026-09-16 the last known violation came off the list. Issue 024 needed one
+branch inside `verifyAccessToken`, and that branch lands in `oauth.ts` -- so the
+rule applied, and 564 lines split six ways by responsibility:
+
+    oauth.ts              the shared words: a scope, a failure, how long a grant lives
+    oauth-client.ts       who is asking -- registration, and the document that proves it
+    oauth-grant.ts        what a person agreed to, for one minute
+    oauth-mint.ts         turning that into a pair of tokens, and rotating it safely
+    oauth-token.ts        what a bearer token is worth, and why it is not
+    oauth-connections.ts  what a person can see on their account, and take back
+
+The seam issue 024 predicted -- "what a token IS and how it is verified, apart from
+the authorization-code dance that mints one" -- is the one that was there. Nothing
+outside the package changed name: every caller already imported from the barrel.
+
+Later the same day, closing the last five persona issues hit the limit twice more,
+and both times the addition named its own seam rather than the file being too long:
+
+    actions.ts            what the CANVAS and the account do
+    dashboard-actions.ts  what the dashboard does to a LIST -- rename a space,
+                          throw a note away, put it back
+
+A list is the only place somebody acts on something they are not looking at, which
+is why those three actions ask for confirmation and the canvas ones do not.
+
+    smoke-objects.ts      what a lasso CATCHES
+    smoke-box-width.ts    how wide a new box BEGINS
+
+The second was written into the first and pushed it to 259. They are two questions
+about the same object, and only one of them is about selection.
+
+Later the same day, a size check found two files that the persona work had pushed
+over the limit without anybody looking — `ink-input.ts` at 266 and `Canvas.tsx` at
+251, while this section said the list was empty. Both split on a seam the file had
+already written down for itself:
+
+    ink-input-host.ts     what a pointer may ASK of the page
+    ink-input.ts          the machine that routes one
+
+The type was already introduced as "what the input machine is allowed to ask",
+which is a different sentence from anything the class below it does.
+
+    use-chrome-dim.ts     when the furniture fades, and when it comes back
+    Canvas.tsx            what is on the page
+
+The dimming took its own three-second constant, its own ref and the whole
+performance argument for its guard with it — a hot-path detail that nothing else
+in the component reads, which is the same reason `use-blank-tap.ts` left.
+
+**Checking is not optional.** Both of these passed typecheck, lint and fifty smoke
+suites while breaking a hard rule, because no tool enforces it. Run the command
+above before saying the list is empty.

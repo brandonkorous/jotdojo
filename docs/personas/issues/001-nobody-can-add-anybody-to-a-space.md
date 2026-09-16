@@ -1,13 +1,13 @@
 # 001 — A family can pay for six people and there is nowhere to add the other five
 
-**Status:** open
+**Status:** fixed
 **Severity:** blocker
 **Found by:** discovery, before any run · 2026-09-16
 **Surface:** app › everywhere. There is no screen for this at all
 **Filed:** 2026-09-16
-**Fixed:** —
-**Confirmed by:** —
-**Blocked on:** scope
+**Fixed:** 2026-09-16
+**Confirmed by:** P01 Marisol, on Account and /invite · 2026-09-16
+**Blocked on:** —
 
 This one is filed before a run because it was found by enumerating the product's
 axes of variance, and it removes two of them. P05 and P06 will hit it as their
@@ -132,10 +132,128 @@ up owning something they could not see.
 
 ## Confirmed by
 
-—
+**2026-09-16, driven as Marisol Okonkwo-Vance on the screens**, not from a script.
+The full record is in [P01 › The invite re-run](../01-marisol-okonkwo-vance.md#the-invite-re-run-2026-09-16).
+
+1. Made *The Okonkwo house*, a family space. It seated **1**, and said so.
+2. On the family plan it seated **6**.
+3. Typed an address, pressed **Make an invite** — seats **1 → 2 of 6**, and a link.
+4. Opened that link as **herself**: *"That invite was sent to a different address."*
+5. Tolu signed in, opened it, and landed on `/dashboard` with *The Okonkwo house*
+   in his list. Two rows in `space_members`, invite `accepted_at` set.
+6. Opened it again: *"That invite has already been used. If it was you, you are in
+   already."*
+7. A token that was never issued: *"That link is not one of ours."*
+8. Made an invite, pressed **Take it back**, opened it: *"That invite was taken
+   back."*
+
+**Four of the six refusals are proved from the screen.** *Expired* and *space full*
+are not reachable by waiting in a browser, and stay proved in `invite:smoke`
+(16 of 16) — which is the support, not the confirmation.
+
+**Two defects came out of driving it**, both fixed and both re-proved:
+[049](049-she-took-the-invite-back-and-the-link-is-still-on-screen.md) and
+[050](050-take-it-back-is-off-the-side-of-her-phone.md).
+
+**RULE #7 — what this fix still owes.** This issue was filed before P05 and P06 ran,
+and both recorded acts as blocked on it. **Neither has been re-run**, so the wall
+they hit is only known to be gone for P01. That is outstanding work, not a pass.
 
 ## Rating effect
 
 None yet. When this is built, the new screens are new rows in
 [rating.md](../rating.md) and the denominator moves — regenerate it with
 `node scripts/persona-screens.mjs` rather than adding rows by hand.
+
+---
+
+## Fixed, 2026-09-16 — Option A, and the link is the delivery
+
+Brandon took this off the blocked list, which settles both decisions this issue was
+holding. **Option A**, the cheaper one: a *Who is in your spaces* section on
+`/account`, not a space screen at `/s/[id]`. And **the invite is a copyable link**,
+because this repo has no mail library and a family are in the same house. ADR-118.
+
+### What was already there, and what was missing
+
+Every function this needed existed — `createSpace`, `inviteToSpace`, `listInvites`,
+`revokeInvite`, `acceptInvite`, `setMemberRole`, `removeMember`, `spaceSeats` — with
+RLS, seat caps and six distinguishable rejection codes.
+
+**All of them had zero callers.** `inviteToSpace` wrote a row and nothing happened
+next; `acceptInvite` had nowhere to be spent. This was never missing logic. It was
+missing screens, at both ends.
+
+### What was built
+
+- **`Who is in your spaces` on `/account`** — every space, its seats taken of total,
+  its members with roles, and its pending invites. A member sees the list and no
+  controls rather than controls that will refuse them.
+- **An invite form** that hands back a link, with a Copy button, saying plainly: *it
+  lasts a fortnight and only works for that address.*
+- **`/invite/[token]`** — the other end, which did not exist. It says a different
+  sentence for each of the six codes the domain already tells apart, because ADR-020
+  went to the trouble and one "that did not work" would throw it away.
+- **`Make a shared space`**, because a personal space seats one and there was nowhere
+  to put anybody even once inviting worked.
+- Taking somebody out, and taking an invite back.
+
+### The awkward thing this found
+
+**A new family space is on the free plan, which seats ONE.** So "make a space to
+share" does not yet mean "share it": the plan buys the seats. The section says so
+rather than hiding it — *Every seat is taken. Change the plan to add more.* — which
+is honest and still a poor first run. Recorded in ADR-118 as worth revisiting.
+
+## Confirmed by
+
+**2026-09-16.** `pnpm invite:smoke`, a new suite — **16 of 16**, walking the path an
+owner and a guest actually take:
+
+```
+ok    an owner can make a space to share
+ok    ...and is in it as its owner
+ok    a new family space seats ONE until it is paid for
+ok    ...and six once it is
+ok    a guest cannot see it yet
+ok    the invite hands back a token, which IS the link
+ok    ...and shows up as pending, so it can be taken back
+ok    a stranger's token is refused                        invite_unknown
+ok    the guest is in the space
+ok    ...and the owner sees them
+ok    ...and a seat is spent
+ok    the same link cannot be used twice                   invite_used
+ok    the guest can read what the owner wrote
+ok    a revoked invite cannot be used                      invite_revoked
+ok    taking somebody out removes their access
+ok    ...and the note is still the owner's
+```
+
+The last four are the point of a shared space and the point of being able to leave
+one: two people saw the same note, and when one was taken out the note stayed with
+its owner.
+
+**On the real screen**, signed in as a person with one full personal space:
+
+```
+Who is in your spaces
+  Personal      1 of 1 seat taken
+                bkorous   owner
+                Every seat is taken. Change the plan to add more.
+  [ Make a shared space ]
+```
+
+— which is the correct and honest rendering for that account. And the accept route,
+driven with a token that was never minted:
+
+```
+/invite/jd_not_a_real_token_at_all
+  "That invite did not work"
+  "That link is not one of ours. Ask for a fresh one."
+  [ Go to your notes ]
+```
+
+**Not seen on screen:** the invite form with a free seat, because the only account
+available has one full personal space and putting a real account on a fake
+subscription to photograph a form is a worse trade than saying so. It is covered by
+the suite above. RULE #4.

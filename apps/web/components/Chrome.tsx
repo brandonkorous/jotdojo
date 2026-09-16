@@ -13,6 +13,7 @@ import { ToolRail } from "./ToolRail";
 import { AddMenu } from "./AddMenu";
 import { useNarrow } from "@/lib/use-narrow";
 import { useModKey } from "@/lib/mod-key";
+import { applyTheme, pageIsDark, rememberTheme, type ThemeChoice } from "@/lib/theme";
 
 /**
  * All of the app's chrome: one floating pill, top of the canvas.
@@ -38,7 +39,7 @@ import { useModKey } from "@/lib/mod-key";
  * Read the comments on both rules before changing either.
  */
 export function Chrome({
-  align, user, dimmed, tool, onTool, onCamera, onMic, onTextBox,
+  align, user, dimmed, tool, onTool, onCamera, onMic, onTextBox, onSticker,
 }: {
   align: Align;
   user: { name?: string | null; image?: string | null; email?: string | null } | null;
@@ -48,6 +49,8 @@ export function Chrome({
   onCamera: () => void;
   onMic: () => void;
   onTextBox: () => void;
+  /** Open the sticker tray. ADR-115. */
+  onSticker: () => void;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -72,6 +75,13 @@ export function Chrome({
     if (narrow) setRailOpen(false);
   };
   const [notes, setNotes] = useState<CommandItem[]>([]);
+
+  /** What is ON SCREEN, not what was chosen: `auto` on a dark machine is a dark
+   *  page with nothing stored, and the offer has to be the opposite of what a
+   *  person is looking at. Read after mount; the server has no theme. */
+  const [dark, setDark] = useState(false);
+  useEffect(() => { setDark(pageIsDark()); }, []);
+  const nextTheme: ThemeChoice = dark ? "paper" : "paper-night";
   const [, startTransition] = useTransition();
 
   // Reloaded whenever the palette opens, then filtered locally with no round
@@ -115,7 +125,22 @@ export function Chrome({
       keywords: ["agent", "claude", "revert", "undo", "review"],
       onSelect: () => router.push("/review"),
     },
-    { id: "account", label: "Account and capture tokens", group: "Actions", onSelect: () => router.push("/account") },
+    // The keywords are the six words Kwabena actually searched before giving
+    // up, in the order he tried them. Issue 032.
+    {
+      id: "account", label: "Account, people and capture tokens", group: "Actions",
+      keywords: ["invite", "member", "people", "family", "share", "add", "seat", "space"],
+      onSelect: () => router.push("/account"),
+    },
+    // Turning the lights down is something you want WHERE you are writing, not
+    // three screens away in a settings page. ADR-116.
+    {
+      id: "theme",
+      label: dark ? "Turn the lights up" : "Turn the lights down",
+      group: "Actions",
+      keywords: ["theme", "dark", "light", "night", "mode"],
+      onSelect: () => { rememberTheme(nextTheme); applyTheme(nextTheme); setDark(!dark); },
+    },
     ...notes,
   ];
 
@@ -157,6 +182,7 @@ export function Chrome({
           onPhoto={onCamera}
           onVoice={onMic}
           onNote={() => { onTextBox(); if (narrow) setRailOpen(false); }}
+          onSticker={() => { onSticker(); if (narrow) setRailOpen(false); }}
         />
 
         <span aria-hidden className="jd-rail-sep-v" />

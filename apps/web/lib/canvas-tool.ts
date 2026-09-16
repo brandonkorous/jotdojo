@@ -6,11 +6,17 @@
  * the plane, and is armed from the text tool's options rather than living in
  * the rail: it is the additional thing, not the default one. ADR-065.
  *
+ * `sticker` is armed the same way, from the Add menu, and is the one mode that
+ * carries a payload -- which picture, in which colour. It has no button in the
+ * rail either, and unlike `textbox` it STAYS armed, because marking six things
+ * is the common case and reopening the tray six times is not. ADR-115.
+ *
  * One definition, because the toolbar, the canvas and the ink engine all have
  * to agree, and a string union duplicated across three files is a rename
  * waiting to go wrong.
  */
-export type CanvasTool = "text" | "textbox" | "pen" | "highlighter" | "eraser" | "select";
+export type CanvasTool =
+  | "text" | "textbox" | "pen" | "highlighter" | "eraser" | "select" | "sticker";
 
 /** The tools the ink engine understands. It has no concept of the spine. */
 export type InkTool = Exclude<CanvasTool, "text">;
@@ -24,8 +30,12 @@ export type InkTool = Exclude<CanvasTool, "text">;
  */
 export const isInk = (tool: CanvasTool): tool is InkTool => tool !== "text";
 
-/** Whether this tool draws strokes. `select`, `eraser` and `textbox` are all on
- *  the ink surface and none of them lays down ink. */
+/** Whether a click PUTS something down rather than starting a gesture. Both of
+ *  these are armed elsewhere and used by tapping the page. ADR-065, ADR-115. */
+export const isPlacing = (tool: CanvasTool) => tool === "textbox" || tool === "sticker";
+
+/** Whether this tool draws strokes. `select`, `eraser`, `textbox` and `sticker`
+ *  are all on the ink surface and none of them lays down ink. */
 export const isDrawing = (tool: CanvasTool) => tool === "pen" || tool === "highlighter";
 
 /** Which ink tool the engine should hold. `text` is not one, but unmounting the

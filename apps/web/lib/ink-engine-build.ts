@@ -157,19 +157,21 @@ function reach(
   opts: EngineOptions, w: Wiring, p: EditorParts, editor: SelectionEditor,
   surfaces: { surface: InkSurface; framing: InkFraming; view: InkViewport },
 ): Pick<Parts, "open" | "taps"> {
+  const open = new InkOpen({
+    setStrokes: w.setStrokes,
+    strokes: w.strokes,
+    plane: () => p.plane,
+    links: () => p.links,
+    doc: () => p.doc,
+    framing: () => surfaces.framing,
+    surface: () => surfaces.surface,
+    view: () => surfaces.view,
+    dropSelection: w.dropSelection,
+    overlay: w.overlay,
+  });
+
   return {
-    open: new InkOpen({
-      setStrokes: w.setStrokes,
-      strokes: w.strokes,
-      plane: () => p.plane,
-      links: () => p.links,
-      doc: () => p.doc,
-      framing: () => surfaces.framing,
-      surface: () => surfaces.surface,
-      view: () => surfaces.view,
-      dropSelection: w.dropSelection,
-      overlay: w.overlay,
-    }),
+    open,
     taps: new InkTaps({
       texts: () => p.plane?.texts ?? null,
       images: () => p.plane?.images ?? null,
@@ -182,6 +184,7 @@ function reach(
       world: (x, y) => worldAt(surfaces.surface, surfaces.view, x, y),
       rectOf: (b) => clientRect(surfaces.surface, surfaces.view, b),
       onTextPlaced: () => opts.onTextPlaced?.(),
+      placeSticker: (name, color, at) => void open.placeSticker(name, color, at),
     }),
   };
 }

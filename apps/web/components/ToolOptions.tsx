@@ -1,10 +1,12 @@
 "use client";
 
+import { useSyncExternalStore } from "react";
 import { Icon } from "@/components/Icon";
 import type { IconName } from "@/lib/icons";
 import type { CanvasTool } from "@/lib/canvas-tool";
 import type { Block, Mark } from "@/lib/markdown-marks";
 import { MARKER_COLORS, PEN_COLORS, type InkStyles } from "@/lib/ink-style";
+import { inkFor, paperIsDark, watchPaper } from "@/lib/ink-night";
 import { useModKey } from "@/lib/mod-key";
 import { PenSize } from "./PenSize";
 
@@ -53,7 +55,11 @@ export function ToolOptions({
   onBlock?: (block: Block) => void;
 }) {
   const mod = useModKey();
-  if (tool === "eraser" || tool === "select" || tool === "textbox") return null;
+  // `sticker` joins the three that have nothing to set: what a sticker looks
+  // like was chosen in the tray, and everything you can do to one afterwards
+  // belongs ON it, where the canvas menu is. ADR-115.
+  if (tool === "eraser" || tool === "select" || tool === "textbox"
+    || tool === "sticker") return null;
   if (!open) return null;
 
   return (
@@ -146,6 +152,10 @@ export function Swatches({
    *  promise the canvas breaks. */
   marker?: boolean;
 }) {
+  // The canvas paints inkFor(color) on a dark page, so the swatch must too --
+  // that is the promise two comments in this file exist to keep. Issue 047.
+  useSyncExternalStore(watchPaper, paperIsDark, () => false);
+
   return (
     <nav aria-label={label} className="flex items-center gap-0.5">
       {colors.map(({ name, color }) => (
@@ -161,7 +171,7 @@ export function Swatches({
           <span
             aria-hidden
             className={marker ? "jd-chip jd-chip-marker" : "jd-chip"}
-            style={{ background: color }}
+            style={{ background: inkFor(color) }}
           />
         </button>
       ))}

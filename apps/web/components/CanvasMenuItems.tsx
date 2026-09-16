@@ -172,10 +172,12 @@ export function Empty({
         Put a note here
       </ContextMenuItem>
       {/* A mark ON something, which is what separates it from a note. ADR-115. */}
-      <ContextMenuItem onClick={actions.onSticker}>
-        <Icon name="sticker" />
-        Add a sticker
-      </ContextMenuItem>
+      {actions.onSticker && (
+        <ContextMenuItem onClick={actions.onSticker}>
+          <Icon name="sticker" />
+          Add a sticker
+        </ContextMenuItem>
+      )}
       {actions.canPaste() && (
         <ContextMenuItem onClick={actions.onPaste}>
           <Icon name="paste" />

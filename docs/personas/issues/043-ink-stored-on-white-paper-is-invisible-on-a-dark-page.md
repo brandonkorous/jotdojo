@@ -1,13 +1,13 @@
 # 043 — Ink stored when the paper was white is invisible on a dark page
 
-**Status:** open
-**Severity:** blocker — for dark mode. Nothing is wrong today
+**Status:** fixed
+**Severity:** blocker — for dark mode
 **Found by:** the dark pass for issue 002 · `/n/[id]` with an object on it · 2026-09-16
 **Surface:** app › the canvas — every stroke, every canvas text box, every arrow
 **Filed:** 2026-09-16
-**Fixed:** —
-**Confirmed by:** —
-**Blocked on:** design
+**Fixed:** 2026-09-16 — shape C, per-colour night values. ADR-116
+**Confirmed by:** 2026-09-16
+**Blocked on:** —
 
 ## What happened
 
@@ -154,3 +154,75 @@ None. Nothing about the product as it ships today is changed by this issue, and 
 app is scored in light — the theme every customer has. The dark-mode measurements
 live here and in issue 002 rather than in a score, because a theme nobody can reach
 is not a screen anybody has seen.
+
+---
+
+## Fixed, 2026-09-16 — shape C, and the writing surface moved
+
+Brandon asked for a dark theme that aligns with the brand palette, which settles
+the question this issue was holding. **Shape C** — a night value per colour, the
+ADR-089 way — with one addition the four shapes above did not anticipate.
+
+**The writing surface moved to base-100.** Every figure in this issue was measured
+against `#262B32`, base-300, because that is what the canvas inherited. At night
+base-300 is the *lightest* of the three dark surfaces, which is backwards for a page
+you write on and cost every ink a full step. `--paper` now names the surface: warm
+paper by day, **true charcoal `#111418`** by night. That one change is why the
+theme's own violet fits — 4.67:1 on `#111418`, 3.60:1 on `#262B32`.
+
+Three of the five night inks then came straight from the brand:
+
+| Pen | Day | Night | on `#111418` | source |
+| --- | --- | --- | --- | --- |
+| Charcoal | `#1A1817` | `#F7F3EA` | **16.68** | the ink flips to warm paper |
+| Violet | `#6A39FF` | `#8A63FF` | **4.67** | the theme's own night accent |
+| Mint | `#00A38D` | `#00C2A8` | **8.16** | the brand mint |
+| Moss | `#3F6B4A` | `#498C5B` | **4.55** | lifted, hue kept |
+| Clay | `#A2593B` | `#C46239` | **4.54** | lifted, hue kept |
+
+Moss and Clay are lifted *and richer*: the first attempt capped chroma at the
+original value and produced a grey-brown taupe for Clay. A warm colour gets more
+saturated on a dark ground, not less.
+
+**Stored data is untouched.** `ink-night.ts` maps at paint time and the export path
+does not go through it, so a note drawn at night and exported by day is the colours
+its author picked. That is what `docs/10` requires of "the one sanctioned exception".
+
+### The highlighter took three tries, and the wrong answers are worth keeping
+
+`multiply` on a charcoal page has nothing to darken: measured **1.04–1.07:1** against
+the ground. Invisible.
+
+`screen` is the obvious mirror and is also wrong. It compounds without a ceiling, so
+where a stroke crossed itself the wash reached `rgb(154,141,5)` and the words on top
+measured **3.07:1**. Real painted alpha runs **0.58 to 0.82** — a stroke overlaps
+itself, so the nominal `0.35` is never what lands.
+
+What works is a plain wash and a darker colour, so the colour is the ceiling:
+
+| | Yellow | Mint | Sky | Rose |
+| --- | --- | --- | --- | --- |
+| day | `#F2D648` | `#6FD6A8` | `#7EC8F0` | `#F58BB0` |
+| night | `#816F06` | `#0B7F58` | `#0F77A1` | `#CC2C75` |
+
+Each is dark enough to hold the ink at 4.5:1 **even fully saturated**.
+
+## Confirmed by
+
+**2026-09-16**, on the real canvas with a stroke, two text boxes and a crossed
+highlighter on it, driven from the screen:
+
+```
+--paper              #111418
+shell background     rgb(17,20,24)
+stroke painted as    [247,243,234]     <- the Charcoal pen, flipped
+canvas text colour   rgb(247,243,234)
+highlighter          129,112,6 at every alpha   <- no compounding
+   a=0.3   wash rgb(51,48,19)    seen 1.38   ink keeps 12.12
+   a=0.6   wash rgb(84,75,13)    seen 2.09   ink keeps  7.99
+   a=0.8   wash rgb(107,94,10)   seen 2.82   ink keeps  5.91
+```
+
+The drawing that measured 1.24:1 when this issue was filed is legible. Contrast
+audit on `/n/[id]`: **0 failures in both themes.** Holds at 360px with no
+horizontal overflow.

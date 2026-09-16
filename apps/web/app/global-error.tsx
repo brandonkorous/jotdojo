@@ -19,7 +19,7 @@ export default function GlobalError({
   reset: () => void;
 }) {
   return (
-    <html lang="en" data-theme="paper">
+    <html lang="en">
       <body className="bg-base-300 text-base-content font-sans antialiased">
         <Fallback
           title="Something went wrong"

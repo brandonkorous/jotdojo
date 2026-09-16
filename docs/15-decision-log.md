@@ -5249,12 +5249,34 @@ attribute set — so the die-cut survives the export as well as the screen.
 with the attribute stripped, and asserting the artwork is measurably larger with
 it than without.
 
-**Placed in the middle of the view, never at the origin.** The same call
-`InkImageLayer.place` makes, for the same reason: an endless canvas has no
-middle, and a sticker that landed at the origin would be somewhere else entirely
-by the time anybody had panned twice. Successive stickers cascade rather than
-stack, because marking a page with six of them and seeing one is the kind of
-thing that reads as five failures.
+**Placed where somebody taps, and nowhere else.** This first shipped putting the
+sticker in the middle of the view — the same call `InkImageLayer.place` makes —
+and it was wrong for this object in a way it is not wrong for a photograph. A
+photograph is content and arrives with nowhere in particular to be. A sticker is
+a mark ON something, and one that always lands in the centre has to be dragged
+onto the thing it is about every single time. That is doing the job twice.
+
+So a sticker is a MODE carrying a payload, which no other tool here is. Picking
+one from the tray loads it, a ghost of it follows the pointer at exactly the size
+it will land, and the next tap puts it down centred on that point. It stays
+loaded afterwards: marking six things is six taps, not six trips to the tray.
+Escape gives the tool back, and so does picking any other one — watched in an
+effect rather than called at each of the three places that reach `setTool`,
+because a rule written three times is a rule one of them forgets.
+
+The cascade went with the centre. Two stickers can only stack now if somebody
+taps the same pixel twice, and that is a thing they meant.
+
+**The ghost is mouse-only, and that is not an omission.** A finger has no hover.
+There is nothing to follow until it lands, and artwork drawn under a fingertip
+would cover the very thing it is about to mark — so on a phone the tap IS the
+preview. `StickerGhost` is its own component rather than three lines on the plane
+precisely so `pointerType === "touch"` can turn the whole thing off.
+
+It costs no camera arithmetic either. A new sticker is a fraction of the shorter
+side of the surface DIVIDED BY THE ZOOM, so its size on the glass is the same at
+every zoom — which lets the ghost be a plain fixed-position element at a plain
+pixel size, and makes it exactly as big as the thing it is about to become.
 
 **A sticker never reaches the recogniser.** It follows the `text` option in
 `toSvg`, as arrows do (ADR-108) and typed boxes do (ADR-065). A vision model
@@ -5274,9 +5296,23 @@ responsibility:
     ink-sticker.css       one object that sits on it
     sticker-tray.css      the tray, which sits still on the glass
 
-The tray lives in `CanvasMenuHost` rather than in `Canvas.tsx`, because that is
-already the component holding the engine and every verb the canvas offers — and
-`Canvas.tsx` had no room for another one.
+The tray is reachable from the canvas menu AND from the toolbar's Add menu, and
+the second is the one people looked for. That menu is already "everything that
+puts something new on the page", so leaving a sticker out of it hid the whole
+feature behind a long press on the canvas.
+
+`sticker` gets no button of its own on the rail. It is a mode you are already in
+rather than a tool you switch to, so the rail keeps showing the tool it is about
+to hand back — the call ToolRail already makes for `textbox`.
+
+Click-to-place added one file rather than three more fields on
+`use-canvas-tool.ts`, and the seam is the one `use-blank-tap.ts` sits on:
+
+    use-sticker-arm.ts    which sticker is in hand, and how to put it down
+    use-canvas-tool.ts    which of seven modes is selected
+
+A sticker is the only mode that carries a noun. Every other tool is a verb, and
+this one is a verb and a noun that has to survive from the tray to the tap.
 
 A sticker gets its own recolour method rather than a key on `restyle`'s patch.
 ADR-065 decided `{color, width}` is a pen idea that must not reach text, ADR-079
@@ -5289,3 +5325,255 @@ party, no hundred and no handshake. FigJam leans on emoji reactions and we
 cannot match that without a second icon family, which would break the single
 face ADR-083 exists to keep. Reactions are a different feature from marks, and
 if they are ever wanted they should be argued for on their own.
+
+### ADR-116 — Dark is a theme, not a filter, and ink is whichever the ground is not
+
+**Context.** `paper-night` was written on day one, scoped `:root:not([data-theme])`
+by the theme plugin — and `layout.tsx` set `data-theme="paper"`, so it matched
+nothing and had never once been seen. Persona issue 002 filed that; issues 041 and
+043 are what happened when it was switched on.
+
+Switching it on is one line. The rest of this is why that line was not enough.
+
+**Three things were wrong underneath it**, and they were the same thing three
+times: a brand value written as a literal where a token exists, so it could not
+follow the theme.
+
+1. **Stored ink.** A stroke's colour is user data — docs/10 calls it "the one
+   sanctioned exception" to never hard-coding a hex — and every one of the five pen
+   colours was chosen against warm paper. On charcoal the DEFAULT pen measured
+   **1.24:1**. Not hard to read: not there.
+2. **The marketing site.** `--ink-2` and the band inks are literals. The page
+   half-flipped — `--color-base-*` surfaces went charcoal, the inks stayed light —
+   at **16 measured AA failures**.
+3. **`--color-agent`.** Declared once in `@theme`, so the agent violet never lifted
+   with `--color-accent`, and the hero's own line measured **2.47:1** at night.
+
+**Decision.** One rule, which is ADR-089's, generalised: **the mark is whichever
+the ground is not.**
+
+**The writing surface gets a name.** `--paper` is the page you write on: base-300
+by day (the warmest paper, which it always was) and **base-100 by night — the TRUE
+charcoal, not base-300**, which at night is the lightest of the three and cost
+every ink a full step of contrast. This one choice is what made the rest fit: the
+theme's own `#8A63FF` clears 4.67:1 on `#111418` and only 3.60:1 on `#262B32`.
+
+**Ink maps at paint time and stored data is never rewritten.** `ink-night.ts` holds
+the map; `paintStroke` asks the page. A note drawn at night and exported by day is
+the colours its author picked, because the export path does not go through it.
+
+| Pen | Day | Night | on `#111418` | where it comes from |
+| --- | --- | --- | --- | --- |
+| Charcoal | `#1A1817` | `#F7F3EA` | 16.68 | the brand's warm paper — the ink flips |
+| Violet | `#6A39FF` | `#8A63FF` | 4.67 | the theme's own night accent |
+| Mint | `#00A38D` | `#00C2A8` | 8.16 | the brand mint |
+| Moss | `#3F6B4A` | `#498C5B` | 4.55 | lifted, hue kept |
+| Clay | `#A2593B` | `#C46239` | 4.54 | lifted, hue kept |
+
+Three of five come straight from the brand. The other two are lifted at their own
+hue — and *lifted*, not desaturated: a warm colour gets RICHER on a dark ground, and
+the first attempt capped chroma at the original and produced mud.
+
+**Markers go the other way: deeper, not lighter.** A wash is read THROUGH, so it
+must tint without blinding the ink on top. Yellow `#F2D648` → `#816F06`, Mint
+`#6FD6A8` → `#0B7F58`, Sky `#7EC8F0` → `#0F77A1`, Rose `#F58BB0` → `#CC2C75`.
+
+**And the blend is plain on a dark page.** `multiply` is right on paper and has
+nothing to darken on charcoal. `screen` is the obvious mirror and is also wrong: it
+compounds without a ceiling, and a stroke crossing itself measured **3.07:1** for the
+words on top. Painted alpha runs 0.58 to 0.82 in practice — a stroke overlaps
+itself, so the nominal 0.35 is never what lands — and each night marker is therefore
+dark enough to hold 4.5:1 even fully saturated. The colour is the ceiling.
+
+**The site's two secondary inks simply swap.** `.jd-band-ink` is
+`background: var(--color-base-content)`, so it inverts on its own: charcoal by day,
+paper by night. Its `--ink-2` and the page's trade places — `#c2c8cf` ↔ `#4c5257` —
+and neither value is new. That is the whole site fix, and that it was that small is
+the evidence the palette was always complete and only ever pinned.
+
+**`--color-agent` moves into the theme blocks**, beside `--color-accent`, where it
+lifts with it. It stays in `@theme` too, because that is what registers `text-agent`
+and the rest; the theme block wins because `@layer base` comes after `@layer theme`
+— the same ordering that hid the body font in issue 038, working for us.
+
+**Mint gets a third role.** `--color-primary` is a FILL: 8:1 on charcoal, **2.04:1
+on paper**, so a mint link on a light page failed AA badly and always had. `--mint-ink`
+is mint when it is ink — `#237465` on a light ground, the brand mint on a dark one,
+and inverted again inside the band that inverts. Issue 042.
+
+**Consequences.**
+
+**There is a toggle, and it is on the device.** Auto / Paper / Night on `/account`,
+and *Turn the lights up / down* in the ⌘K palette, which is where somebody actually
+is when the room changes. Kept in `localStorage`, not on the account, for the reason
+`tool-memory.ts` gives about the tool in your hand: which hand holds the pencil is a
+fact about a person, light or dark is a fact about a room, and syncing it would hand
+a desk at noon the answer a phone gave in bed.
+
+**Every dark rule is written twice**, once under
+`@media (prefers-color-scheme: dark) :root:not([data-theme])` and once under
+`:root[data-theme='paper-night']`. The media query cannot see an attribute and the
+attribute cannot see the OS, and the page has to be right for somebody who chose and
+somebody who did not — including with JavaScript off, which is the marketing site's
+normal case.
+
+**`THEME_BOOT` runs before the stylesheet**, and `<html>` carries
+`suppressHydrationWarning` for exactly that one attribute. Without the script a
+chosen theme flashes the other one on every navigation, which is the one thing a
+toggle must not do.
+
+**Anything asking "is this page dark" reads `color-scheme`**, never `matchMedia`.
+They are the same question only until somebody chooses, and the label on the palette
+item is the proof: it offers the opposite of what is ON SCREEN, which for `auto` on a
+dark machine is not the opposite of what is stored.
+
+**What this does NOT do.** The paper grain, `--noise: 1`, is unchanged and is the
+first thing to look at if the night page ever reads flat. Photos are not touched —
+a photograph is not ink and inverting one would be a lie about somebody's picture.
+And the export is deliberately outside all of it: an SVG or a PNG is a document on
+white paper, whatever time it was made.
+
+**Stickers are not touched either, for the photograph's reason.** This was not
+written down at the time because ADR-115 was in flight in the same files; it is
+recorded here after checking it on a dark page. A sticker is an object placed on the
+paper, not a mark made in ink, and it carries a **white die-cut edge that is always
+on** — `paint-order: stroke fill` in `ink-sticker-plane.ts`. So a Charcoal sticker
+whose fill measures **1.04:1 against the night page** is still perfectly legible: it
+reads as a dark icon inside a white halo, exactly as it would on a fridge. Flipping
+it would turn a sticker into an outline of itself.
+
+**That is also why the sticker tray's swatches do NOT flip while the pen's do.**
+They are two different promises. A pen swatch predicts a mark, and ADR-116 changes
+what that mark looks like, so the swatch has to change with it (issue 047). A
+sticker swatch predicts an object whose colour is the same at any hour.
+
+### ADR-117 — A 401 that covers two opposite causes is one sentence short
+
+**Context.** `apps/mcp` answered every refused bearer token with *"That token is not
+valid for this server"*. Persona issue 024 caught two causes arriving under it minutes
+apart in the same run: a token minted for the wrong `resource` (issue 020's shape), and
+a token the person had just revoked from their account page.
+
+They need **opposite** responses. The first means *your configuration is wrong — fix
+the address and try again*. The second means *the person took your access away — stop
+asking*. An agent told the first when the second is true will retry, re-authorize, and
+pester somebody who has just decided they did not want it.
+
+**Decision.** `verifyAccessToken` returns a reason rather than `null`:
+
+```ts
+export type TokenRefusal = "wrong_server" | "not_current";
+export type TokenCheck =
+  | { ok: true; actor: Actor }
+  | { ok: false; why: TokenRefusal };
+```
+
+**Two reasons, not four.** Revoked, expired and never-issued are all one refusal here,
+because `app_resolve_oauth_token` returns no row for all three and telling them apart
+needs a migration. That is honest rather than lossy: all three have the same answer —
+do not retry with this token — and it is the *fourth* cause, wrong audience, that needed
+the opposite one. The seam is cut where the responses diverge, not where the causes do.
+
+**The domain names the reason; the edge says the sentence.** `apps/mcp` owns the words,
+because the 401's wording is a property of that endpoint and the domain should not carry
+copy.
+
+| reason | what the 401 says |
+| --- | --- |
+| `wrong_server` | That token was issued for a different server. Check the address you connected to. |
+| `not_current` | That token is not current. Refresh it — if the refresh is refused too, the person has disconnected you. |
+
+`not_current` deliberately names the **ladder** rather than one rung: refresh first,
+and if that is refused too, you were disconnected. That sentence is correct whether the
+access token expired or the person revoked it, which is exactly why the two do not need
+separating.
+
+**Consequences.**
+
+**`oauth.ts` split six ways**, which was the honest cost issue 024 recorded rather than
+paid. It was the last file on `CLAUDE.md`'s known-violations list at 564 lines, and the
+rule says such a file splits the next time it is edited for another reason. The seam the
+issue predicted from the outside — what a token IS, apart from the dance that mints one —
+is the one that was there. No caller outside the package changed: they all import from
+the barrel.
+
+**The audience check itself is unchanged.** It is still the confused-deputy defence of
+RFC 8707 and still refuses. Only what it says afterwards is different, and a refusal
+that explains itself is not a weaker refusal.
+
+**The smoke suite asserts the two are told apart**, with a live token at the wrong
+audience beside a revoked one at the right audience. The first draft of that check
+failed, correctly: it reached for a token whose whole family had already been revoked
+earlier in the script, so both halves read `not_current`. A test that cannot produce
+the two states cannot prove they are distinguished.
+
+### ADR-118 — An invite is a link the owner sends, because there is no post office
+
+**Context.** Persona issue 001 was the exercise's only blocker: *a family can pay for
+six people and there is nowhere to add the other five.* The striking part is what was
+already built. `createSpace`, `inviteToSpace`, `listInvites`, `revokeInvite`,
+`acceptInvite`, `setMemberRole`, `removeMember`, `spaceSeats` — all of it, with RLS,
+seat caps and a `space_full` error that names the space rather than the link.
+
+**Every one of those functions had zero callers.** `inviteToSpace` wrote a row and
+nothing else happened, because nothing called it, and `acceptInvite` had nowhere on
+earth to be spent. This is the rulebook's *screen over a dead function* shape, in a
+mirror: a live function with no screen at either end.
+
+**Decision — Option A, the cheapest of the two this issue offered.** A *Who is in your
+spaces* section on `/account`, listing every space with its seats, its members and its
+pending invites. Not a space screen at `/s/[id]`. A space screen is the better home
+eventually and it is the thing to build when there are several spaces worth navigating
+between; putting the control on the page that already shows the seat count is what
+makes the count actionable **today**, which is the actual complaint.
+
+**The invite IS a link, and the owner sends it.** There is no mail library in any
+`package.json` in this repo and no send path anywhere. The options were to build email
+or to hand the owner the link, and the second one suits the customer this is for:
+
+> a family are in the same house.
+
+`inviteToSpace` already returned its token exactly once, which is the shape a
+copyable link needs and is not the shape an email needs. The code had already decided
+this; nothing had asked it.
+
+**A new route, `/invite/[token]`.** Without it the link goes nowhere. It reads the
+six `InviteRejected` codes the domain already distinguishes and says a different
+sentence for each — *revoked* is not *expired* is not *sent to a different address* —
+because ADR-020 went to the trouble of keeping them apart and a single "that did not
+work" would throw it away.
+
+**Consequences.**
+
+**A new family space seats one until it is paid for**, and the section says so rather
+than hiding it: *Every seat is taken. Change the plan to add more.* This is honest and
+it is also awkward — somebody makes a space to share and is immediately told it is
+full. The seat count comes from the plan (`app_plan_seats`), so the fix is a plan
+change and not a code change, but the first-run copy is worth revisiting.
+
+**Issue 032 closes with this**, and its own evidence set the wording: the ⌘K entry now
+carries `invite`, `member`, `people`, `family`, `share`, `add` — **the six words
+Kwabena actually typed before he gave up**, in the order he tried them. A palette that
+does not answer the word somebody reaches for is a palette that is not there.
+
+**A member sees the list and no controls**, rather than controls that will refuse
+them, which is the rule the rest of Account already follows.
+
+**What this does NOT do.** No email, so nobody is notified; the owner must send the
+link. No space screen, so a space still has no home of its own. And no way to leave a
+space from the UI — `removeMember` allows removing yourself and nothing calls it that
+way yet.
+
+**The link lives exactly as long as the invite does** (issue 049, 2026-09-16). It was
+stored in the form's own state, so taking an invite back left the dead link, the
+sentence *"Send them this link"* and a **Copy** button sitting on screen — the app
+telling her to send something it had just made refuse. The link is now derived during
+render from the pending list the row above it is drawn from:
+
+    const link = made && pendingIds.includes(made.inviteId) ? made.url : null
+
+Derived rather than cleared in the revoke handler, and that distinction is the whole
+point. Nothing tells the owner's browser that a *guest* accepted, so a handler has
+nothing to fire on; but `pending` already filters `!acceptedAt && !revokedAt`, so the
+next render for any reason drops the link on its own. **One rule covers both endings
+because both endings are the same fact: the invite is no longer pending.**

@@ -2,8 +2,14 @@ import { and, asc, eq, sql } from "drizzle-orm";
 import { withActor, withoutActor, spaces, spaceMembers, users, type Tx } from "@jotacular/db";
 import { canReachSpace, type Actor } from "./actor";
 import { Forbidden, StaleSession } from "./errors";
+import { assertOwner } from "./members";
 
-export type SpaceSummary = { id: string; name: string; kind: string; role: string };
+export type SpaceSummary = {
+  id: string; name: string; kind: string; role: string;
+  /** Whose space it is, when it is not yours. Null when you own it, because
+   *  there is nothing to tell yourself. Issue 052. */
+  ownedBy: string | null;
+};
 
 /**
  * Resolve a Google identity to a user, creating them and their personal space
@@ -42,6 +48,13 @@ export async function listSpaces(actor: Actor): Promise<SpaceSummary[]> {
   return withActor(actor.userId, async (tx) => {
     const rows = await tx.select({
       id: spaces.id, name: spaces.name, kind: spaces.kind, role: spaceMembers.role,
+      // Two spaces both called Personal are the same row to somebody who was
+      // let into one of them, so the owner travels with the name. Issue 052.
+      ownedBy: sql<string | null>`CASE WHEN ${spaceMembers.role} = 'owner' THEN NULL ELSE (
+        SELECT COALESCE(u.display_name, u.email::text)
+          FROM space_members om JOIN users u ON u.id = om.user_id
+         WHERE om.space_id = ${spaces.id} AND om.role = 'owner'
+         ORDER BY om.joined_at LIMIT 1) END`,
     })
       .from(spaces)
       .innerJoin(spaceMembers, eq(spaceMembers.spaceId, spaces.id))
@@ -112,5 +125,27 @@ export async function getToolbarSide(actor: Actor): Promise<ToolbarSide> {
 export async function setToolbarSide(actor: Actor, side: ToolbarSide) {
   await withActor(actor.userId, async (tx) => {
     await tx.update(users).set({ toolbarSide: side }).where(eq(users.id, actor.userId));
+  });
+}
+
+export const MAX_SPACE_NAME = 60;
+
+/**
+ * Rename a space. Issue 003.
+ *
+ * One column by name, never a spread of caller input: the owner UPDATE policy on
+ * `spaces` is row-scoped only, so what stops this reaching `plan` is that this
+ * statement does not mention it. Issue 048.
+ */
+export async function renameSpace(actor: Actor, spaceId: string, name: string): Promise<string> {
+  const trimmed = name.trim().replace(/\s+/g, " ").slice(0, MAX_SPACE_NAME);
+  if (!trimmed) throw new Forbidden("A space needs a name");
+
+  return withActor(actor.userId, async (tx) => {
+    await assertOwner(tx, actor, spaceId);
+    const rows = await tx.update(spaces).set({ name: trimmed })
+      .where(eq(spaces.id, spaceId)).returning({ name: spaces.name });
+    if (!rows[0]) throw new Forbidden("That is not your space");
+    return rows[0].name;
   });
 }

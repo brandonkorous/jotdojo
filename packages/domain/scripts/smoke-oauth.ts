@@ -92,14 +92,21 @@ check("an authorization code is single use", await refused(() => exchangeAuthCod
   redirectUri: REDIRECT, resource: RESOURCE,
 })));
 
-const agent = await verifyAccessToken(tokens.access_token, RESOURCE);
+// Null when the token is good, otherwise the reason it was refused. Issue 024.
+const why = async (token: string, audience: string) => {
+  const result = await verifyAccessToken(token, audience);
+  return result.ok ? null : result.why;
+};
+
+const first = await verifyAccessToken(tokens.access_token, RESOURCE);
+const agent = first.ok ? first.actor : null;
 check("access token resolves to an agent actor", agent?.type === "agent");
 check("agent carries its granted scopes",
   agent?.type === "agent" && agent.scopes.includes("notes:read"));
 check("token minted for jotacular is REJECTED at kanninja's audience",
-  (await verifyAccessToken(tokens.access_token, OTHER_RESOURCE)) === null);
+  (await why(tokens.access_token, OTHER_RESOURCE)) === "wrong_server");
 check("a garbage token resolves to nothing",
-  (await verifyAccessToken("nonsense", RESOURCE)) === null);
+  (await why("nonsense", RESOURCE)) === "not_current");
 
 check("agent can read the granted space", (await listNotes(agent!, personal)).length === 1);
 check("agent sees only granted spaces", (await listSpaces(agent!)).length === 1);
@@ -131,7 +138,7 @@ const rotated = await refreshTokens({
 check("refresh returns a NEW access token", rotated.access_token !== tokens.access_token);
 check("refresh rotates the refresh token", rotated.refresh_token !== tokens.refresh_token);
 check("the old access token is still valid until it expires",
-  (await verifyAccessToken(tokens.access_token, RESOURCE)) !== null);
+  (await why(tokens.access_token, RESOURCE)) === null);
 
 // Replaying a rotated-away refresh token means the chain leaked.
 check("replaying the old refresh token is refused", await refused(() => refreshTokens({
@@ -148,15 +155,21 @@ const fresh = await exchangeAuthCode({
 check("connection is listed on the account", (await listConnections(A)).length >= 1);
 await revokeToken(fresh.access_token);
 check("revocation kills the access token",
-  (await verifyAccessToken(fresh.access_token, RESOURCE)) === null);
+  (await why(fresh.access_token, RESOURCE)) === "not_current");
 
 const again = await exchangeAuthCode({
   code: await mint(), codeVerifier: verifier, clientId: client.client_id,
   redirectUri: REDIRECT, resource: RESOURCE,
 });
+// Issue 024: a wrong address and a revoked token need opposite responses, so
+// they must not arrive as the same refusal. `again` is live, `fresh` is revoked.
+check("a revoked token and a wrong-address one are told APART",
+  (await why(again.access_token, OTHER_RESOURCE)) === "wrong_server"
+  && (await why(fresh.access_token, RESOURCE)) === "not_current");
+
 await revokeConnection(A, client.client_id);
 check("revoking a connection kills its tokens",
-  (await verifyAccessToken(again.access_token, RESOURCE)) === null);
+  (await why(again.access_token, RESOURCE)) === "not_current");
 
 // A native client cannot register the port the OS hands it. RFC 8252 s7.3.
 const LOOPBACK = ["http://127.0.0.1/callback/x", "http://localhost/callback/x"];

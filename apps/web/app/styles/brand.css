@@ -26,3 +26,25 @@
   height: 1.9rem;
   border-radius: 0.5rem;
 }
+
+/* The white wordmark, on any ground the theme has turned dark. `content` on an
+   <img> swaps the artwork and keeps the alt text, so there is one element and
+   no second request on the theme nobody is using. ADR-116. */
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme]) .jd-wordmark {
+        content: url("/brand/wordmark-dark.svg");
+    }
+    /* Except where the ground itself inverted: `.jd-band-ink` IS
+       `--color-base-content`, so at night it is paper and wants the dark mark.
+       The footer is `base-200` and stays dark, so it is not an exception. */
+    :root:not([data-theme]) .jd-band-ink .jd-wordmark {
+        content: url("/brand/wordmark.svg");
+    }
+}
+
+:root[data-theme='paper-night'] .jd-wordmark {
+    content: url("/brand/wordmark-dark.svg");
+}
+:root[data-theme='paper-night'] .jd-band-ink .jd-wordmark {
+    content: url("/brand/wordmark.svg");
+}

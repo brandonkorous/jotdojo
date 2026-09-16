@@ -3,6 +3,8 @@ import type { ViewSnapshot } from "./ink-viewport";
 import type { Bounds } from "./ink-geometry";
 import { boxAt, boxesBounds, drawnBox, isEmpty, newBox } from "./ink-objects";
 import { InkPlane, MIN_SIZE } from "./ink-plane";
+import { NARROW } from "./use-narrow";
+import { newBoxWidth } from "./new-box-width";
 
 /**
  * The text half of the engine. ADR-065.
@@ -15,9 +17,10 @@ import { InkPlane, MIN_SIZE } from "./ink-plane";
  * Everything here is world coordinates. `InkPlane` owns the elements.
  */
 
-/** A new box is about a third of the visible width, which is a paragraph on a
- *  phone and a column on a laptop. Somebody can drag it after. */
-const NEW_WIDTH_FRACTION = 0.33;
+/** The rule lives in `new-box-width.ts` so a smoke script can assert it; this
+ *  file only answers the question it cannot: whether we are on a phone. */
+const onPhone = () =>
+  typeof window !== "undefined" && window.matchMedia(NARROW).matches;
 
 export type TextLayerHost = {
   /** A box changed and the page should hear about it. */
@@ -99,7 +102,7 @@ export class InkTextLayer {
       return true;
     }
     const box = newBox(x, y, { size: MIN_SIZE, color: style.color },
-      Math.max(120, visibleWidth * NEW_WIDTH_FRACTION));
+      newBoxWidth(visibleWidth, onPhone()));
     this.boxes.push(box);
     this.plane.render(this.boxes);
     this.plane.focus(box.id);

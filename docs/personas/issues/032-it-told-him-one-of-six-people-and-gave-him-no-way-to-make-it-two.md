@@ -1,13 +1,13 @@
 # 032 — It told him "1 of 6 people" and gave him no way to make it two
 
-**Status:** open
+**Status:** fixed
 **Severity:** major
 **Found by:** P05 Kwabena · act 7 · 2026-09-16
 **Surface:** app › Account › What you are on
 **Filed:** 2026-09-16
-**Fixed:** —
-**Confirmed by:** —
-**Blocked on:** 001
+**Fixed:** 2026-09-16
+**Confirmed by:** the same page that shows the count · 2026-09-16
+**Blocked on:** —
 
 ## What happened
 
@@ -106,3 +106,46 @@ price, however many of you"* says the true half without inviting the comparison.
 honest and actionable. **Ease drops to 5 on a Family space**, and the gap column on
 its row now says why: the one number on it that is about people is the one number a
 customer cannot do anything with.
+
+---
+
+## Fixed, 2026-09-16 — the number now has somewhere to go
+
+This issue's harm was never the absence. It was a **presence**: `1 of 6 people` is
+the software saying it keeps score, which every reasonable person reads as *the other
+five go somewhere*. They went nowhere.
+
+[001](001-nobody-can-add-anybody-to-a-space.md) is fixed, and the control landed on
+**the same page, in the same scroll, as the count that provoked the search** —
+`/account` now carries *Who is in your spaces*, with seats taken of total, the members
+by name, and an invite form. That was the deciding reason for Option A over a separate
+space screen: this issue is about a number and a person looking for what it means, so
+the answer belongs beside the number.
+
+**And ⌘K answers now.** The palette entry is *Account, people and capture tokens*, and
+its keywords are **the six words this issue recorded him typing**, in the order he
+tried them:
+
+```
+invite   member   people   family   share   add
+```
+
+plus `seat` and `space`. A palette that does not answer the word somebody reaches for
+is a palette that is not there, and this issue is the evidence of what they reach for.
+
+## Confirmed by
+
+**2026-09-16.** The section renders on `/account` above *An agent that reads new
+notes*, and the whole membership path is proved by `pnpm invite:smoke`, **16 of 16** —
+see [001](001-nobody-can-add-anybody-to-a-space.md).
+
+His exact case, a Family space at six seats, is in that suite:
+
+```
+ok    a new family space seats ONE until it is paid for
+ok    ...and six once it is
+ok    the guest is in the space
+ok    ...and a seat is spent
+```
+
+The count he could not act on now moves when he acts on it.

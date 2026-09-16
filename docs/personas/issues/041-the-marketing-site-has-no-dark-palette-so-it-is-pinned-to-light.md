@@ -1,13 +1,13 @@
 # 041 — The marketing site has no dark palette, so it is pinned to light
 
-**Status:** open — the pin is in place and is now inert; see issue 043
+**Status:** fixed
 **Severity:** major
 **Found by:** the dark pass for issue 002 · apex home · 2026-09-16
 **Surface:** apex › every page
 **Filed:** 2026-09-16
-**Fixed:** — (pinned to light 2026-09-16; the palette itself is not written)
-**Confirmed by:** 2026-09-16, for the pin
-**Blocked on:** design
+**Fixed:** 2026-09-16 — the pin is gone and the site has a night palette. ADR-116
+**Confirmed by:** 2026-09-16
+**Blocked on:** —
 
 ## What happened
 
@@ -145,3 +145,55 @@ be true before dark can be switched on again.
 Apex rows are scored **light only**, and now say so rather than saying
 `dark: unreachable (002)` — the difference matters: dark is reachable, and the site
 is deliberately opted out of it.
+
+---
+
+## Fixed, 2026-09-16 — the pin is gone, and the palette was already there
+
+The four questions this issue said needed answering turned out to be one question,
+and the stylesheet had already answered it.
+
+**`.jd-band-ink` is `background: var(--color-base-content)`**, so it inverts on its
+own: charcoal by day, warm paper by night. Nothing had to be designed for it. And
+once the page goes dark and that band goes light, **the two secondary inks simply
+swap** — `#c2c8cf` and `#4c5257` trade places. Neither value is new.
+
+```
+site ground  night  #262b32   <- #c2c8cf   8.45
+quiet band   night  #181c21   <- #c2c8cf  10.15
+ink band     night  #F7F3EA   <- #4c5257   7.15
+mint band    both   #00C2A8   <- #0d3f37   5.21   (unchanged, ADR-089)
+```
+
+That the whole fix was a swap is the evidence the palette was complete all along and
+only ever pinned to one theme.
+
+Two literals went with it, both the same mistake in a different place:
+
+- **The quoted-canvas texture** was an inline SVG with `fill='%23111418'` baked in —
+  invisible on a charcoal page. It is a `radial-gradient` in
+  `color-mix(… var(--color-base-content) 7% …)` now, in `.jd-site` and the footer.
+- **`--color-agent`** lived in `@theme`, which is theme-independent, so the agent
+  violet never lifted with `--color-accent` and the hero's own line measured
+  **2.47:1**. It is declared in both theme blocks now.
+
+**The wordmark swaps in CSS, by theme.** `content: url(…)` on the `<img>`, under the
+same selectors the themes use — with `.jd-band-ink` as the one exception, because
+that ground inverts. Not `<picture media="(prefers-color-scheme: dark)")`: that
+asks the OS, and it deleted the wordmark the one time it was tried.
+
+## Confirmed by
+
+**2026-09-16.** Every apex page, both themes, every band revealed by scrolling:
+
+| page | light | dark |
+| --- | --- | --- |
+| home | **0** | **0** |
+| `/pricing` | **0** | **0** |
+| `/privacy` | **0** | **0** |
+| `/blog` | **0** | **0** |
+| `/blog/[slug]` | **0** | **0** |
+
+Dark was **16** when this issue was filed. The last one to go was the post date,
+still on `opacity: 0.5` in `prose.css` — the post LIST had been using `--ink-2`
+correctly all along, and the post itself was the rule ADR-076 and ADR-082 missed.

@@ -5,6 +5,8 @@ import type { Align } from "@/lib/toolbar-side";
 import { isInk } from "@/lib/canvas-tool";
 import { useCanvasTool } from "@/lib/use-canvas-tool";
 import { useBlankTap } from "@/lib/use-blank-tap";
+import { useChromeDim } from "@/lib/use-chrome-dim";
+import { useStickerArm } from "@/lib/use-sticker-arm";
 import { styleFor } from "@/lib/ink-style";
 import { ToolOptions } from "./ToolOptions";
 import { useMarks } from "@/lib/use-marks";
@@ -19,6 +21,8 @@ import { ScribbleHint } from "./ScribbleHint";
 import { Chrome } from "./Chrome";
 import { Presence } from "./Presence";
 import { RemarkSurfaces } from "./RemarkSurfaces";
+import { StickerTray } from "./StickerTray";
+import { StickerGhost } from "./StickerGhost";
 import type { InkEngine, SelectionSummary } from "@/lib/ink-engine";
 import { NO_SELECTION } from "@/lib/ink-selection";
 import { useNoteBody } from "@/lib/use-note-body";
@@ -44,8 +48,7 @@ export function Canvas({
   user: { name?: string | null; image?: string | null; email?: string | null } | null;
   toolbarPreference: Align;
 }) {
-  const [dimmed, setDimmed] = useState(false);
-  const dimmedRef = useRef(false);
+  const { dimmed, wake, whileWriting } = useChromeDim();
   /** The whole page. The camera listens here so it can be moved on every tool,
    *  and the menu triggers here so it exists on every tool. ADR-102. */
   const shellRef = useRef<HTMLDivElement>(null);
@@ -55,9 +58,8 @@ export function Canvas({
   // reopen the picker, and a flag that is already true does nothing.
   const [cameraSignal, setCameraSignal] = useState(0);
   const [micSignal, setMicSignal] = useState(0);
+  const [trayOpen, setTrayOpen] = useState(false);
   const [inkBlockId, setInkBlockId] = useState<string | null>(null);
-
-  const dimTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const { body, state, onChange: save, adopt } = useNoteBody(noteId, initialBody, initialRevision);
   // Presence is for people, and an anonymous draft is one device by
@@ -81,31 +83,18 @@ export function Canvas({
   const onChange = (value: string) => {
     save(value);
     writing();
-
-    dim(true);
-    if (dimTimer.current) clearTimeout(dimTimer.current);
-    dimTimer.current = setTimeout(() => dim(false), 3000);
+    whileWriting();
   };
-
-  /**
-   * Dim the chrome, without a dispatch when it is already where it should be.
-   *
-   * `onPointerMove` on the shell is the only React call in the pointer hot
-   * path, and setting state to its current value is NOT free -- it still
-   * enters the dispatcher. Since the canvas gained two-finger gestures it
-   * fires for both fingers of every pinch, so the guard now earns its keep.
-   */
-  function dim(on: boolean) {
-    if (dimmedRef.current === on) return;
-    dimmedRef.current = on;
-    setDimmed(on);
-  }
 
   const { input, block, mark, heading, syncBlock, onKeyDown } = useMarks(onChange);
   const {
     tool, setTool, styles, setStyle, choose, armTextBox, aimTool,
     inkStarted, startInk, optionsOpen, closeOptions,
   } = useCanvasTool(input, hasInk);
+
+  /** Which sticker is in hand, if any. A mode with a payload, so it keeps its
+   *  own state machine and its own way out. ADR-115. */
+  const sticker = useStickerArm(tool, setTool, startInk);
 
   /** A tap on bare canvas puts the caret in the spine, and a pan does not.
    *  Its own file because that distinction is six pixels of arithmetic and a
@@ -124,11 +113,16 @@ export function Canvas({
   };
 
   return (
-    <CanvasMenuHost noteId={noteId} engine={engineRef} selection={selection}>
+    <CanvasMenuHost
+      noteId={noteId}
+      engine={engineRef}
+      selection={selection}
+      onSticker={() => setTrayOpen(true)}
+    >
       <div
         ref={shellRef}
         className="jd-canvas-shell"
-        onPointerMove={() => dim(false)}
+        onPointerMove={wake}
         {...blankTap}
       >
         <Spine
@@ -167,6 +161,7 @@ export function Canvas({
             onDraw={writing}
             onTextPlaced={() => setTool("text")}
             onAiming={aimTool}
+            sticker={sticker.armed}
             live={user !== null}
             outer={shellRef}
             held={engineRef}
@@ -193,10 +188,24 @@ export function Canvas({
 
         {inkStarted && <InkTranscript noteId={noteId} blockId={inkBlockId} live={user !== null} />}
 
-        <Chrome align={toolbarPreference} user={user} dimmed={dimmed} tool={tool} onTool={choose}
+        {/* `railTool`, not `tool`: a loaded sticker has no button of its own, so
+            the rail keeps showing the tool it is about to hand back. ADR-115. */}
+        <Chrome align={toolbarPreference} user={user} dimmed={dimmed}
+          tool={sticker.railTool} onTool={choose}
           onCamera={() => setCameraSignal((n) => n + 1)}
           onMic={() => setMicSignal((n) => n + 1)}
-          onTextBox={addTextBox} />
+          onTextBox={addTextBox}
+          onSticker={() => setTrayOpen(true)} />
+
+        <StickerTray
+          open={trayOpen}
+          onClose={() => setTrayOpen(false)}
+          onPick={sticker.arm}
+        />
+
+        {/* The loaded sticker, following the pointer. Mouse only -- a finger
+            has no hover, so on a phone the tap is the preview. ADR-115. */}
+        <StickerGhost armed={sticker.armed} />
 
         <ToolOptions
           tool={tool}

@@ -120,3 +120,60 @@ export async function deleteNote(actor: Actor, noteId: string): Promise<void> {
     await audit(tx, actor, rows[0].spaceId, "note.delete", noteId);
   });
 }
+
+/**
+ * How long a deleted note can be got back.
+ *
+ * docs/13 promises 30 days and then a purge. A delete nobody can undo inside
+ * that window is the policy written down and not kept. Issue 013.
+ */
+export const DELETED_DAYS = 30;
+
+export type DeletedNote = {
+  id: string; title: string | null; preview: string; deletedAt: Date;
+};
+
+/** What is still inside the 30 days, newest first. */
+export async function listDeletedNotes(actor: Actor, spaceId: string): Promise<DeletedNote[]> {
+  if (!canReachSpace(actor, spaceId)) throw new Forbidden("This connection cannot reach that space");
+
+  return withActor(actor.userId, async (tx) => {
+    const rows = await tx.execute(sql`
+      SELECT n.id, n.title, n.deleted_at,
+             coalesce(first_block.content, '') AS preview
+        FROM notes n
+        LEFT JOIN LATERAL (
+          SELECT coalesce(b.body, b.transcript) AS content
+            FROM blocks b
+           WHERE b.note_id = n.id
+             AND coalesce(b.body, b.transcript, '') <> ''
+           ORDER BY b.position
+           LIMIT 1
+        ) first_block ON true
+       WHERE n.space_id = ${spaceId}
+         AND n.deleted_at IS NOT NULL
+         AND n.deleted_at > now() - make_interval(days => ${DELETED_DAYS})
+       ORDER BY n.deleted_at DESC, n.id DESC
+       LIMIT 100
+    `);
+
+    return (rows as unknown as Array<Record<string, unknown>>).map((r) => ({
+      id: String(r.id),
+      title: (r.title as string | null) ?? null,
+      preview: previewOf(String(r.preview ?? "")),
+      deletedAt: new Date(String(r.deleted_at)),
+    }));
+  });
+}
+
+/** Put one back. Refuses a note that was never deleted, so the button cannot
+ *  quietly do nothing. */
+export async function restoreNote(actor: Actor, noteId: string): Promise<void> {
+  await withActor(actor.userId, async (tx) => {
+    const rows = await tx.select({ spaceId: notes.spaceId, deletedAt: notes.deletedAt })
+      .from(notes).where(eq(notes.id, noteId)).limit(1);
+    if (!rows[0]?.deletedAt) throw new NotFound();
+    await tx.update(notes).set({ deletedAt: null }).where(eq(notes.id, noteId));
+    await audit(tx, actor, rows[0].spaceId, "note.restore", noteId);
+  });
+}

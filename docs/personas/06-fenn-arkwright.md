@@ -4,7 +4,7 @@
 **Author:** Brandon Korous
 **Last Updated:** 2026-09-16
 
-**Status:** partial — the triage pipeline is proved; the model's judgment is not
+**Status:** partial — the people half closed on 2026-09-16; the model's judgment is still not proved
 **Run:** 2026-09-16
 **Plan:** team — £19/mo, up to 25
 **Door:** the blog post `connect-jotacular-to-claude`, found by searching
@@ -334,5 +334,58 @@ in [029](issues/029-the-agent-wrote-a-note-and-nothing-said-so-and-nothing-takes
 | --- | --- |
 | **Whether the agent's comment is any good** | `TRIAGE_PROVIDER=fake`. Its remark is the canned `TRIAGE_FAKE_COMMENT`, and it talks about an MOT on Monday, which is nothing to do with his note. The **pipeline** is measured; the **judgment** is not |
 | **The agent write and revert loop** | Covered by P03 and filed as 029. Repeating it here would add nothing |
-| **A second person in the space** | Issue 001. Team is sold on 25 people and he can add none of them — the same wall P05 walked into, one plan up |
-| **Comments from another human** | Same reason |
+| **A second person in the space** | ~~Issue 001~~ — **this came off the list on 2026-09-16. See act 9 below.** |
+| **Comments from another human** | Now reachable, and still not done: Sowande is in the space but has not written on one of Fenn's notes |
+
+---
+
+## Act 9, re-run 2026-09-16 — the five who are not there
+
+Issue 001 was fixed the same day this ran, so RULE #7 asks for the act that was
+blocked on it. This is it, driven as Fenn on the screens.
+
+**Where the routes ended.** The act says to try five places. The first one answered:
+
+| Where | What it said |
+| --- | --- |
+| `/account` › *Who is in your spaces* | `Personal` · **`1 of 25 seats taken`** · **Make an invite** |
+
+**25, not 6.** Team's own seat number, which is a branch nothing but this persona
+reaches from a screen.
+
+**They invited two at once**, which P05 never did — he only ever had one pending:
+
+```
+sowande@arkwright-sowande.test         — invited, not in yet   [Take it back]
+nadia.chaudhry@arkwright-sowande.test  — invited, not in yet   [Take it back]
+                                       3 of 25 seats taken
+```
+
+Two rows, two different links, one seat each. **Then the case a careless fix would
+get wrong**: they took back **Sowande's** invite while **Nadia's** link was the one
+on screen. Nadia's link stayed, Sowande's row went, and the count fell to
+`2 of 25`. That is issue
+[049](issues/049-she-took-the-invite-back-and-the-link-is-still-on-screen.md)
+holding under a second pending invite, which is the condition it was never tested
+under.
+
+**Sowande joined.** Re-invited, he opened the link and landed on his dashboard
+reading Fenn's own note — *"party wall award due back from Nuttall before the 30th,
+chase Tuesday"*. The partner can read the week. That is what the Team plan is for
+and no run had ever shown it.
+
+**And Sowande's Account found what P05's guest did not.** Two sections, both headed
+`Personal` — Fenn's at `3 of 25` and his own at `1 of 1`. The member lists
+underneath told them apart; the headings did not. That is
+[052](issues/052-ama-sees-two-spaces-both-called-personal.md) on a surface the
+first fix missed, **and the issue had already been written up claiming that surface
+was checked.** Both are fixed now and the issue says so.
+
+**Isolation (RULE #7).** Sowande opened P01 Marisol's note id directly:
+
+> That page is not here — The link may be old, or it may have a typo in it.
+
+Refused, and it does not admit the note exists.
+
+**Act 9: done.** Fenn holds a Team space with their partner in it, one invite
+pending, and 22 seats left.

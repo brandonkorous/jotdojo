@@ -31,7 +31,10 @@
 
     /* The canvas, quoted, under the whole page. design.md §14: very low
      contrast, wide spacing, never noisy. */
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24'%3E%3Ccircle cx='1.5' cy='1.5' r='1.1' fill='%23111418' fill-opacity='0.07'/%3E%3C/svg%3E");
+    background-image: radial-gradient(
+        color-mix(in oklab, var(--color-base-content) 7%, transparent) 1.1px,
+        transparent 1.1px);
+    background-size: 24px 24px;
 }
 
 /* --- bar ---------------------------------------------------------------- */
@@ -118,11 +121,37 @@
     color: var(--color-primary);
 }
 .jd-band-ink a:not(.btn) {
-    color: var(--color-primary);
+    color: var(--mint-ink);
     text-decoration: underline;
+}
+/* This band is `--color-base-content`, so it is charcoal by day and paper by
+   night -- and mint-as-ink has to go the other way from the page's. */
+.jd-band-ink {
+    --mint-ink: #00c2a8;
 }
 .jd-band-ink {
     --ink-2: #c2c8cf;
+}
+
+/* At night the two grounds trade places -- the page goes charcoal and the ink
+   band, which is `--color-base-content`, goes paper -- so the two secondary
+   inks trade with them. Neither value is new. ADR-116. */
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme]) .jd-site {
+        --ink-2: #c2c8cf;
+    }
+    :root:not([data-theme]) .jd-band-ink {
+        --ink-2: #4c5257;
+        --mint-ink: #237465;
+    }
+}
+
+:root[data-theme='paper-night'] .jd-site {
+    --ink-2: #c2c8cf;
+}
+:root[data-theme='paper-night'] .jd-band-ink {
+    --ink-2: #4c5257;
+    --mint-ink: #237465;
 }
 
 /* Mint, full bleed. ADR-089.

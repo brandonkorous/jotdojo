@@ -200,18 +200,19 @@ operate is not an 8, and a plain screen that gets the job done in two taps is no
 **A screen is not scored until you have seen it at 360px.** Score it there first,
 not last: this is a phone product and the desktop view is the afterthought.
 
-**On themes, the honest position as of 2026-09-16.** The rule is normally "both
-themes or it is not scored". Jotacular ships two themes and **only one of them can
-ever appear**: `paper-night` is scoped `:root:not([data-theme])` and `layout.tsx`
-hard-sets `data-theme="paper"`, so dark mode never activates on any device. Issue
-002 carries it. Until 002 is fixed:
+**On themes, the position as of 2026-09-16.** The rule is **both themes or it is
+not scored**, and it is now enforceable: issue 002 is fixed and dark mode is on
+(ADR-116). There is a toggle on `/account` and one in the ⌘K palette, so a screen
+can be composed in either theme on purpose rather than by changing the machine.
 
-- Score every screen in **paper (light), at 360px and at desktop width**.
-- Write **`dark: unreachable (002)`** in the gap column. Do not write "not
-  checked", because it was checked and the answer is known; and do not leave it
-  blank, because a blank reads as a pass.
-- **When 002 is fixed, every scored row is stale** and a dark pass is owed on all
-  of them. Say so in the issue when you close it.
+- Score every screen in **both themes, at 360px and at desktop width**.
+- A contrast audit is **not** a score. Zero AA failures on a route says no text is
+  unreadable; it does not say the screen looks right. Compose the screen in dark
+  and look at it.
+- **Every row scored before 2026-09-16 was scored in light only**, because dark
+  could not be reached then. Those rows carry a note saying so. A dark pass is
+  **owed** on each one, and the note stays until it is paid — it is a measurement,
+  not a score.
 
 | Score | Means |
 | --- | --- |
@@ -483,7 +484,7 @@ Fixing what the run finds is the job (RULE #3). These are the edges of it:
 5. Fill in the **Account** block as soon as sign-in gives you the values. A run
    nobody can revisit is a run nobody can confirm.
 6. **On every screen you open**: score it in [rating.md](rating.md) at 360px and at
-   desktop width, and write its gap to 10 plus `dark: unreachable (002)` (RULE #6).
+   desktop width, **in both themes**, and write its gap to 10 (RULE #6).
 7. **On every defect**: file, fix, re-run the step as the person, confirm in the
    issue, re-score the screen (RULE #3). Do not carry it to the end of the run.
 8. Work the **standing checks** as you go. The persona file names its own instance

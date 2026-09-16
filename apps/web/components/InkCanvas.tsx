@@ -10,6 +10,7 @@ import { useLiveNote } from "@/lib/use-live";
 import { useInkTrouble } from "@/lib/use-ink-feed";
 import { downloadSelection } from "@/lib/export-client";
 import type { InkStyle } from "@/lib/ink-style";
+import type { ArmedSticker } from "@/lib/ink-sticker-layer";
 import { useInkEngine } from "@/lib/use-ink-engine";
 import { useCanvasKeys } from "@/lib/use-canvas-keys";
 import { SelectionBar } from "./SelectionBar";
@@ -27,8 +28,8 @@ import { ZoomChip } from "./ZoomChip";
  */
 
 export function InkCanvas({
-  noteId, tool, style, onReady, onDraw, onTextPlaced, onAiming, live = false,
-  outer, held, onSelection,
+  noteId, tool, style, onReady, onDraw, onTextPlaced, onAiming, sticker = null,
+  live = false, outer, held, onSelection,
 }: {
   noteId: string;
   /**
@@ -48,6 +49,14 @@ export function InkCanvas({
   onAiming?: (on: boolean) => void;
   /** A text box was placed, so the caller can hand the tool back to the spine. */
   onTextPlaced?: () => void;
+  /**
+   * Which sticker is loaded, if any. ADR-115.
+   *
+   * A mode with a PAYLOAD, which no other tool has: `tool` says a tap means
+   * "put one here" and this says which one. Null on every other tool, and on
+   * the marketing hero, which has no plane to stick one to.
+   */
+  sticker?: ArmedSticker | null;
   /** Somebody is drawing here, for presence. Called per finished stroke, never
    *  per pointer sample -- the hot path stays out of React. ADR-058. */
   onDraw?: () => void;
@@ -161,6 +170,7 @@ export function InkCanvas({
   useEffect(() => { engineRef.current?.setTool(ink); }, [ink, engineRef]);
   useEffect(() => { engineRef.current?.setTextReachable(reachable); }, [reachable, engineRef]);
   useEffect(() => { engineRef.current?.setStyle(style); }, [style, engineRef]);
+  useEffect(() => { engineRef.current?.setSticker(sticker); }, [sticker, engineRef]);
 
   /**
    * The last line of defence for unsaved strokes AND for a sentence in progress.

@@ -189,6 +189,9 @@ jobs:
           # edge rendered to actual pixels. ADR-115.
           pnpm stickers:smoke
           pnpm sticker-art:smoke
+          # And where one LANDS: centred on the tap, at the size the ghost
+          # that followed the pointer promised. ADR-115.
+          pnpm sticker-place:smoke
           # Seats, counted at invite time and again at accept time. ADR-112.
           pnpm seats:smoke
 

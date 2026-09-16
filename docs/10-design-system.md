@@ -86,6 +86,40 @@ Then `<html data-theme="paper">`. A matching `paper-night` inverts paper and cha
 
 **Never hardcode a hex in a component.** Every value above lives in the theme so islands and dark mode resolve correctly. The one sanctioned exception is stroke colour inside the ink canvas — that is user data, not design, and even those swatches are seeded from resolved tokens.
 
+### The night half of the palette
+
+ADR-116. `paper-night` had never been seen until 2026-09-16, and switching it on
+found three brand values written as literals where a token exists. The rule for all
+of them is ADR-089's: **the mark is whichever the ground is not.**
+
+**`--paper` is the writing surface**, named apart from the panels around it: base-300
+by day, **base-100 by night** — the true charcoal, because at night base-300 is the
+lightest of the three and costs every ink a full step of contrast.
+
+**Stored ink maps at paint time**, never in the database, so an export is always the
+colours its author picked. Three of the five come straight from the brand:
+
+| Pen | Day | Night | on `#111418` |
+| --- | --- | --- | --- |
+| Charcoal | `#1A1817` | `#F7F3EA` | 16.68 |
+| Violet | `#6A39FF` | `#8A63FF` | 4.67 |
+| Mint | `#00A38D` | `#00C2A8` | 8.16 |
+| Moss | `#3F6B4A` | `#498C5B` | 4.55 |
+| Clay | `#A2593B` | `#C46239` | 4.54 |
+
+**Markers go the other way — deeper, not lighter** — because a wash is read through
+and must not blind the ink on top: `#816F06`, `#0B7F58`, `#0F77A1`, `#CC2C75`. And
+the blend is plain on a dark page: `multiply` has nothing to darken and `screen`
+compounds past the words.
+
+**`--mint-ink` is mint when it is INK rather than a ground.** `--color-primary` is a
+fill — 8:1 on charcoal, 2.04:1 on paper — so a mint link on a light page was never
+readable. `#237465` light, the brand mint dark, inverted again inside `.jd-band-ink`.
+
+**Every dark rule is written twice**, under the media query and under
+`[data-theme='paper-night']`, because a person can choose and the media query cannot
+see a choice.
+
 ## The extra colour role: `agent`
 
 The most important design decision in the product.

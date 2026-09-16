@@ -6,7 +6,9 @@
    habit. */
 
 .jd-prose { max-width: 44rem; }
-.jd-prose > time { display: block; margin-bottom: 2rem; font-size: 0.85rem; opacity: 0.5; }
+/* `--ink-2`, not `opacity` -- docs/10 "Text you must read is not dimmed". The
+   post LIST already did this right; the post itself was the one that did not. */
+.jd-prose > time { display: block; margin-bottom: 2rem; font-size: 0.85rem; color: var(--ink-2); }
 .jd-prose h2 { margin-top: 2.5rem; margin-bottom: 0.75rem; font-family: var(--font-head); font-size: 1.5rem; }
 .jd-prose h3 { margin-top: 1.75rem; margin-bottom: 0.5rem; font-family: var(--font-head); font-size: 1.15rem; }
 .jd-prose p, .jd-prose li { line-height: 1.7; }

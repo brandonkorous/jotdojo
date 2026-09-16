@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { brand, pigment } from "@/lib/brand";
 import "./globals.css";
+import { THEME_BOOT } from "@/lib/theme";
 
 export const metadata: Metadata = {
     title: brand.name,
@@ -22,14 +23,23 @@ export const viewport: Viewport = {
 };
 
 /**
- * `data-theme` pins light, and that is what keeps `paper-night` unreachable.
- * Dropping it is issue 002's part 1 and it works -- but stored ink is not ready
- * for a charcoal page: the DEFAULT pen measures 1.24:1 on it. Issue 043.
+ * No `data-theme` from the server: `paper-night` is scoped
+ * `:root:not([data-theme])`, so its ABSENCE is what lets the room decide.
+ * `THEME_BOOT` puts one back before the first paint if somebody chose.
+ * Issues 002 and 043, ADR-116.
+ *
+ * `suppressHydrationWarning` covers exactly that one attribute, and is React's
+ * own answer for it -- the boot script writes `data-theme` before hydration, so
+ * React finds an attribute the server did not send. Nothing else here is
+ * dynamic.
  */
 export default function RootLayout({ children }: { children: React.ReactNode }) {
     return (
-        <html lang="en" data-theme="paper">
+        <html lang="en" suppressHydrationWarning>
             <head>
+                {/* Before the stylesheet, so a chosen theme never flashes the
+                    other one. It is inline for the same reason. */}
+                <script dangerouslySetInnerHTML={{ __html: THEME_BOOT }} />
                 <link
                     rel="stylesheet"
                     href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&family=Caveat:wght@500;600&display=swap"

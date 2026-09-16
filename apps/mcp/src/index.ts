@@ -1,12 +1,22 @@
 import { createServer } from "node:http";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
-import { verifyAccessToken, DomainError } from "@jotacular/domain";
+import { verifyAccessToken, DomainError, type TokenRefusal } from "@jotacular/domain";
 import { registerTools } from "./tools.js";
 
 const PORT = Number(process.env.MCP_PORT ?? 3402);
 const RESOURCE = process.env.MCP_RESOURCE ?? `http://localhost:${PORT}/mcp`;
 const AS_ISSUER = process.env.APP_URL ?? "http://localhost:3400";
+
+/**
+ * Two causes with opposite fixes, so two sentences. A wrong address is the
+ * agent's to correct; a token that is not current must never be retried as-is.
+ * Issue 024.
+ */
+const REFUSED: Record<TokenRefusal, string> = {
+  wrong_server: "That token was issued for a different server. Check the address you connected to.",
+  not_current: "That token is not current. Refresh it — if the refresh is refused too, the person has disconnected you.",
+};
 
 const json = (res: import("node:http").ServerResponse, status: number, body: unknown, headers: Record<string, string> = {}) => {
   res.writeHead(status, { "content-type": "application/json", ...headers });
@@ -61,8 +71,9 @@ const server = createServer(async (req, res) => {
 
   // The audience check is the confused-deputy defence: a token minted for
   // kanninja must not work here. RFC 8707.
-  const actor = await verifyAccessToken(token, RESOURCE);
-  if (!actor) return unauthorized("That token is not valid for this server");
+  const check = await verifyAccessToken(token, RESOURCE);
+  if (!check.ok) return unauthorized(REFUSED[check.why]);
+  const actor = check.actor;
 
   const mcp = new McpServer(
     { name: "jotacular", version: "0.1.0" },

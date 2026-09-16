@@ -5,6 +5,7 @@ import { FrameLoop, type Dirty } from "./ink-frame";
 import { paintGrid } from "./ink-grid";
 import type { InkTextLayer } from "./ink-text-layer";
 import type { InkPins } from "./ink-pins";
+import { watchPaper } from "./ink-night";
 
 /**
  * When the page gets painted, and which parts of it.
@@ -36,7 +37,12 @@ export class InkPainter {
     private readonly pins?: InkPins,
   ) {
     this.frame = new FrameLoop((dirty) => this.paint(dirty));
+    // The page turning charcoal is the same shape as the camera moving:
+    // everything on screen is now different. ADR-116.
+    this.unwatch = watchPaper(() => this.everything());
   }
+
+  private readonly unwatch: () => void;
 
   /** Finished strokes changed. */
   page() { this.frame.mark("page"); }
@@ -65,7 +71,7 @@ export class InkPainter {
     drawAll(this.surface, this.scene());
   }
 
-  cancel() { this.frame.cancel(); }
+  cancel() { this.frame.cancel(); this.unwatch(); }
 
   private paint(dirty: ReadonlySet<Dirty>) {
     if (dirty.has("grid")) {

@@ -1,5 +1,6 @@
 import type { TextBox } from "@jotacular/domain";
 import { CARD_PAD, inkOn } from "@jotacular/ink-render";
+import { nightInk } from "./ink-night";
 import { isEmpty } from "./ink-objects";
 
 /**
@@ -189,7 +190,12 @@ export class InkPlane {
     const pad = box.fill ? size * CARD_PAD : 0;
     node.classList.toggle("jd-card", Boolean(box.fill));
     node.style.background = box.fill ?? "transparent";
-    node.style.color = box.fill ? inkOn(box.fill) : box.color;
+    // Words straight on the page are INK and follow the page (ADR-116): both
+    // values go on the node and CSS picks. A card carries its own ground, so
+    // its ink is derived from that and does not flip.
+    node.style.setProperty("--jd-ink", box.color);
+    node.style.setProperty("--jd-ink-night", nightInk(box.color));
+    node.style.color = box.fill ? inkOn(box.fill) : "";
     node.style.caretColor = box.fill ? inkOn(box.fill) : "";
     node.style.padding = `${pad}px`;
     node.style.borderRadius = box.fill ? `${size * 0.5}px` : "";

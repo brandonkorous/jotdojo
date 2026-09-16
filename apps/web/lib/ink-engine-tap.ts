@@ -1,8 +1,9 @@
+import type { StickerName } from "@jotacular/domain/stickers";
 import type { Bounds } from "./ink-geometry";
 import type { InkLinks } from "./ink-engine-links";
 import type { SelectionEditor } from "./ink-engine-select";
 import type { InkImageLayer } from "./ink-image-layer";
-import type { InkStickerLayer } from "./ink-sticker-layer";
+import type { ArmedSticker, InkStickerLayer } from "./ink-sticker-layer";
 import type { InkTextLayer } from "./ink-text-layer";
 import type { InkStyle } from "./ink-style";
 
@@ -19,6 +20,9 @@ import type { InkStyle } from "./ink-style";
  * Four answers, in the order they are tried: an arrow waiting for its second
  * end, a text box that wants a caret, an object that wants picking up, and
  * bare canvas, which means nothing at all.
+ *
+ * A LOADED STICKER is a fifth, and it short-circuits all of them: while one is
+ * in hand every tap on the page means "put it here" and nothing else. ADR-115.
  */
 
 export type TapContext = {
@@ -40,11 +44,32 @@ export type TapContext = {
   world: (clientX: number, clientY: number) => { x: number; y: number };
   /** A document rectangle as one on the glass, for a popup to anchor to. */
   rectOf: (b: Bounds) => DOMRect;
+  /** Put a sticker down, centred on a document point. ADR-115. */
+  placeSticker: (name: StickerName, color: string, at: { x: number; y: number }) => void;
   onTextPlaced?: () => void;
 };
 
 export class InkTaps {
+  /** Which sticker is in hand, or null. Held HERE rather than on the engine
+   *  because this file is already the one that answers "what does a tap on
+   *  this page mean", and a loaded sticker changes that answer. ADR-115. */
+  private loaded: ArmedSticker | null = null;
+
   constructor(private readonly ctx: TapContext) {}
+
+  setSticker(sticker: ArmedSticker | null) { this.loaded = sticker; }
+
+  /**
+   * Put the loaded sticker down here. ADR-115.
+   *
+   * It STAYS loaded afterwards, which is the whole reason it is a mode rather
+   * than a one-shot like a text box: marking six things on a page should be
+   * six taps, not six trips to the tray. Escape gives the tool back.
+   */
+  sticker(x: number, y: number) {
+    if (!this.loaded) return;
+    this.ctx.placeSticker(this.loaded.name, this.loaded.color, { x, y });
+  }
 
   /**
    * Whether the text plane took the tap.

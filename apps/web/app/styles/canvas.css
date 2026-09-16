@@ -1,6 +1,14 @@
 /* The writing surface itself. docs/10-design-system.md. */
 
-.jd-canvas-shell { height: 100dvh; width: 100%; overflow: hidden; position: relative; }
+/* The page itself. `--paper` rather than the body's base-300, because the
+   writing surface and the panels round it are different surfaces at night. */
+.jd-canvas-shell {
+  height: 100dvh;
+  width: 100%;
+  overflow: hidden;
+  position: relative;
+  background: var(--paper);
+}
 
 /* The spine's berth. ADR-102.
  *
@@ -87,3 +95,11 @@
 .jd-chrome:hover,
 .jd-chrome:focus-within { opacity: 1; }
 
+
+/* Silica's dropdown lifts itself with a hard-coded black shadow, which is
+   invisible on a charcoal page -- a literal where a token exists, ADR-116's
+   shape. The doubled [class] outranks it for the reason .jd-chrome gives. */
+.dropdown[class][class] {
+  box-shadow: 0 6px 24px -8px color-mix(in oklch, var(--color-base-content) 22%, transparent);
+  border-color: color-mix(in oklch, var(--color-base-content) 16%, transparent);
+}

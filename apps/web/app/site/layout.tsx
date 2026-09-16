@@ -41,18 +41,9 @@ const NAV = [
   { href: "/blog", label: "Writing" },
 ];
 
-/**
- * Pinned to the light theme, on purpose and for now. Issue 041.
- *
- * `--ink-2` and the band inks here are hard-coded hexes chosen against paper,
- * with no dark counterpart, so the moment dark became reachable (issue 002)
- * this page half-flipped: base-driven surfaces went charcoal and the inks
- * stayed light, at 16 measured AA failures. The app has real dark tokens and
- * keeps them; the site gets a dark palette when somebody designs one.
- */
 export default function SiteLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="jd-site" data-theme="paper">
+    <div className="jd-site">
       <header className="jd-site-bar">
         <Link href="/" className="jd-site-mark">
           <Wordmark />

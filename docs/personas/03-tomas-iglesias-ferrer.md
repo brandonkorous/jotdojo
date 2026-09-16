@@ -258,10 +258,10 @@ not need hardware and a model this machine does not have, and they are listed as
 | **Pressure, tilt, palm rejection, left-handedness** | There is no Apple Pencil and no iPad. Strokes were drawn with a mouse |
 | **Five of the six handwritten pages** | Same reason. One page was drawn, to prove the pipeline, not the feel |
 | **The lasso** | It is a drawn loop tested with all four corners inside a polygon. The only drag this harness makes is two points with no area, so a loop is **not constructible**, not merely untested |
-| **The photo, zoom, dragging a multi-object selection, the clipboard** | Not reached |
+| **The photo, dragging a multi-object selection, the clipboard** | Not reached. **Zoom came off this list on 2026-09-16**, driven during the dark pass: panned off home to summon the chip, read `100%`, clicked it to come back |
 | **Act 9 — the site hut on bad signal** | A device and a network this environment does not have |
 | **His three questions against handwriting** | The transcripts are canned, so there is nothing honest to measure |
-| **Dark mode** | Unreachable — issue 002 |
+| **Dark mode** | Unreachable **at the time of this run** — issue 002, now fixed (ADR-116). The canvas measures 0 AA failures in both themes, but this run's panes were not re-composed in dark. **A dark pass is owed.** |
 
 ### The numbers
 

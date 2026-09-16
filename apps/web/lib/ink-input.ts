@@ -9,7 +9,7 @@ import { ViewGestures } from "./ink-gestures";
 import { HoldToSnap } from "./ink-input-snap";
 import { TextDrag } from "./ink-text-drag";
 import { LassoInput } from "./ink-input-select";
-import type { Bounds } from "./ink-geometry";
+import type { InputHost } from "./ink-input-host";
 
 /**
  * The pointer state machine, split from the page it draws on. ADR-053.
@@ -24,38 +24,7 @@ import type { Bounds } from "./ink-geometry";
  * to the tool holding it.
  */
 
-/** What the input machine is allowed to ask of the page. Deliberately narrow:
- *  it may start, extend and finish things, and it may never paint. */
-export type InputHost = {
-  readonly surface: InkSurface;
-  readonly view: InkViewport;
-  readonly capture: StrokeCapture;
-  readonly sel: InkSelection;
-  readonly tool: InkTool;
-  /** True when something was actually removed, so the drag knows to resend. */
-  eraseAt(x: number, y: number): boolean;
-  /** The erase drag ended; resend the page if it actually removed anything. */
-  endErase(erased: boolean): void;
-  commit(stroke: Stroke): void;
-  /** Put a caret on the plane, in a box that is there or a new one. True when
-   *  the plane took the tap, which is when the canvas must do nothing. */
-  tapText(x: number, y: number): boolean;
-  /** The box being dragged out, for the overlay to show. Null clears it. */
-  previewText(rect: Bounds | null): void;
-  /** Commit a box at exactly the rectangle somebody drew. ADR-078. */
-  drawText(rect: Bounds): void;
-  /** Select the one object under a tap, rather than a loop round it. ADR-084. */
-  tapSelect(x: number, y: number): void;
-  /** Let go of whatever has the caret. A pen coming down should not leave one
-   *  blinking behind it. */
-  blurText(): void;
-  finishSelect(): void;
-  dropSelection(): void;
-  dragSelection(x: number, y: number): void;
-  scheduleLive(): void;
-  /** The camera moved. */
-  onView(): void;
-};
+export type { InputHost } from "./ink-input-host";
 
 export class InkInput {
   private readonly palm = new PalmGuard();
@@ -127,6 +96,9 @@ export class InkInput {
     // is left on the overlay, and nothing is placed -- an interrupted gesture
     // is not a smaller version of the gesture.
     else if (host.tool === "textbox") { this.textDrag.cancel(); host.previewText(null); }
+    // A sticker begins nothing on the way down, so there is nothing to abandon
+    // -- but it must not reach `capture.abort()` below either.
+    else if (host.tool === "sticker") { /* nothing was begun */ }
     else host.capture.abort();
     host.scheduleLive();
   }
@@ -176,6 +148,10 @@ export class InkInput {
     // Any other tool coming down means the caret is finished with.
     host.blurText();
 
+    // Nothing happens until the pointer lifts, so a press that turns into a
+    // pan leaves no sticker behind. ADR-115.
+    if (host.tool === "sticker") return;
+
     if (host.tool === "eraser") return void this.erase(p);
 
     if (host.tool === "select") return void this.lasso.down(host, p);
@@ -202,6 +178,10 @@ export class InkInput {
     }
 
     if (host.tool === "select") return void this.lasso.move(host, this.pointAt(e));
+
+    // A loaded sticker has no drag. Without this the move falls through to the
+    // capture below and starts recording a stroke nobody asked for.
+    if (host.tool === "sticker") return;
 
     // The hot path: hoist the rect and the camera once, then map every sample
     // the pen actually produced rather than the one per frame the event carries.
@@ -235,6 +215,11 @@ export class InkInput {
       if (end?.kind === "drawn") host.drawText(end.rect);
       else if (end?.kind === "tap") host.tapText(end.x, end.y);
       return void host.scheduleLive();
+    }
+
+    if (host.tool === "sticker") {
+      const p = this.pointAt(e);
+      return void host.stampSticker(p[0], p[1]);
     }
 
     const stroke = host.capture.finish();

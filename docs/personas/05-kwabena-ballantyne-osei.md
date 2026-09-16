@@ -4,7 +4,7 @@
 **Author:** Brandon Korous
 **Last Updated:** 2026-09-16
 
-**Status:** done for what it proves — the wall is real
+**Status:** done — the wall was real, and it came down on 2026-09-16
 **Run:** 2026-09-16
 **Plan:** family — £9/mo, up to 6
 **Door:** the pricing page, because he came to buy
@@ -321,3 +321,52 @@ space is not.
 **That issue 001 is not a missing feature, it is a broken sale.** Everyone else meets
 the product as it is. He met the pricing page first, believed six sentences, paid,
 and then met a screen that counts to six and stops.
+
+---
+
+## Acts 5 to 7, re-run 2026-09-16 — the wall came down
+
+Issue 001 was fixed the same day this ran, and RULE #7 says a fix is re-proved
+against the persona it blocked. Acts 5, 6 and 7 were re-driven as him, on the
+screens.
+
+**Act 5 — he looks for where to add Ama.** The act lists five places to try in
+order. He did not need the second one.
+
+| Where he looked | What he found |
+| --- | --- |
+| `/account` | ***Who is in your spaces*** › *Personal · 1 of 6 seats taken* › **Make an invite** |
+| ⌘K, all six of his words | `invite` `member` `people` `family` `share` `add` — **every one** lands on *Account, people and capture tokens* |
+
+He typed `ama.ballantyne-osei@jotacular.test` and pressed the button. **374ms**, and
+the count went **1 → 2 of 6** with a link to send her. She opened it and landed on
+her dashboard with his space in her list.
+
+**The six words are his own** — they are what he typed before he gave up the first
+time, in the order he tried them. That is issue 032, now proved against him rather
+than in the abstract.
+
+**Act 6 — he makes a space for the house.** *The Ballantyne-Osei house*, through
+**Make a shared space**. It arrived on the **free** plan at **1 of 1 seat taken**,
+under a sentence reading *"Every seat is taken. Change the plan to add more."* He
+has just paid £9 for six. That is
+[051](issues/051-he-paid-for-six-then-made-a-space-that-seats-one.md), and it is
+**open, blocked on a decision** — it is what to charge for, not a broken control.
+
+**Act 7 — has he been charged for nothing?** The act asks whether the screen tells
+him anything about people. It does:
+
+> `Personal` · `family` · **`0 of 2,000 read this month · 2 of 6 people`**
+
+Two, not one, and the control that made it two is in the section below it. The
+finding that made this act worth writing is answered.
+
+**And the guest's end found its own defect.** Ama's first screen listed two spaces,
+**both called `Personal`** — his and hers, identical, nothing to tell them apart.
+Neither of them would ever have renamed one. That is
+[052](issues/052-ama-sees-two-spaces-both-called-personal.md), fixed and confirmed
+on her dashboard the same day: a space you were let into now says whose it is.
+
+**What he holds at the end.** A paid Family space with his wife in it, a second
+space for the house that he has not paid for, and a bill he understands. The first
+of those is the deliverable; the second is issue 051's problem, not his.

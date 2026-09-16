@@ -1,6 +1,7 @@
 import type { Point, Stroke } from "@jotacular/domain";
 import type { Bounds } from "./ink-geometry";
 import type { Segment } from "@jotacular/ink-render";
+import { inkFor, paperIsDark } from "./ink-night";
 
 /** 3x on a large canvas costs more than it returns. docs/08. */
 export const MAX_DPR = 2;
@@ -48,13 +49,16 @@ export function paintStroke(ctx: CanvasRenderingContext2D, stroke: Stroke) {
   if (pts.length === 0) return;
 
   ctx.save();
-  ctx.strokeStyle = stroke.color;
-  ctx.fillStyle = stroke.color;
+  const color = inkFor(stroke.color);
+  ctx.strokeStyle = color;
+  ctx.fillStyle = color;
 
   if (stroke.tool === "highlighter") {
     // Multiply keeps overlapping passes readable instead of turning the text
-    // underneath into a solid block.
-    ctx.globalCompositeOperation = "multiply";
+    // underneath into a solid block. On charcoal it has nothing to darken, and
+    // screen compounds past the words, so a dark page takes the wash plain and
+    // lets the night colour be the ceiling. ADR-116.
+    if (!paperIsDark()) ctx.globalCompositeOperation = "multiply";
     ctx.globalAlpha = HIGHLIGHTER_ALPHA;
   }
 
@@ -167,8 +171,9 @@ export function paintLink(
   ctx: CanvasRenderingContext2D, seg: Segment, style: LinkStyle,
 ) {
   ctx.save();
-  ctx.strokeStyle = style.color;
-  ctx.fillStyle = style.color;
+  const color = inkFor(style.color);
+  ctx.strokeStyle = color;
+  ctx.fillStyle = color;
   ctx.lineWidth = style.width;
   ctx.lineCap = "round";
   ctx.beginPath();

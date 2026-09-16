@@ -5,6 +5,7 @@ import type { InkDoc } from "./ink-engine-doc";
 import type { InkLinks } from "./ink-engine-links";
 import type { InkFraming } from "./ink-framing";
 import type { ObjectPlane } from "./ink-object-plane";
+import { stickerScreenSize } from "./ink-sticker-layer";
 import type { InkSurface } from "./ink-surface";
 import type { InkViewport } from "./ink-viewport";
 
@@ -76,15 +77,22 @@ export class InkOpen {
     this.ctx.overlay();
   }
 
-  /** Stick one where somebody is looking, and hold it -- so it can be dragged
-   *  where it belongs without being found and tapped first. ADR-115. */
-  placeSticker(name: StickerName, color: string): Sticker | null {
+  /**
+   * Stick one on the page, centred where somebody clicked. ADR-115.
+   *
+   * The size is a fraction of the SCREEN divided by the zoom, so a sticker is
+   * the same size on the glass however far the camera is pulled back -- which
+   * is also what lets the ghost that followed the pointer be drawn at a plain
+   * pixel size with no camera arithmetic in it.
+   */
+  placeSticker(
+    name: StickerName, color: string, at: { x: number; y: number },
+  ): Sticker | null {
     const plane = this.ctx.plane();
     if (!plane) return null;
     const r = this.ctx.surface().rect();
-    const sticker = plane.stickers.place(
-      name, color, this.ctx.view(), { w: r.width, h: r.height },
-    );
+    const size = stickerScreenSize({ w: r.width, h: r.height }) / this.ctx.view().k;
+    const sticker = plane.stickers.place(name, color, at, size);
     this.ctx.overlay();
     return sticker;
   }

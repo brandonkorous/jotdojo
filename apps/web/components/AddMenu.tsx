@@ -19,12 +19,15 @@ import { Icon } from "@/components/Icon";
  * that lists what CAN be added is how a stranger finds out that voice exists.
  */
 export function AddMenu({
-  onPhoto, onVoice, onNote, unavailable = false, unavailableHint,
+  onPhoto, onVoice, onNote, onSticker, unavailable = false, unavailableHint,
 }: {
   onPhoto: () => void;
   onVoice: () => void;
   /** Arm placing a text box on the canvas. ADR-065. */
   onNote: () => void;
+  /** Open the sticker tray. Absent on the marketing hero, which has no plane
+   *  to stick one to. ADR-115. */
+  onSticker?: () => void;
   /** Shown, but refused -- the marketing hero advertises the whole product and
    *  says plainly which parts need an account. */
   unavailable?: boolean;
@@ -43,7 +46,7 @@ export function AddMenu({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger>
-        <button type="button" title="Add a photo, a voice note or a note" aria-label={label} className="jd-tool">
+        <button type="button" title="Add a photo, a voice note, a note or a sticker" aria-label={label} className="jd-tool">
           <Icon name="addBox" />
         </button>
       </DropdownMenuTrigger>
@@ -60,6 +63,12 @@ export function AddMenu({
           <Icon name="text" />
           A note on the canvas
         </DropdownMenuItem>
+        {onSticker && (
+          <DropdownMenuItem onClick={onSticker}>
+            <Icon name="sticker" />
+            Sticker
+          </DropdownMenuItem>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );
