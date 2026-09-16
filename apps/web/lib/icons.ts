@@ -6,7 +6,7 @@ import {
   faArrowRotateLeft, faArrowRotateRight, faBold, faCamera,
   faCirclePlus, faClipboard, faComment, faCopy, faItalic, faKeyboard,
   faMagnifyingGlass, faMinus, faMicrophone, faPaintbrush, faPenLine, faPlus,
-  faSparkles, faText, faTrash, faUnderline, faXmark,
+  faFaceSmile, faSparkles, faText, faTrash, faUnderline, faXmark,
 } from "@awesome.me/kit-2fb7fafdba/icons/whiteboard/semibold";
 
 /**
@@ -56,6 +56,9 @@ export const ICONS = {
    *  job so swapping the artwork never means editing a caller. ADR-110. */
   duplicate: faCopy,
   paste: faClipboard,
+  /** No `sticker` in Whiteboard. A smiling face is what a sticker tray looks
+   *  like everywhere else, so it reads as the door rather than as a mood. */
+  sticker: faFaceSmile,
 
   /* text marks */
   bold: faBold,
@@ -66,4 +69,4 @@ export const ICONS = {
 export type IconName = keyof typeof ICONS;
 
 /** The three the Whiteboard family has no glyph for. docs/10-design-system.md. */
-export const SUBSTITUTED: IconName[] = ["highlighter", "eraser", "select"];
+export const SUBSTITUTED: IconName[] = ["highlighter", "eraser", "select", "sticker"];

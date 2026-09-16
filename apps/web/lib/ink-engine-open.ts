@@ -1,4 +1,6 @@
-import type { ImageOnPage, Link, NoteImage, Stroke, TextBox } from "@jotacular/domain";
+import type {
+  ImageOnPage, Link, NoteImage, Sticker, StickerName, Stroke, TextBox,
+} from "@jotacular/domain";
 import type { InkDoc } from "./ink-engine-doc";
 import type { InkLinks } from "./ink-engine-links";
 import type { InkFraming } from "./ink-framing";
@@ -44,10 +46,10 @@ export class InkOpen {
    */
   load(
     strokes: Stroke[], texts: TextBox[] = [], images: ImageOnPage[] = [],
-    links: Link[] = [],
+    links: Link[] = [], stickers: Sticker[] = [],
   ) {
     this.ctx.setStrokes(strokes.map((s) => ({ ...s, pts: [...s.pts] })));
-    this.ctx.plane()?.load(texts, images);
+    this.ctx.plane()?.load(texts, images, stickers);
     this.ctx.links()?.load(links);
     this.ctx.dropSelection();
     // A loaded page is where undo starts from, and nothing before it is this
@@ -72,6 +74,19 @@ export class InkOpen {
       blockId, natural, this.ctx.view(), { w: r.width, h: r.height },
     );
     this.ctx.overlay();
+  }
+
+  /** Stick one where somebody is looking, and hold it -- so it can be dragged
+   *  where it belongs without being found and tapped first. ADR-115. */
+  placeSticker(name: StickerName, color: string): Sticker | null {
+    const plane = this.ctx.plane();
+    if (!plane) return null;
+    const r = this.ctx.surface().rect();
+    const sticker = plane.stickers.place(
+      name, color, this.ctx.view(), { w: r.width, h: r.height },
+    );
+    this.ctx.overlay();
+    return sticker;
   }
 
   fit() { this.ctx.framing().fitTo(this.ctx.strokes(), this.ctx.plane()?.bounds()); }

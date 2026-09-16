@@ -1,0 +1,70 @@
+/**
+ * The tray you pick a sticker from. ADR-115.
+ *
+ * Separate from ink-sticker.css, and the seam is the one remarks.css and
+ * remark-canvas.css already drew: this sits still on the glass, and that moves
+ * with the camera as part of the page.
+ *
+ * A panel rather than a popover, matching ToolOptions on the same surface.
+ */
+.jd-sticker-tray {
+  /* FIXED, not absolute: the panel is centred on the SCREEN, and an absolute
+     one would resolve against whatever ancestor happened to be positioned. */
+  position: fixed;
+  z-index: 30;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: min(30rem, calc(100vw - 2rem));
+  /* Tall enough to browse, short enough to still see the page it is for. */
+  max-height: min(28rem, calc(100vh - 6rem));
+  padding: 0.75rem;
+  border-radius: 1rem;
+}
+
+.jd-sticker-tray-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.jd-sticker-tray-body {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.jd-sticker-group {
+  margin: 0 0 0.25rem;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  opacity: 0.6;
+}
+
+/* auto-fill, so the grid reflows on a phone rather than scrolling sideways. */
+.jd-sticker-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(2.5rem, 1fr));
+  gap: 0.125rem;
+}
+
+.jd-sticker-pick {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  /* The glyph is drawn with a white edge, which must not be clipped. */
+  overflow: visible;
+}
+
+.jd-sticker-glyph {
+  font-size: 1.5rem;
+  overflow: visible;
+}

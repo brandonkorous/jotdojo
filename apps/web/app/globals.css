@@ -8,6 +8,8 @@
 @import './styles/chrome.css';
 @import './styles/pen-size.css';
 @import './styles/ink.css';
+@import './styles/ink-sticker.css';
+@import './styles/sticker-tray.css';
 @import './styles/live.css';
 @import './styles/remarks.css';
 @import './styles/remark-canvas.css';

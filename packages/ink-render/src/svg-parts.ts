@@ -2,6 +2,7 @@ import type { InkDocument, Link, Stroke, TextBox } from "@jotacular/domain";
 import { control, widthAt } from "./geometry";
 import { cardBounds, inkOn } from "./text-geometry";
 import { segmentFor, type Segment } from "./links";
+import { placeSticker } from "./sticker-geometry";
 
 /**
  * What one THING on the page looks like: a stroke, a typed box, the card
@@ -127,6 +128,33 @@ export function arrows(doc: InkDocument, escape: (v: string) => string): string[
     const seg = segmentFor(link, doc);
     if (!seg) continue;
     out.push(arrowHead(link, escape), arrow(link, seg, escape));
+  }
+  return out;
+}
+
+/**
+ * The stickers, as SVG. ADR-115.
+ *
+ * `paint-order="stroke fill"` is the whole trick: it draws the white outline
+ * BEHIND the artwork instead of over it, so the picture stays whole and the
+ * edge sits outside it. That is a die-cut sticker, in one attribute and one
+ * path -- no second geometry, no filter, and nothing that rasterises
+ * differently in sharp than in a browser. Both were checked.
+ *
+ * The path data is our own generated file rather than anything a client sent,
+ * which is why it is the one string here that is not escaped.
+ */
+export function stickers(doc: InkDocument, escape: (v: string) => string): string[] {
+  const out: string[] = [];
+  for (const sticker of doc.stickers ?? []) {
+    const p = placeSticker(sticker);
+    if (!p) continue;
+    out.push(
+      `<g transform="translate(${n(p.tx)} ${n(p.ty)}) scale(${p.k.toFixed(5)})">`
+      + `<path d="${p.art.d}" fill="${escape(sticker.color)}"`
+      + ` stroke="#FFFFFF" stroke-width="${n(p.stroke)}" stroke-linejoin="round"`
+      + ` paint-order="stroke fill"/></g>`,
+    );
   }
   return out;
 }

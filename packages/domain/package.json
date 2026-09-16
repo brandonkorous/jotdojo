@@ -6,7 +6,8 @@
   "main": "./src/index.ts",
   "types": "./src/index.ts",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./stickers": "./src/ink-sticker.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
@@ -16,6 +17,7 @@
     "smoke:comments": "dotenv -e ../../.env -- tsx scripts/smoke-comments.ts",
     "smoke:canvas": "dotenv -e ../../.env -- tsx scripts/smoke-canvas.ts",
     "smoke:arrows": "dotenv -e ../../.env -- tsx scripts/smoke-arrows.ts",
+    "smoke:stickers": "dotenv -e ../../.env -- tsx scripts/smoke-stickers.ts",
     "smoke:oauth": "dotenv -e ../../.env -- tsx scripts/smoke-oauth.ts",
     "smoke:search": "dotenv -e ../../.env -- tsx scripts/smoke-search.ts",
     "smoke:ink": "dotenv -e ../../.env -- tsx scripts/smoke-ink.ts",

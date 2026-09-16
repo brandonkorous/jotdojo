@@ -192,7 +192,7 @@ export async function inkLayerAction(noteId: string, canvas: { w: number; h: num
   return {
     blockId: block.blockId, strokeCount: block.strokeCount,
     hasText: block.textCount > 0, hasImages: block.imageCount > 0,
-    hasLinks: block.linkCount > 0,
+    hasLinks: block.linkCount > 0, hasStickers: block.stickerCount > 0,
     version: block.version,
   };
 }

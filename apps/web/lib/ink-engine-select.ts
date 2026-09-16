@@ -1,9 +1,12 @@
-import type { ImageOnPage, InkDelta, Stroke, TextBox } from "@jotacular/domain";
+import type {
+  ImageOnPage, InkDelta, Sticker, Stroke, TextBox,
+} from "@jotacular/domain";
 import { restyle, without } from "./ink-edit";
 import { InkSelection, NO_SELECTION, type SelectionSummary } from "./ink-selection";
 import type { StrokeIndex } from "./ink-index";
 import type { InkTextLayer } from "./ink-text-layer";
 import type { InkImageLayer } from "./ink-image-layer";
+import type { InkStickerLayer } from "./ink-sticker-layer";
 import type { InkLinks } from "./ink-engine-links";
 import { resizeSelection, tidySelection } from "./ink-engine-size";
 
@@ -28,6 +31,8 @@ export type SelectionContext = {
   texts: () => InkTextLayer | null;
   /** Null for the same reason. ADR-103. */
   images: () => InkImageLayer | null;
+  /** Null for the same reason. ADR-115. */
+  stickers: () => InkStickerLayer | null;
   /** Null for the same reason. ADR-108. */
   links: () => InkLinks | null;
   index: StrokeIndex;
@@ -84,8 +89,9 @@ export class SelectionEditor {
   pickAt(
     x: number, y: number, radius: number,
     texts: readonly TextBox[], images: readonly ImageOnPage[] = [],
+    stickers: readonly Sticker[] = [],
   ) {
-    this.sel.pick(this.ctx.strokes(), texts, x, y, radius, images);
+    this.sel.pick(this.ctx.strokes(), texts, x, y, radius, images, stickers);
     this.ctx.onChange?.(this.sel.summary);
     this.ctx.overlay();
   }
@@ -119,6 +125,29 @@ export class SelectionEditor {
     this.ctx.onDelta({ remove: [], upsert: [], texts: [...this.ctx.texts()?.all ?? []] });
   }
 
+  /**
+   * The same again, for stickers. ADR-115.
+   *
+   * A THIRD method rather than a key on `restyle`'s patch, for the reason
+   * ADR-079 gave when cards needed one: `{color, width}` is a pen idea that
+   * must not reach text, a fill is a text idea that must not reach the ink,
+   * and a sticker's colour is a third that belongs to neither. Three methods
+   * say that; one method with a union would have to remember it.
+   */
+  recolourStickers(color: string) {
+    const marks = this.sel.selectedStickers;
+    if (marks.length === 0) return;
+    // Mutated in place, like every other kind and for the same reason: the
+    // plane and the selection hold these very objects.
+    for (const mark of marks as Sticker[]) mark.color = color;
+    this.ctx.stickers()?.refresh();
+    this.ctx.overlay();
+    this.ctx.onChange?.(this.sel.summary);
+    this.ctx.onDelta({
+      remove: [], upsert: [], stickers: [...this.ctx.stickers()?.all ?? []],
+    });
+  }
+
   /** Bigger or smaller, one step -- of every kind the selection holds.
    *  ink-engine-size.ts owns the arithmetic and the clamps. ADR-084. */
   resize(bigger: boolean) {
@@ -126,6 +155,7 @@ export class SelectionEditor {
     this.ctx.index.invalidate(this.sel.selected);
     this.ctx.texts()?.refresh();
     this.ctx.images()?.refresh();
+    this.ctx.stickers()?.refresh();
     this.after();
   }
 
@@ -147,12 +177,14 @@ export class SelectionEditor {
 
   /** What the object plane currently holds, for a delta that moved or resized
    *  something on it. Omitted entirely where there is no plane. */
-  private planes(): Pick<InkDelta, "texts" | "images"> {
+  private planes(): Pick<InkDelta, "texts" | "images" | "stickers"> {
     const texts = this.ctx.texts();
     const images = this.ctx.images();
+    const stickers = this.ctx.stickers();
     return {
       ...(texts ? { texts: [...texts.all] } : {}),
       ...(images ? { images: [...images.all] } : {}),
+      ...(stickers ? { stickers: [...stickers.all] } : {}),
     };
   }
 
@@ -166,6 +198,7 @@ export class SelectionEditor {
     this.ctx.setStrokes(without(this.ctx.strokes(), new Set(this.sel.selected)));
     this.ctx.texts()?.remove(ids);
     this.ctx.images()?.remove(ids);
+    this.ctx.stickers()?.remove(ids);
     // Locally too, because the server applies the same rule and a page that
     // waited for the round trip would look as though the delete had failed.
     this.ctx.links()?.remove(ids);
@@ -181,6 +214,7 @@ export class SelectionEditor {
     this.ctx.index.invalidate(this.sel.selected);
     this.ctx.texts()?.refresh();
     this.ctx.images()?.refresh();
+    this.ctx.stickers()?.refresh();
     this.ctx.repaint();
     this.ctx.overlay();
   }
@@ -196,6 +230,7 @@ export class SelectionEditor {
     }
     this.sel.settle(
       this.ctx.strokes(), this.ctx.texts()?.all ?? [], this.ctx.images()?.all ?? [],
+      this.ctx.stickers()?.all ?? [],
     );
     this.ctx.onChange?.(this.sel.summary);
     this.ctx.overlay();

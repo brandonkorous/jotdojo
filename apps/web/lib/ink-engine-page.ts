@@ -1,6 +1,7 @@
-import type { ImageOnPage, Stroke, TextBox } from "@jotacular/domain";
+import type { ImageOnPage, Sticker, Stroke, TextBox } from "@jotacular/domain";
 import { strokeBounds, type Bounds } from "./ink-geometry";
-import { boxArea, imageArea } from "./ink-objects";
+import { boxArea } from "./ink-objects";
+import { imageArea, stickerArea } from "./ink-rects";
 
 /**
  * Finding one named thing on the page, whatever kind of thing it is. ADR-107.
@@ -17,6 +18,7 @@ export type Page = {
   strokes: readonly Stroke[];
   texts: readonly TextBox[];
   images: readonly ImageOnPage[];
+  stickers?: readonly Sticker[];
 };
 
 /**
@@ -28,6 +30,8 @@ export type Page = {
  * here any more" without anything breaking.
  */
 export function locate(page: Page, id: string): Bounds | null {
+  const mark = page.stickers?.find((s) => s.id === id);
+  if (mark) return stickerArea(mark);
   const box = page.texts.find((b) => b.id === id);
   if (box) return boxArea(box);
   const image = page.images.find((i) => i.id === id);
@@ -46,6 +50,8 @@ export function locate(page: Page, id: string): Bounds | null {
 export function describe(page: Page, id: string): string | null {
   const box = page.texts.find((b) => b.id === id);
   if (box) return summarise(box.text) || "an empty note";
+  const mark = page.stickers?.find((s) => s.id === id);
+  if (mark) return `the ${mark.name} sticker`;
   if (page.images.some((i) => i.id === id)) return "a photo";
   if (page.strokes.some((s) => s.id === id)) return "something drawn";
   return null;

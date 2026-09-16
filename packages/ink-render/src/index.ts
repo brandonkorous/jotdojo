@@ -8,10 +8,16 @@
  */
 
 export {
-  bounds, contentBounds, strokesBounds, strokeBounds, intersects, union,
-  medianWidth, widthAt, control,
+  bounds, contentBounds, strokesBounds, strokeBounds, stickersBounds,
+  intersects, union, medianWidth, widthAt, control,
   type Bounds,
 } from "./geometry";
+
+export {
+  stickerBounds, placeSticker, STICKER_BORDER, type StickerPlacement,
+} from "./sticker-geometry";
+
+export { STICKER_ART, type StickerArt } from "./sticker-art";
 
 export {
   textBounds, textContentHeight, cardBounds, inkOn, TEXT_LINE_HEIGHT, CARD_PAD,

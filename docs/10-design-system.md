@@ -215,6 +215,23 @@ ADR-083.
 - Installing needs `FONTAWESOME_NPM_TOKEN` — on a laptop, in CI, and as a
   BuildKit secret in `web.Dockerfile`.
 
+**Stickers are the same family, used as content rather than as chrome.** ADR-115.
+
+- 65 of the 492, grouped as the tray shows them, and named for the **picture**
+  rather than for a job — the opposite of the rule above, and deliberately. A
+  button's artwork may be swapped; a sticker IS its picture.
+- The paths are **extracted once** into `packages/ink-render/src/sticker-art.ts`
+  and checked in, because the worker has neither the package nor the token. Run
+  `pnpm --filter @jotacular/ink-render stickers:build` to regenerate; it refuses
+  to write if the kit has no icon for a name on the domain's list.
+- The white die-cut edge is `paint-order="stroke fill"`, never a second path and
+  never a filter — the same reason ADR-079 refused a drop shadow on cards.
+- The colours are `PEN_COLORS`, the house hues. Not a sixth palette invented for
+  stickers; `ink-cards.ts` made the same call and says why.
+- The family has **four faces** and no clap, no party, no hundred and no
+  handshake. Reactions are a different feature from marks and would need a
+  second icon family, which is the thing ADR-083 exists to prevent.
+
 ## Motion
 
 **A reveal plays once and never plays backwards.** ADR-093.

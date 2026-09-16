@@ -1,6 +1,6 @@
 import type { InkDocument } from "@jotacular/domain";
 import { bounds, contentBounds, medianWidth, type Bounds } from "./geometry";
-import { arrows, escapeAttr, n, segments, textLines } from "./svg-parts";
+import { arrows, escapeAttr, n, segments, stickers, textLines } from "./svg-parts";
 
 /**
  * Strokes to SVG, for recognition and for thumbnails.
@@ -115,6 +115,10 @@ export function toSvg(doc: InkDocument, options: RenderOptions): string {
   // see them. A vision model handed an arrow reads it as a pen stroke, and the
   // sentence it is worth is already in the block's body. ADR-108.
   const drawn = options.text ? arrows(doc, escapeAttr) : [];
+  // Stickers follow `text` for the same reason again, and it matters more here:
+  // a vision model handed a fire icon transcribes it as a squiggle, so a mark
+  // somebody put ON the writing would come back as part of the writing. ADR-115.
+  const stuck = options.text ? stickers(doc, escapeAttr) : [];
 
   const body = doc.strokes.flatMap((stroke) => {
     // Colour is thrown away for recognition on purpose. The highlighter keeps
@@ -145,6 +149,10 @@ export function toSvg(doc: InkDocument, options: RenderOptions): string {
     ...drawn,
     ...body,
     ...typed,
+    // Stickers last, so they are on TOP of everything. A sticker is stuck onto
+    // the page rather than drawn into it, and one that a stroke could cover
+    // would stop being a mark about the thing underneath it. ADR-115.
+    ...stuck,
     "</svg>",
   ].join("");
 }

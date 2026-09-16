@@ -4,6 +4,7 @@ import { EMPTY, InkHistory, fold, type Snapshot } from "./ink-history";
 import type { InkLinks } from "./ink-engine-links";
 import type { InkTextLayer } from "./ink-text-layer";
 import type { InkImageLayer } from "./ink-image-layer";
+import type { InkStickerLayer } from "./ink-sticker-layer";
 import type { InkSelection } from "./ink-selection";
 
 /**
@@ -21,6 +22,7 @@ export type DocContext = {
   setStrokes: (next: Stroke[]) => void;
   texts: () => InkTextLayer | null;
   images: () => InkImageLayer | null;
+  stickers: () => InkStickerLayer | null;
   links: () => InkLinks | null;
   sel: () => InkSelection;
   /** Publish WITHOUT recording. An undo is not a new thing to undo, and a
@@ -47,6 +49,7 @@ export class InkDoc {
       texts: this.ctx.texts()?.all ?? [],
       images: this.ctx.images()?.all ?? [],
       links: this.ctx.links()?.all ?? [],
+      stickers: this.ctx.stickers()?.all ?? [],
     };
   }
 
@@ -77,14 +80,17 @@ export class InkDoc {
     const texts = this.ctx.texts();
     const images = this.ctx.images();
     const links = this.ctx.links();
+    const stickers = this.ctx.stickers();
     texts?.load([...texts.all, ...next.texts]);
     images?.load([...images.all, ...next.images]);
+    stickers?.load([...stickers.all, ...next.stickers]);
     links?.load([...links.all, ...next.links]);
 
     this.ctx.record({
       remove: [], upsert: next.strokes,
       ...(texts ? { texts: [...texts.all] } : {}),
       ...(images ? { images: [...images.all] } : {}),
+      ...(stickers ? { stickers: [...stickers.all] } : {}),
       ...(links ? { links: [...links.all] } : {}),
     });
 
@@ -92,11 +98,14 @@ export class InkDoc {
     // is loaded with -- a drag mutates objects in place, and two pages sharing
     // one would move both -- so holding the originals would give a selection
     // that moved nothing anybody could see.
-    const fresh = new Set([...next.texts, ...next.images].map((o) => o.id));
+    const fresh = new Set(
+      [...next.texts, ...next.images, ...next.stickers].map((o) => o.id),
+    );
     this.ctx.sel().hold(
       next.strokes,
       (texts?.all ?? []).filter((t) => fresh.has(t.id)),
       (images?.all ?? []).filter((i) => fresh.has(i.id)),
+      (stickers?.all ?? []).filter((s) => fresh.has(s.id)),
     );
     this.after();
     return true;
@@ -108,6 +117,7 @@ export class InkDoc {
     const sel = this.ctx.sel();
     const clipping = clip({
       strokes: sel.selected, texts: sel.selectedTexts, images: sel.selectedImages,
+      stickers: sel.selectedStickers,
     }, this.ctx.links()?.all ?? []);
     if (isEmpty(clipping)) return false;
     put(clipping);
@@ -133,6 +143,7 @@ export class InkDoc {
     this.ctx.setStrokes(next.strokes.map((s) => ({ ...s, pts: s.pts.map((p) => [...p] as typeof p) })));
     this.ctx.texts()?.load(next.texts);
     this.ctx.images()?.load(next.images);
+    this.ctx.stickers()?.load(next.stickers);
     this.ctx.links()?.load(next.links);
     this.ctx.dropSelection();
     this.ctx.send(delta);

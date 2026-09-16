@@ -136,6 +136,7 @@ function document(opts: EngineOptions, w: Wiring, parts: () => Parts) {
     setStrokes: w.setStrokes,
     texts: () => parts().plane?.texts ?? null,
     images: () => parts().plane?.images ?? null,
+    stickers: () => parts().plane?.stickers ?? null,
     links: () => parts().links,
     sel: () => parts().editor.sel,
     send: opts.onDelta,
@@ -172,6 +173,7 @@ function reach(
     taps: new InkTaps({
       texts: () => p.plane?.texts ?? null,
       images: () => p.plane?.images ?? null,
+      stickers: () => p.plane?.stickers ?? null,
       links: () => p.links,
       editor,
       style: w.style,
@@ -208,6 +210,7 @@ function editors(
       setStrokes: w.setStrokes,
       texts: () => p.plane?.texts ?? null,
       images: () => p.plane?.images ?? null,
+      stickers: () => p.plane?.stickers ?? null,
       links: () => p.links,
       index,
       onDelta: p.publish,

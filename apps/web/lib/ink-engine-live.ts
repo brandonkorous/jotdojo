@@ -1,4 +1,4 @@
-import type { ImageOnPage, Link, Stroke, TextBox } from "@jotacular/domain";
+import type { ImageOnPage, Link, Sticker, Stroke, TextBox } from "@jotacular/domain";
 import { mergePages, newcomers } from "./ink-merge";
 import type { InkLinks } from "./ink-engine-links";
 import type { ObjectPlane } from "./ink-object-plane";
@@ -52,6 +52,12 @@ export class LiveMerge {
   /** The same for photographs, which have no caret to protect. */
   images(images: ImageOnPage[]) {
     this.page.plane()?.images.adopt(images);
+    this.page.observe();
+  }
+
+  /** And for stickers, which have no caret either. ADR-115. */
+  stickers(stickers: Sticker[]) {
+    this.page.plane()?.stickers.adopt(stickers);
     this.page.observe();
   }
 

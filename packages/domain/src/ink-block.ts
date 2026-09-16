@@ -29,6 +29,9 @@ export type InkBlock = {
   /** How many photographs are placed on the plane. A page with a photo and
    *  nothing else still has to be loaded. ADR-103. */
   imageCount: number;
+  /** How many stickers are stuck on it. A page somebody only marked still has
+   *  something on it. ADR-115. */
+  stickerCount: number;
   /** Moves on every write to the page, append included. What a follower
    *  compares against to decide whether it is behind. ADR-058. */
   version: number;
@@ -86,7 +89,7 @@ export async function createInkBlock(
 
     return {
       blockId: block.id, artifactId: asset.id, noteId, spaceId: note.spaceId,
-      strokeCount: 0, textCount: 0, imageCount: 0, linkCount: 0,
+      strokeCount: 0, textCount: 0, imageCount: 0, linkCount: 0, stickerCount: 0,
       version: 0, canvas, transcript: null,
       transcriptState: block.transcriptState, transcriptSource: null, confidence: null,
     };
@@ -139,6 +142,7 @@ export async function getInk(actor: Actor, blockId: string): Promise<InkBlock & 
       textCount: document.texts?.length ?? 0,
       imageCount: document.images?.length ?? 0,
       linkCount: document.links?.length ?? 0,
+      stickerCount: document.stickers?.length ?? 0,
       version: Number(row.strokes_version ?? 0),
       canvas: document.canvas,
       transcript: (row.transcript as string | null) ?? null,

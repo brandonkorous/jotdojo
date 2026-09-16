@@ -51,6 +51,7 @@ export async function findInkBlock(actor: Actor, noteId: string): Promise<InkBlo
       textCount: sql<number>`coalesce(jsonb_array_length(${mediaAssets.strokes} -> 'texts'), 0)`,
       imageCount: sql<number>`coalesce(jsonb_array_length(${mediaAssets.strokes} -> 'images'), 0)`,
       linkCount: sql<number>`coalesce(jsonb_array_length(${mediaAssets.strokes} -> 'links'), 0)`,
+      stickerCount: sql<number>`coalesce(jsonb_array_length(${mediaAssets.strokes} -> 'stickers'), 0)`,
     })
       .from(blocks)
       .innerJoin(mediaAssets, eq(mediaAssets.id, blocks.artifactId))
@@ -70,6 +71,7 @@ export async function findInkBlock(actor: Actor, noteId: string): Promise<InkBlo
       textCount: Number(row.textCount ?? 0),
       imageCount: Number(row.imageCount ?? 0),
       linkCount: Number(row.linkCount ?? 0),
+      stickerCount: Number(row.stickerCount ?? 0),
       version: Number(row.version ?? 0),
       canvas: { w: row.width ?? 0, h: row.height ?? 0 },
       transcript: row.transcript,
@@ -96,5 +98,5 @@ export async function hasInk(actor: Actor, noteId: string): Promise<boolean> {
   const block = await findInkBlock(actor, noteId);
   if (!block) return false;
   return block.strokeCount > 0 || block.textCount > 0
-    || block.imageCount > 0 || block.linkCount > 0;
+    || block.imageCount > 0 || block.linkCount > 0 || block.stickerCount > 0;
 }

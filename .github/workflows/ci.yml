@@ -183,6 +183,12 @@ jobs:
           pnpm arrows:smoke
           pnpm links:smoke
           pnpm history:smoke
+          # Stickers. `stickers:smoke` is the one over real SQL -- that a mark
+          # becomes searchable words and that an arrow tied to one dies with it.
+          # `sticker-art:smoke` is the pair of lists agreeing, and the die-cut
+          # edge rendered to actual pixels. ADR-115.
+          pnpm stickers:smoke
+          pnpm sticker-art:smoke
           # Seats, counted at invite time and again at accept time. ADR-112.
           pnpm seats:smoke
 

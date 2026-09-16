@@ -2,6 +2,7 @@ import type { Bounds } from "./ink-geometry";
 import type { InkLinks } from "./ink-engine-links";
 import type { SelectionEditor } from "./ink-engine-select";
 import type { InkImageLayer } from "./ink-image-layer";
+import type { InkStickerLayer } from "./ink-sticker-layer";
 import type { InkTextLayer } from "./ink-text-layer";
 import type { InkStyle } from "./ink-style";
 
@@ -23,6 +24,7 @@ import type { InkStyle } from "./ink-style";
 export type TapContext = {
   texts: () => InkTextLayer | null;
   images: () => InkImageLayer | null;
+  stickers: () => InkStickerLayer | null;
   /** Null wherever the engine is mounted with no object plane. */
   links: () => InkLinks | null;
   editor: SelectionEditor;
@@ -119,6 +121,7 @@ export class InkTaps {
   private pick(x: number, y: number, radius: number) {
     this.ctx.editor.pickAt(
       x, y, radius, this.ctx.texts()?.all ?? [], this.ctx.images()?.all ?? [],
+      this.ctx.stickers()?.all ?? [],
     );
   }
 }

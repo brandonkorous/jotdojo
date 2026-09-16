@@ -125,6 +125,7 @@ export class InkEngine implements InputHost {
       strokes: this.strokes,
       texts: this.texts?.all ?? [],
       images: this.plane?.images.all ?? [],
+      stickers: this.plane?.stickers.all ?? [],
     };
   }
 

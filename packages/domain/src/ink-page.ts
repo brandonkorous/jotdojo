@@ -5,6 +5,7 @@ import { type Stroke } from "./ink-doc";
 import { type TextBox } from "./ink-text";
 import { type ImageOnPage } from "./ink-image";
 import { type Link } from "./ink-link";
+import { type Sticker } from "./ink-sticker";
 
 /**
  * Taking hold of an ink page, and putting it back. docs/08-ink.md, ADR-058.
@@ -56,7 +57,8 @@ export async function lockPage(
            a.strokes -> 'strokes' AS page,
            a.strokes -> 'texts' AS texts,
            a.strokes -> 'images' AS images,
-           a.strokes -> 'links' AS links
+           a.strokes -> 'links' AS links,
+           a.strokes -> 'stickers' AS stickers
       FROM blocks b
       JOIN media_assets a ON a.id = b.artifact_id
      WHERE b.id = ${blockId} AND b.kind = 'ink'
@@ -73,6 +75,8 @@ export async function lockPage(
     images: (row.images as ImageOnPage[] | null) ?? [],
     // And before ADR-108, likewise.
     links: (row.links as Link[] | null) ?? [],
+    // And before ADR-115, likewise.
+    stickers: (row.stickers as Sticker[] | null) ?? [],
   };
 }
 
@@ -83,6 +87,7 @@ export type PageObjects = {
   texts: TextBox[];
   images: ImageOnPage[];
   links: Link[];
+  stickers: Sticker[];
 };
 
 /**
@@ -156,6 +161,10 @@ export const writeImages = (tx: Tx, artifactId: string, images: ImageOnPage[]) =
 export const writeLinks = (tx: Tx, artifactId: string, links: Link[]) =>
   writeArray(tx, artifactId, "links", links);
 
+/** Replace the page's stickers. ADR-115. */
+export const writeStickers = (tx: Tx, artifactId: string, stickers: Sticker[]) =>
+  writeArray(tx, artifactId, "stickers", stickers);
+
 /**
  * One array of the layer document, replaced by name.
  *
@@ -164,10 +173,10 @@ export const writeLinks = (tx: Tx, artifactId: string, links: Link[]) =>
  * with a 42601 no type could catch. The third made the duplication a liability,
  * which is the line ADR-103 itself drew about `mergeById`.
  *
- * `sql.raw` is safe here and only here: `Kind` is a CLOSED union of three
+ * `sql.raw` is safe here and only here: `Kind` is a CLOSED union of four
  * literals, so nothing a caller supplies can reach it.
  */
-type Kind = "texts" | "images" | "links";
+type Kind = "texts" | "images" | "links" | "stickers";
 
 async function writeArray(
   tx: Tx, artifactId: string, kind: Kind, value: unknown[],

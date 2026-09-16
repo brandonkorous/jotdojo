@@ -1,4 +1,6 @@
-import type { ImageOnPage, InkDelta, Link, Stroke, TextBox } from "@jotacular/domain";
+import type {
+  ImageOnPage, InkDelta, Link, Sticker, Stroke, TextBox,
+} from "@jotacular/domain";
 
 /**
  * Taking it back. ADR-109.
@@ -22,9 +24,11 @@ export type Snapshot = {
   texts: readonly TextBox[];
   images: readonly ImageOnPage[];
   links: readonly Link[];
+  stickers: readonly Sticker[];
 };
 
-export const EMPTY: Snapshot = { strokes: [], texts: [], images: [], links: [] };
+export const EMPTY: Snapshot =
+  { strokes: [], texts: [], images: [], links: [], stickers: [] };
 
 type Step = { undo: InkDelta; redo: InkDelta };
 
@@ -110,11 +114,14 @@ export function invert(delta: InkDelta, before: Snapshot): InkDelta {
   }
 
   // A removal spans every kind, and takes arrows with it (ADR-108), so ANY
-  // removal has to restore all three arrays rather than only the named one.
+  // removal has to restore all four arrays rather than only the named one.
   const removing = delta.remove.length > 0;
   if (removing || delta.texts !== undefined) undo.texts = before.texts.map((t) => ({ ...t }));
   if (removing || delta.images !== undefined) undo.images = before.images.map((i) => ({ ...i }));
   if (removing || delta.links !== undefined) undo.links = before.links.map(cloneLink);
+  if (removing || delta.stickers !== undefined) {
+    undo.stickers = before.stickers.map((s) => ({ ...s }));
+  }
 
   // AND THE NEW ONES HAVE TO BE NAMED. These three fields are upserts by id,
   // not replacements: an array that simply leaves a box out does not delete it
@@ -124,6 +131,7 @@ export function invert(delta: InkDelta, before: Snapshot): InkDelta {
     ...added(delta.texts, before.texts),
     ...added(delta.images, before.images),
     ...added(delta.links, before.links),
+    ...added(delta.stickers, before.stickers),
   );
   return undo;
 }
@@ -158,6 +166,9 @@ export function fold(page: Snapshot, delta: InkDelta): Snapshot {
       (l) => !(l.from.id !== null && gone.has(l.from.id))
         && !(l.to.id !== null && gone.has(l.to.id)),
     ),
+    // Last, matching `Snapshot` and `EMPTY`. The order is not cosmetic: a
+    // shadow is compared to a page as JSON, which is key-order sensitive.
+    stickers: mergeById(page.stickers, gone, delta.stickers ?? null),
   };
 }
 

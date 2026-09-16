@@ -5,6 +5,7 @@ import { validateStrokes, MAX_BATCH, type Stroke } from "./ink-doc";
 import { validateTexts, type TextBox } from "./ink-text";
 import { validateImages, type ImageOnPage } from "./ink-image";
 import { validateLinks, type Link } from "./ink-link";
+import { validateStickers, type Sticker } from "./ink-sticker";
 import { markPageChanged, announceInk } from "./ink-recognition";
 import { lockPage } from "./ink-page";
 import { nextPage, store, type Parts } from "./ink-apply";
@@ -65,6 +66,14 @@ export type InkDelta = {
    * the objects it ties takes it with them, which `orphanedBy` decides.
    */
   links?: Link[];
+  /**
+   * The stickers stuck on the page, same rules again. ADR-115.
+   *
+   * A sticker is named in `remove` like anything else, and an arrow tied to
+   * one dies with it -- `orphanedBy` does not care what kind of thing an id
+   * belonged to.
+   */
+  stickers?: Sticker[];
 };
 
 /** Erasing a big scribble can touch a lot of strokes; this is still a guard. */
@@ -109,9 +118,11 @@ function validated(delta: InkDelta): Parts {
     texts: delta.texts === undefined ? null : validateTexts(delta.texts),
     images: delta.images === undefined ? null : validateImages(delta.images),
     links: delta.links === undefined ? null : validateLinks(delta.links),
+    stickers: delta.stickers === undefined ? null : validateStickers(delta.stickers),
   };
   if (parts.remove.length === 0 && parts.upsert.length === 0
-    && parts.texts === null && parts.images === null && parts.links === null) {
+    && parts.texts === null && parts.images === null && parts.links === null
+    && parts.stickers === null) {
     throw new DomainError("a delta must change something", "empty_delta", 400);
   }
   return parts;

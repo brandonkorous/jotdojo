@@ -78,11 +78,12 @@ Reasons this matters more than it looks:
 
 We render a raster preview for thumbnails and for VLM-based recognition, but the vectors remain the truth.
 
-**Four arrays, not one list** (ADR-065, ADR-103, ADR-108). The layer document holds
-`strokes`, `texts`, `images` and `links` separately, and the separation is what stops the
-recognizer reading a typed note or an arrow back as handwriting — replacing a certainty with
-a confidence-scored guess. Every one of the four is merged **by id**: an array that leaves
-something out is an upsert, not a deletion, and going is said with `remove`.
+**Five arrays, not one list** (ADR-065, ADR-103, ADR-108, ADR-115). The layer document
+holds `strokes`, `texts`, `images`, `links` and `stickers` separately, and the separation is
+what stops the recognizer reading a typed note, an arrow or a sticker back as handwriting —
+replacing a certainty with a confidence-scored guess. Every one of the five is merged **by
+id**: an array that leaves something out is an upsert, not a deletion, and going is said
+with `remove`.
 
 **An arrow is agent-readable, which is the only reason it is stored.** `links` becomes
 `- Deposit -> Survey` in the same companion `blocks` row typed text uses, so the shape of a
@@ -90,6 +91,16 @@ diagram is lexically searchable and semantically embedded. An arrow between two 
 nobody named is left out: it is true and it says nothing. An arrow also dies with either of
 the things it ties — unlike a comment (ADR-107), because a comment has words in it and an
 arrow pointing at nothing records nothing.
+
+**A sticker is a mark on something, and it is the cheapest object on the page.** Six fields
+— id, name, x, y, size, colour — with no bytes anywhere, because the artwork is one of 65
+Font Awesome Whiteboard glyphs the build already ships. It becomes words in the same
+companion row: `3 stickers on the page: fire x2, circle-check`, which is what makes "which
+notes did I flag" a search that works. An arrow may tie to one, and takes it as either end.
+
+The white edge round a sticker is `paint-order="stroke fill"` on the single path — the
+outline is drawn BEHIND the artwork, which is what a die-cut sticker is. One attribute,
+drawn identically by the browser and by `sharp` in the worker, both verified against pixels.
 
 ### Taking it back
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, type RefObject } from "react";
-import type { ImageOnPage, Link, Stroke, TextBox } from "@jotacular/domain";
+import type { ImageOnPage, Link, Sticker, Stroke, TextBox } from "@jotacular/domain";
 import { InkEngine, type SelectionSummary, type Tool } from "./ink-engine";
 import { InkSync, type SyncState } from "./ink-sync";
 import { InkCatchup } from "./ink-catchup";
@@ -124,10 +124,11 @@ export function useInkEngine(o: MountOptions) {
       // A block created a moment ago is empty, but a reload of an existing one
       // is not -- and loading after resize matters, because resize repaints.
       //
-      // Strokes OR text OR photographs OR arrows: a note that is nothing but
-      // two notes and an arrow has a stroke count of zero and still has a page
-      // to load. ADR-065, ADR-103, ADR-108.
-      if (block.strokeCount > 0 || block.hasText || block.hasImages || block.hasLinks) {
+      // Strokes OR text OR photographs OR arrows OR stickers: a note that is
+      // nothing but two notes and an arrow has a stroke count of zero and still
+      // has a page to load. ADR-065, ADR-103, ADR-108, ADR-115.
+      if (block.strokeCount > 0 || block.hasText || block.hasImages
+        || block.hasLinks || block.hasStickers) {
         const existing = await getInkAction(block.blockId);
         if (!disposed) {
           engine.open.load(
@@ -135,6 +136,7 @@ export function useInkEngine(o: MountOptions) {
             (existing.document.texts ?? []) as TextBox[],
             (existing.document.images ?? []) as ImageOnPage[],
             (existing.document.links ?? []) as Link[],
+            (existing.document.stickers ?? []) as Sticker[],
           );
         }
       }

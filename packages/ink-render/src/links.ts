@@ -1,6 +1,9 @@
-import type { ImageOnPage, Link, LinkEnd, Stroke, TextBox } from "@jotacular/domain";
+import type {
+  ImageOnPage, Link, LinkEnd, Sticker, Stroke, TextBox,
+} from "@jotacular/domain";
 import { strokeBounds, type Bounds } from "./geometry";
 import { cardBounds } from "./text-geometry";
+import { stickerBounds } from "./sticker-geometry";
 
 /**
  * Where an arrow actually starts and stops. ADR-108.
@@ -24,6 +27,7 @@ export type LinkPage = {
   strokes: readonly Stroke[];
   texts?: readonly TextBox[];
   images?: readonly ImageOnPage[];
+  stickers?: readonly Sticker[];
 };
 
 /** Kept off the edge of a card, so an arrow touches its neighbour rather than
@@ -33,10 +37,13 @@ const CLEARANCE = 6;
 /**
  * Where a named object is, or null once it is gone.
  *
- * Boxes, then photographs, then strokes -- the order they are drawn in, so an
- * id that somehow belongs to two things resolves to the one you can see.
+ * Topmost first -- stickers, boxes, photographs, then strokes -- which is the
+ * order they are drawn in reversed, so an id that somehow belongs to two
+ * things resolves to the one you can actually see.
  */
 export function objectBounds(page: LinkPage, id: string): Bounds | null {
+  const sticker = page.stickers?.find((s) => s.id === id);
+  if (sticker) return stickerBounds(sticker);
   const box = page.texts?.find((b) => b.id === id);
   if (box) return cardBounds(box);
   const image = page.images?.find((i) => i.id === id);

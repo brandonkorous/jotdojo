@@ -5,8 +5,10 @@ import { MAX_TEXTS, type TextBox } from "./ink-text";
 import { syncTextBlock } from "./ink-text-block";
 import { MAX_IMAGES, type ImageOnPage } from "./ink-image";
 import { MAX_LINKS, orphanedBy, type Link } from "./ink-link";
+import { MAX_STICKERS, type Sticker } from "./ink-sticker";
 import {
-  bumpPage, writeTexts, writeImages, writeLinks, type PageObjects,
+  bumpPage, writeTexts, writeImages, writeLinks, writeStickers,
+  type PageObjects,
 } from "./ink-page";
 
 /**
@@ -27,6 +29,7 @@ export type Parts = {
   texts: TextBox[] | null;
   images: ImageOnPage[] | null;
   links: Link[] | null;
+  stickers: Sticker[] | null;
 };
 
 /** What `store` needs of the page besides its objects. */
@@ -44,11 +47,13 @@ export function nextPage(row: PageObjects, parts: Parts): PageObjects {
     texts: mergeById(row.texts, parts.remove, parts.texts),
     images: mergeById(row.images, parts.remove, parts.images),
     links: mergeById(row.links, parts.remove, parts.links),
+    stickers: mergeById(row.stickers, parts.remove, parts.stickers),
   };
   ceiling(next.strokes.length, MAX_STROKES, "strokes");
   ceiling(next.texts.length, MAX_TEXTS, "text boxes");
   ceiling(next.images.length, MAX_IMAGES, "images");
   ceiling(next.links.length, MAX_LINKS, "arrows");
+  ceiling(next.stickers.length, MAX_STICKERS, "stickers");
   // An arrow outlives neither of the things it ties. ADR-108 says why this is
   // the one place a page disagrees with a comment.
   const orphans = new Set(orphanedBy(next.links, new Set(parts.remove)));
@@ -75,12 +80,18 @@ export async function store(
   let version = await bumpPage(tx, row.artifactId, next.strokes);
   const texts = changed(row.texts, next.texts);
   const links = changed(row.links, next.links);
+  const stickers = changed(row.stickers, next.stickers);
   if (texts) version = await writeTexts(tx, row.artifactId, next.texts);
   if (links) version = await writeLinks(tx, row.artifactId, next.links);
+  if (stickers) version = await writeStickers(tx, row.artifactId, next.stickers);
   // The searchable copy, in the same transaction. A box that is saved but not
   // indexed is invisible to search forever with nothing to indicate it -- and
   // an arrow is only worth storing because it becomes a sentence there.
-  if (texts || links) await syncTextBlock(tx, row, next.texts, next.links);
+  // Stickers join that for one reason: a page marked with three fires should
+  // be findable by searching for fire. ink-sticker.ts tallies them. ADR-115.
+  if (texts || links || stickers) {
+    await syncTextBlock(tx, row, next.texts, next.links, next.stickers);
+  }
   // No companion row: an image's searchable text is its vision transcript,
   // which lives on the block that owns the bytes and did not move. ADR-103.
   if (changed(row.images, next.images)) {

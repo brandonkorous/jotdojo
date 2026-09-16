@@ -179,7 +179,7 @@ console.log("\na reset forgets, an observe does not");
 console.log("\na copy is a new thing, not a second name for the old one. ADR-110");
 {
   const held = clip(
-    { strokes: [stroke("s1")], texts: [box("t1")], images: [photo("p1")] },
+    { strokes: [stroke("s1")], texts: [box("t1")], images: [photo("p1")], stickers: [] },
     [arrow("l1", "t1", "s1"), arrow("l2", "t1", "outside")],
   );
   check("it takes what was caught", held.strokes.length === 1 && held.texts.length === 1);
@@ -209,9 +209,9 @@ console.log("\na copy is a new thing, not a second name for the old one. ADR-110
 
 console.log("\nan empty copy never empties the clipboard");
 {
-  check("nothing caught is empty", isEmpty(clip({ strokes: [], texts: [], images: [] }, [])));
-  check("one stroke is not", !isEmpty(clip({ strokes: [stroke("s")], texts: [], images: [] }, [])));
-  check("one photo is not", !isEmpty(clip({ strokes: [], texts: [], images: [photo("p")] }, [])));
+  check("nothing caught is empty", isEmpty(clip({ strokes: [], texts: [], images: [], stickers: [] }, [])));
+  check("one stroke is not", !isEmpty(clip({ strokes: [stroke("s")], texts: [], images: [], stickers: [] }, [])));
+  check("one photo is not", !isEmpty(clip({ strokes: [], texts: [], images: [photo("p")], stickers: [] }, [])));
 }
 
 console.log(failures === 0 ? "\nhistory: all good\n" : `\nhistory: ${failures} FAILED\n`);

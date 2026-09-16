@@ -2,6 +2,7 @@ import { DomainError } from "./errors";
 import type { TextBox } from "./ink-text";
 import type { ImageOnPage } from "./ink-image";
 import type { Link } from "./ink-link";
+import type { Sticker } from "./ink-sticker";
 
 /**
  * What an ink document IS, and what a client is allowed to send. docs/08-ink.md.
@@ -84,6 +85,17 @@ export type InkDocument = {
    * key -- and a reader that assumed one would break every existing page.
    */
   links?: Link[];
+  /**
+   * The stickers stuck on the page. ADR-115.
+   *
+   * A FIFTH array, and the cheapest -- a sticker is a name and a place, with
+   * no bytes anywhere. Apart from `strokes` for the reason every other array
+   * here is: a recogniser handed one would read it back as handwriting.
+   *
+   * Optional, because every document written before this shipped has no such
+   * key -- and a reader that assumed one would break every existing page.
+   */
+  stickers?: Sticker[];
 };
 
 /** Generous, and far above a real page. A guard against a runaway client, not

@@ -11,7 +11,9 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "smoke:raster": "tsx scripts/smoke-raster.ts"
+    "smoke:raster": "tsx scripts/smoke-raster.ts",
+    "smoke:stickers": "tsx scripts/smoke-stickers.ts",
+    "stickers:build": "tsx scripts/build-sticker-art.ts"
   },
   "devDependencies": {
     "typescript": "^5.7.3",

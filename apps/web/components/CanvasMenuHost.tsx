@@ -1,11 +1,12 @@
 "use client";
 
-import type { RefObject } from "react";
+import { useState, type RefObject } from "react";
 import type { InkEngine, SelectionSummary } from "@/lib/ink-engine";
 import { downloadSelection } from "@/lib/export-client";
 import { bringIntoView } from "@/lib/remark-anchor";
 import { useRemarks } from "@/lib/remarks";
 import { CanvasMenu } from "./CanvasMenu";
+import { StickerTray } from "./StickerTray";
 
 /**
  * The canvas menu, wired to an engine, wrapping a whole page. ADR-102.
@@ -32,6 +33,9 @@ export function CanvasMenuHost({
 }) {
   const at = () => engine.current;
   const remarks = useRemarks();
+  /** The tray lives HERE rather than in Canvas.tsx, because this is already
+   *  the thing that holds the engine and every verb the canvas offers. */
+  const [tray, setTray] = useState(false);
 
   /** One object, so the id IS the selection. The camera brings it to the
    *  middle first, because the popup opens beside it. ADR-107. */
@@ -55,31 +59,42 @@ export function CanvasMenuHost({
   };
 
   return (
-    <CanvasMenu
-      selection={selection}
-      actions={{
-        onOpenAt: (x, y) => at()?.selectAtClient(x, y),
-        anchorRect: () => at()?.marqueeRect() ?? null,
-        onCard: (fill) => at()?.selection.recolourCards(fill),
-        onResize: (bigger) => at()?.selection.resize(bigger),
-        onTidy: () => at()?.selection.tidyShape(),
-        onExport: () => void downloadSelection(noteId, selection.ids),
-        onDelete: () => at()?.selection.remove(),
-        onTextBoxHere: (x, y) => at()?.textAtClient(x, y),
-        onComment: remarks ? comment : undefined,
-        // Only where there is an object plane to tie an arrow to. ADR-108.
-        onArrowFrom: at()?.links ? arrow : undefined,
-        onCopy: () => { at()?.doc.copy(); },
-        onDuplicate: () => { at()?.doc.duplicate(); },
-        onPaste: () => { at()?.doc.paste(); },
-        canPaste: () => at()?.doc.canPaste ?? false,
-        onUndo: () => { at()?.doc.undo(); },
-        onRedo: () => { at()?.doc.redo(); },
-        canUndo: () => at()?.doc.canUndo ?? false,
-        canRedo: () => at()?.doc.canRedo ?? false,
-      }}
-    >
-      {children}
-    </CanvasMenu>
+    <>
+      <CanvasMenu
+        selection={selection}
+        actions={{
+          onOpenAt: (x, y) => at()?.selectAtClient(x, y),
+          anchorRect: () => at()?.marqueeRect() ?? null,
+          onCard: (fill) => at()?.selection.recolourCards(fill),
+          onSticker: () => setTray(true),
+          onStickerColour: (color) => at()?.selection.recolourStickers(color),
+          onResize: (bigger) => at()?.selection.resize(bigger),
+          onTidy: () => at()?.selection.tidyShape(),
+          onExport: () => void downloadSelection(noteId, selection.ids),
+          onDelete: () => at()?.selection.remove(),
+          onTextBoxHere: (x, y) => at()?.textAtClient(x, y),
+          onComment: remarks ? comment : undefined,
+          // Only where there is an object plane to tie an arrow to. ADR-108.
+          onArrowFrom: at()?.links ? arrow : undefined,
+          onCopy: () => { at()?.doc.copy(); },
+          onDuplicate: () => { at()?.doc.duplicate(); },
+          onPaste: () => { at()?.doc.paste(); },
+          canPaste: () => at()?.doc.canPaste ?? false,
+          onUndo: () => { at()?.doc.undo(); },
+          onRedo: () => { at()?.doc.redo(); },
+          canUndo: () => at()?.doc.canUndo ?? false,
+          canRedo: () => at()?.doc.canRedo ?? false,
+        }}
+      >
+        {children}
+      </CanvasMenu>
+      {/* OUTSIDE the menu, not inside its trigger: a right-click on the tray
+          would otherwise open the canvas menu on top of it. */}
+      <StickerTray
+        open={tray}
+        onClose={() => setTray(false)}
+        onPick={(name, color) => at()?.open.placeSticker(name, color)}
+      />
+    </>
   );
 }

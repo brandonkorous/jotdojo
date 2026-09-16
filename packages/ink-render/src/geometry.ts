@@ -1,5 +1,6 @@
-import type { InkDocument, Point, Stroke } from "@jotacular/domain";
+import type { InkDocument, Point, Sticker, Stroke } from "@jotacular/domain";
 import { cardBounds } from "./text-geometry";
+import { stickerBounds } from "./sticker-geometry";
 
 /**
  * Where the ink actually is, in document units.
@@ -129,6 +130,21 @@ export function contentBounds(doc: InkDocument): Bounds | null {
   // off every edge of an exported note.
   for (const text of doc.texts ?? []) {
     const b = cardBounds(text);
+    box = box ? union(box, b) : b;
+  }
+  // Stickers count too, and a page can be nothing but stickers -- somebody who
+  // marked a blank canvas with three flags has content to frame. ADR-115.
+  const stuck = stickersBounds(doc.stickers ?? []);
+  if (stuck) box = box ? union(box, stuck) : stuck;
+  return box;
+}
+
+/** The same, for a caller holding stickers rather than a document -- the
+ *  browser engine, which frames the page without building one. */
+export function stickersBounds(stickers: readonly Sticker[]): Bounds | null {
+  let box: Bounds | null = null;
+  for (const sticker of stickers) {
+    const b = stickerBounds(sticker);
     box = box ? union(box, b) : b;
   }
   return box;

@@ -5188,3 +5188,104 @@ second copy is always the same, whichever direction it drifts.
 
 `billing:smoke` now asserts all three states, including one check per key that
 dropping it is an error rather than silence.
+
+### ADR-115 — A sticker is a mark on something, and its white edge is one attribute
+
+**Status.** Accepted and shipped, 2026-09-16.
+
+**Context.** FigJam has stickers. We did not, and the gap is narrower than it
+looks: the canvas already had four kinds of object, a lasso that catches any of
+them, arrows that tie any two together, undo and a clipboard. What was missing
+was the cheapest possible object — something you put ON the page to say
+something about what is already there, without typing.
+
+The argument for it is not parity. ADR-111 refused timers, voting, templates and
+widgets because they are meeting furniture, and a sticker is not that. A mark is
+capture: it is the fastest way to say "this one" about a note you wrote three
+weeks ago, and — this is the part that pays — it is the only one of the FigJam
+gestures that an agent can read back. `flattenStickers` turns a page into
+`3 stickers on the page: fire x2, circle-check`, so "which notes did I flag" is a
+search that works rather than a feature request.
+
+**Decision: a FIFTH array in the layer document.** `stickers[]` beside
+`strokes`, `texts`, `images` and `links`, with the same commutative id-named
+deltas ADR-058 established. A sticker is six fields — id, name, x, y, size,
+colour — and nothing else. No bytes, no `blocks` row, no upload, no worker job.
+
+It is not an `ImageOnPage`, which was the obvious reuse. ink-image.ts requires
+a `blockId` and says why: "a placement with no block behind it is a hole on the
+page that nothing can ever fill in." A sticker has nothing to put there, and
+weakening that invariant to save an array would trade a real guarantee for a
+saved file.
+
+**The artwork is Font Awesome Whiteboard Semibold**, which is the face ADR-083
+already chose for the whole product — so a sticker is marked in the same hand as
+the pen that wrote around it. Sixty-five of the family's 492, grouped the way
+the tray shows them. Named for the PICTURE rather than for a job, which is the
+opposite of the rule `lib/icons.ts` follows and deliberately: an icon in the
+chrome is a button whose artwork may be swapped, and a sticker IS its picture.
+
+**The names live in the domain and the paths do not.** `packages/ink-render`
+runs in the worker, where there is no Font Awesome package and no npm token —
+`web.Dockerfile` mounts that secret for `apps/web` alone. So the paths are
+extracted once into a generated `sticker-art.ts` and checked in, by a script
+that reads the list from `@jotacular/domain` and **refuses to write anything if
+the kit has no icon for a name on it**. That refusal is the only thing stopping
+the two lists drifting into a page that draws a hole, and `sticker-art:smoke`
+asserts the agreement again from the other side.
+
+**The white edge is `paint-order="stroke fill"`.** One attribute on one path.
+It draws the white outline BEHIND the artwork instead of over it, which is
+exactly a die-cut sticker: the picture stays whole and the edge sits outside it.
+The alternatives were a second path offset behind the first, or an SVG filter;
+the first doubles the geometry and the second rasterises unpredictably across
+renderers, which is the reason ADR-079 already refused a drop shadow on cards.
+
+**This was checked rather than assumed.** `sharp` rasterises through librsvg,
+and `paint-order` is SVG 2. Rendering a circle with a thick stroke both ways and
+sampling the pixels showed the fill reaching the full radius only with the
+attribute set — so the die-cut survives the export as well as the screen.
+`sticker-art:smoke` keeps that honest by rendering a real sticker twice, once
+with the attribute stripped, and asserting the artwork is measurably larger with
+it than without.
+
+**Placed in the middle of the view, never at the origin.** The same call
+`InkImageLayer.place` makes, for the same reason: an endless canvas has no
+middle, and a sticker that landed at the origin would be somewhere else entirely
+by the time anybody had panned twice. Successive stickers cascade rather than
+stack, because marking a page with six of them and seeing one is the kind of
+thing that reads as five failures.
+
+**A sticker never reaches the recogniser.** It follows the `text` option in
+`toSvg`, as arrows do (ADR-108) and typed boxes do (ADR-065). A vision model
+handed a flame transcribes it as a squiggle, and that squiggle would be written
+into somebody's note as though it had been read off the page.
+
+**Consequences.** Five files split at the 250-line limit, every one of them by
+responsibility:
+
+    ink-objects.ts        a text box, which is complicated
+    ink-rects.ts          a photo and a sticker, which are four numbers
+
+    ink-selection.ts      the lifecycle: a loop, a marquee, a drag
+    ink-selection-held.ts what is held, of four kinds
+
+    ink.css               the writing surface and its furniture
+    ink-sticker.css       one object that sits on it
+    sticker-tray.css      the tray, which sits still on the glass
+
+The tray lives in `CanvasMenuHost` rather than in `Canvas.tsx`, because that is
+already the component holding the engine and every verb the canvas offers — and
+`Canvas.tsx` had no room for another one.
+
+A sticker gets its own recolour method rather than a key on `restyle`'s patch.
+ADR-065 decided `{color, width}` is a pen idea that must not reach text, ADR-079
+added a fill that must not reach the ink, and this is a third that belongs to
+neither. Three methods say that; one method with a union would have to remember
+it.
+
+**What this does NOT do.** The Whiteboard family has four faces and no clap, no
+party, no hundred and no handshake. FigJam leans on emoji reactions and we
+cannot match that without a second icon family, which would break the single
+face ADR-083 exists to keep. Reactions are a different feature from marks, and
+if they are ever wanted they should be argued for on their own.

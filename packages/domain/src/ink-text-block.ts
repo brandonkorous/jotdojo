@@ -2,6 +2,7 @@ import { and, eq, isNotNull, sql } from "drizzle-orm";
 import { blocks, type Tx } from "@jotacular/db";
 import { boxNames, flattenTexts, type TextBox } from "./ink-text";
 import { flattenLinks, type Link } from "./ink-link";
+import { flattenStickers, stickerNames, type Sticker } from "./ink-sticker";
 import { queueEmbedding } from "./note-body";
 
 /**
@@ -31,8 +32,9 @@ export type InkPageRef = { noteId: string; spaceId: string; artifactId: string }
 export async function syncTextBlock(
   tx: Tx, page: InkPageRef,
   boxes: readonly TextBox[], links: readonly Link[] = [],
+  stickers: readonly Sticker[] = [],
 ): Promise<void> {
-  const body = pageText(boxes, links);
+  const body = pageText(boxes, links, stickers);
 
   const existing = await tx.select({ id: blocks.id }).from(blocks)
     .where(and(
@@ -61,17 +63,26 @@ export async function syncTextBlock(
 }
 
 /**
- * The page in words: what it says, then how it is wired. ADR-108.
+ * The page in words: what it says, how it is wired, what is marked on it.
+ * ADR-108, ADR-115.
  *
- * The arrows come AFTER the notes and are labelled, so a reader is never left
- * to guess whether `Deposit -> Survey` is something somebody typed or something
- * this file worked out from two coordinates.
+ * Ordered by how much of it a person actually authored, and the last two parts
+ * are LABELLED -- a reader is never left to guess whether `Deposit -> Survey`
+ * is something somebody typed or something this file worked out from two
+ * coordinates.
  */
-export function pageText(boxes: readonly TextBox[], links: readonly Link[]): string {
-  const words = flattenTexts(boxes);
-  const wiring = flattenLinks(links, boxNames(boxes));
-  if (!wiring) return words;
-  return words ? `${words}\n\n${wiring}` : wiring;
+export function pageText(
+  boxes: readonly TextBox[], links: readonly Link[],
+  stickers: readonly Sticker[] = [],
+): string {
+  // One name table, because an arrow may now tie a sticker to a box and the
+  // sentence has to read properly either way round.
+  const names = new Map([...boxNames(boxes), ...stickerNames(stickers)]);
+  return [
+    flattenTexts(boxes),
+    flattenLinks(links, names),
+    flattenStickers(stickers),
+  ].filter(Boolean).join("\n\n");
 }
 
 async function nextPosition(tx: Tx, noteId: string): Promise<number> {

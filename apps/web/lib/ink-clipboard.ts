@@ -1,4 +1,6 @@
-import type { ImageOnPage, Link, Point, Stroke, TextBox } from "@jotacular/domain";
+import type {
+  ImageOnPage, Link, Point, Sticker, Stroke, TextBox,
+} from "@jotacular/domain";
 
 /**
  * Copy, paste and duplicate on the canvas. ADR-110.
@@ -17,6 +19,7 @@ export type Clipping = {
   strokes: Stroke[];
   texts: TextBox[];
   images: ImageOnPage[];
+  stickers: Sticker[];
   /** Only arrows whose BOTH ends were copied. An arrow with one end left
    *  behind would paste pointing at the original, which nobody means. */
   links: Link[];
@@ -46,7 +49,8 @@ export const take = (): Clipping | null => held;
  */
 export function clip(
   selection: {
-    strokes: readonly Stroke[]; texts: readonly TextBox[]; images: readonly ImageOnPage[];
+    strokes: readonly Stroke[]; texts: readonly TextBox[];
+    images: readonly ImageOnPage[]; stickers: readonly Sticker[];
   },
   links: readonly Link[],
 ): Clipping {
@@ -54,11 +58,13 @@ export function clip(
     ...selection.strokes.map((s) => s.id),
     ...selection.texts.map((t) => t.id),
     ...selection.images.map((i) => i.id),
+    ...selection.stickers.map((s) => s.id),
   ]);
   return {
     strokes: selection.strokes.map(cloneStroke),
     texts: selection.texts.map((t) => ({ ...t })),
     images: selection.images.map((i) => ({ ...i })),
+    stickers: selection.stickers.map((s) => ({ ...s })),
     links: links.filter((l) => inside(l, ids)).map(cloneLink),
   };
 }
@@ -88,20 +94,22 @@ export function reborn(clipping: Clipping, dx: number, dy: number): Clipping {
   }));
   const texts = clipping.texts.map((t) => ({ ...t, id: rename(t.id), x: t.x + dx, y: t.y + dy }));
   const images = clipping.images.map((i) => ({ ...i, id: rename(i.id), x: i.x + dx, y: i.y + dy }));
+  const stickers = clipping.stickers.map((s) =>
+    ({ ...s, id: rename(s.id), x: s.x + dx, y: s.y + dy }));
   const links = clipping.links.map((l) => ({
     ...cloneLink(l),
     id: crypto.randomUUID(),
     from: { id: rename(l.from.id!), x: l.from.x + dx, y: l.from.y + dy },
     to: { id: rename(l.to.id!), x: l.to.x + dx, y: l.to.y + dy },
   }));
-  return { strokes, texts, images, links };
+  return { strokes, texts, images, stickers, links };
 }
 
 /** Whether a clipping would put anything on the page at all. An empty one is
  *  never stored, so a failed copy cannot silently empty the clipboard. */
 export const isEmpty = (clipping: Clipping) =>
   clipping.strokes.length === 0 && clipping.texts.length === 0
-  && clipping.images.length === 0;
+  && clipping.images.length === 0 && clipping.stickers.length === 0;
 
 const cloneStroke = (s: Stroke): Stroke => ({ ...s, pts: s.pts.map((p) => [...p] as Point) });
 const cloneLink = (l: Link): Link => ({ ...l, from: { ...l.from }, to: { ...l.to } });

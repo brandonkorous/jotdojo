@@ -5,6 +5,7 @@ import {
 } from "@wizeworks/silicaui-react";
 import { Icon } from "@/components/Icon";
 import { CARD_COLORS } from "@/lib/ink-cards";
+import { PEN_COLORS } from "@/lib/ink-style";
 import type { SelectionSummary } from "@/lib/ink-engine";
 import type { ShapeKind } from "@/lib/ink-shapes";
 import type { CanvasMenuActions } from "./CanvasMenu";
@@ -41,6 +42,28 @@ export function Selected({
             <Icon name="agent" />
             Make this {SHAPE_NAME[selection.shape]}
           </ContextMenuItem>
+          <ContextMenuSeparator />
+        </>
+      )}
+
+      {/* A sticker's colour, on the same swatch row a card uses. The house
+          hues, not a palette invented for stickers. ADR-115. */}
+      {selection.stickers > 0 && (
+        <>
+          <div role="group" aria-label="Sticker colour" className="jd-menu-swatches">
+            {PEN_COLORS.map(({ name, color }) => (
+              <button
+                key={name}
+                type="button"
+                className="jd-tool jd-swatch"
+                title={name}
+                aria-label={name}
+                onClick={() => actions.onStickerColour(color)}
+              >
+                <span aria-hidden className="jd-chip" style={{ background: color }} />
+              </button>
+            ))}
+          </div>
           <ContextMenuSeparator />
         </>
       )}
@@ -147,6 +170,11 @@ export function Empty({
       <ContextMenuItem onClick={() => { const p = at(); actions.onTextBoxHere(p.x, p.y); }}>
         <Icon name="text" />
         Put a note here
+      </ContextMenuItem>
+      {/* A mark ON something, which is what separates it from a note. ADR-115. */}
+      <ContextMenuItem onClick={actions.onSticker}>
+        <Icon name="sticker" />
+        Add a sticker
       </ContextMenuItem>
       {actions.canPaste() && (
         <ContextMenuItem onClick={actions.onPaste}>

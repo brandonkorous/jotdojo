@@ -1,4 +1,6 @@
-import type { ImageOnPage, Link, Stroke, TextBox } from "@jotacular/domain";
+import type {
+  ImageOnPage, Link, Sticker, Stroke, TextBox,
+} from "@jotacular/domain";
 import { getInkAction } from "@/app/actions";
 import { strokesSinceAction } from "@/app/actions/live";
 import { needsFullRead } from "./ink-merge";
@@ -36,6 +38,8 @@ export type CatchupTarget = {
     /** And the arrows. ADR-108: they move the version without moving the
      *  count, exactly as the other two do. */
     links(links: Link[]): void;
+    /** And the stickers, which behave the same way again. ADR-115. */
+    stickers(stickers: Sticker[]): void;
   };
 };
 
@@ -91,6 +95,7 @@ export class InkCatchup {
     this.target.remote.texts((ink.document.texts ?? []) as TextBox[]);
     this.target.remote.images((ink.document.images ?? []) as ImageOnPage[]);
     this.target.remote.links((ink.document.links ?? []) as Link[]);
+    this.target.remote.stickers((ink.document.stickers ?? []) as Sticker[]);
     this.sync.believe({ count: ink.strokeCount, version: ink.version });
   }
 }

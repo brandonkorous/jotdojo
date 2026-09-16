@@ -28,6 +28,7 @@ export * from "./ink-text-block";
 export * from "./ink-link";
 export * from "./ink-image";
 export * from "./ink-image-blocks";
+export * from "./ink-sticker";
 export * from "./ink-delta";
 export * from "./ink-apply";
 export * from "./ink-recognition";

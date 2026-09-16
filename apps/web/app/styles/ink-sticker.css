@@ -1,0 +1,22 @@
+/**
+ * A sticker on the object plane. ADR-115.
+ *
+ * Its own file because ink.css was at the 250-line limit, and the seam is the
+ * one remarks.css and remark-canvas.css already drew: ink.css is the writing
+ * surface and the furniture round it, and this is one object that sits on it.
+ *
+ * The white die-cut edge is NOT here. It is `paint-order` on the path itself,
+ * set by ink-sticker-plane.ts from the same numbers the exporter uses -- a CSS
+ * outline would exist on the screen and nowhere else. ADR-078.
+ */
+.jd-plane-sticker {
+  position: absolute;
+  display: block;
+  /* Nothing here takes a pointer. A sticker is tapped on the ink surface
+     underneath, exactly as a stroke is, so there is only ever one hit test. */
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-drag: none;
+  /* The artwork is already inset for its border, so nothing may clip it. */
+  overflow: visible;
+}

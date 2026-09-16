@@ -1,4 +1,4 @@
-import type { ImageOnPage, Stroke, TextBox } from "@jotacular/domain";
+import type { ImageOnPage, Sticker, Stroke, TextBox } from "@jotacular/domain";
 import type { InkSelection } from "./ink-selection";
 import { MIN_SIZE } from "./ink-plane";
 import { classify, snap } from "./ink-shapes";
@@ -23,6 +23,10 @@ const MIN_WIDTH = 0.5;
 const MAX_WIDTH = 64;
 /** Above this a note stops being a note and becomes a poster. */
 const MAX_TEXT = 160;
+/** A sticker below this is a speck nobody can tap; above it, it is a poster
+ *  rather than a mark on something. ADR-115. */
+const MIN_STICKER = 12;
+const MAX_STICKER = 2_000;
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 
@@ -61,6 +65,14 @@ export function resizeSelection(sel: InkSelection, bigger: boolean): boolean {
     pic.y += (pic.h - h) / 2;
     pic.w = w;
     pic.h = h;
+  }
+  // And a sticker about its own centre, for the same reason -- one number,
+  // because a sticker keeps its proportions. ADR-115.
+  for (const mark of sel.selectedStickers as Sticker[]) {
+    const size = clamp(mark.size * f, MIN_STICKER, MAX_STICKER);
+    mark.x += (mark.size - size) / 2;
+    mark.y += (mark.size - size) / 2;
+    mark.size = size;
   }
   return true;
 }

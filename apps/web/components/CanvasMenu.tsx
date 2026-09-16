@@ -35,6 +35,10 @@ export type CanvasMenuActions = {
   /** Where the selection is on the glass, or null when nothing is selected. */
   anchorRect: () => DOMRect | null;
   onCard: (fill: string | null) => void;
+  /** Open the sticker tray. ADR-115. */
+  onSticker: () => void;
+  /** Recolour the stickers that are held. */
+  onStickerColour: (color: string) => void;
   onResize: (bigger: boolean) => void;
   onTidy: () => void;
   onExport: () => void;

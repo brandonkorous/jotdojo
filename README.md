@@ -50,6 +50,8 @@ prove.
     pnpm links:smoke       44 checks  — where an arrow runs, and what takes it away
     pnpm history:smoke     43 checks  — undo is a delta pointed backwards, and the clipboard
     pnpm seats:smoke       29 checks  — how many people a plan holds, counted twice
+    pnpm stickers:smoke    39 checks  — a mark becomes words, and dies with its arrow
+    pnpm sticker-art:smoke 25 checks  — the artwork agrees, and the die-cut edge draws
 
     pnpm api:smoke         16 checks  — the capture endpoint over real HTTP
     pnpm mcp:smoke         22 checks  — a real MCP client, real HTTP, real OAuth token

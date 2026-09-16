@@ -1,7 +1,7 @@
 import type { ImageOnPage } from "@jotacular/domain";
 import type { ViewSnapshot } from "./ink-viewport";
 import type { Bounds } from "./ink-geometry";
-import { imagesBounds } from "./ink-objects";
+import { imagesBounds } from "./ink-rects";
 import { InkImagePlane, type ImageSource } from "./ink-image-plane";
 
 /**

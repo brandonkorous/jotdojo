@@ -13,7 +13,7 @@ import type { ImageOnPage, Point, Stroke, TextBox } from "@jotacular/domain";
 import { validateImages } from "@jotacular/domain";
 import {
   imageArea, imageAt, imageInPolygon, imagesBounds, translateImages,
-} from "../lib/ink-objects";
+} from "../lib/ink-rects";
 import { InkSelection } from "../lib/ink-selection";
 import { resizeSelection } from "../lib/ink-engine-size";
 

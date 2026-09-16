@@ -94,3 +94,16 @@ limit five more times. Every split was by responsibility:
 
     CanvasMenuItems.tsx   what the menu offers
     CanvasMenu.tsx        where it opens
+
+On 2026-09-16 stickers (ADR-115) hit the limit three more times, and the seam
+was the same each time -- what a thing IS, apart from what happens to it:
+
+    ink-objects.ts        a text box, which is complicated
+    ink-rects.ts          a photo and a sticker, which are four numbers
+
+    ink-selection.ts      the lifecycle: a loop, a marquee, a drag
+    ink-selection-held.ts what is held, of four kinds
+
+    ink.css               the writing surface and the furniture round it
+    ink-sticker.css       one object that sits on it, and moves with the camera
+    sticker-tray.css      the tray you pick from, which sits still on the glass
