@@ -14,18 +14,22 @@ authorization server, the **MCP server** on `:3402`, semantic search, handwritin
 recognition, voice and photos, shared spaces and billing, and the marketing site at the
 apex with a live-canvas hero.
 
-**It is deployed** — the apex serves, the app redirects to sign-in, and Jotacular has its
-own Postgres (ADR-100). What is NOT true is that any of it is switched on.
+**It is deployed and the models are running.** The apex serves, the app redirects to
+sign-in, Jotacular has its own Postgres (ADR-100), and all four model seams — vision,
+speech, embeddings, reason — run against a real Azure OpenAI account provisioned by sparx
+(ADR-051). The worker says which deployments it is draining against on every boot.
 
-Recognition, semantic search, voice, the triage agent and billing are all built, tested and
-**inert in production**, because [infra/k8s/01-config.yaml](infra/k8s/01-config.yaml) ships
-them off rather than wrong until somebody approves the spend. So today you can photograph a
-napkin and nothing reads it. Every one of those paths is proven only against `fake`
-providers, which read nothing, hear nothing, judge nothing and take no money.
+**Billing is the one thing still off.** Every Stripe secret is in the vault and the key is
+live; `BILLING_PROVIDER` is not, so `resolveBilling` returns null and they sit inert. One
+vault entry and a redeploy — ADR-113 is why it could not have reached a container before.
 
-**[docs/21-go-live.md](docs/21-go-live.md) is what to do about that** — what to set, in what
-order, and what to check after each. [docs/12-roadmap.md](docs/12-roadmap.md) says what the
-green suites do and do not prove.
+**What nothing has done is judge the answers.** Recognition, search and triage are proven
+as pipelines and unmeasured as quality; every suite in this repo runs them against `fake`
+providers, which read nothing, hear nothing and judge nothing.
+
+**[docs/21-go-live.md](docs/21-go-live.md)** says what is on, what is left, and what to
+check. [docs/12-roadmap.md](docs/12-roadmap.md) says what the green suites do and do not
+prove.
 
 ### Verifying
 

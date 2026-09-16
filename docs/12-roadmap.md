@@ -259,25 +259,31 @@ _Updated 2026-09-15._
 apex serves, the app answers, and Jotacular has its own Postgres (ADR-096 through ADR-100
 are the story of getting there, most of it unpleasant).
 
-**What replaced it as the blocker is narrower and entirely a decision.** Every intelligent
-feature is built, tested and **switched off in production** — `VISION_PROVIDER`,
-`EMBEDDING_PROVIDER`, `SPEECH_PROVIDER`, `TRIAGE_PROVIDER` and `BILLING_PROVIDER` are all
-unset, because `infra/k8s/01-config.yaml` ships them off rather than wrong until the spend
-is approved. [21-go-live.md](21-go-live.md) is what to do about it.
+**And the models are running.** `VISION_PROVIDER`, `EMBEDDING_PROVIDER`, `SPEECH_PROVIDER`
+and `TRIAGE_PROVIDER` are all `azure` in the live secret, pointed at the Azure OpenAI
+account sparx provisions (ADR-051). The worker names the deployments it drains against on
+every boot, which is the check worth making — `jotdojo-vision` rather than `fake-*` is the
+difference between a pipeline that is proven and one that is running.
+
+`01-config.yaml` still shows them commented out, and that is right: it is the default for a
+deployment nobody has approved spend for. The vault is what this one runs on.
 
 | Milestone | Code | Exit criterion |
 |---|---|---|
 | M0 Foundation | complete | **met** — deployed, and a note survives a device change |
-| M1 The loop | complete | **not met** — needs a real model behind MCP |
-| M2 Ink | complete | **not met** — needs `VISION_PROVIDER` set |
-| M3 Spaces and money | complete | **not met** — needs `BILLING_PROVIDER` set; nobody has paid |
-| M4 Voice and images | complete | **not met** — needs the speech and vision providers |
-| M5 Alive | code complete; suite gateway deferred by ADR-002 | **not met** — needs `TRIAGE_PROVIDER` |
+| M1 The loop | complete | needs somebody to run the loop end to end and say it worked |
+| M2 Ink | complete | needs a real page of handwriting quoted back accurately |
+| M3 Spaces and money | complete | **not met** — `BILLING_PROVIDER` is unset; nobody has paid |
+| M4 Voice and images | complete | needs a real napkin photographed and read |
+| M5 Alive | code complete; suite gateway deferred by ADR-002 | needs a week of triage remarks worth reading |
 
-**Every remaining "not met" is a Key Vault entry and a redeploy, not a line of code.** That
-is a materially different position from the one described below, and it is worth saying
-plainly: the question stopped being "is it built" and became "is it any good", which
-nothing has measured.
+**One exit criterion is still a configuration change; the rest are now questions about
+QUALITY.** That is a materially different position from the one described below. Every
+model path has only ever been measured against `fake` providers, which read nothing and
+judge nothing — so the pipelines are proven and the answers are not. Somebody has to draw a
+page, photograph a napkin, and read a week of the agent's remarks.
+
+[21-go-live.md](21-go-live.md) is what is on, what is left, and what to check.
 
 ---
 

@@ -106,6 +106,12 @@ data:
   AZURE_STORAGE_CONTAINER: 'media'
 
   # --- providers -----------------------------------------------------------
+  # COMMENTED OUT HERE, AND SET IN KEY VAULT ON THE LIVE DEPLOYMENT. This file
+  # is the default for a cluster nobody has approved spend for; the vault is
+  # what an actual deployment runs on, and the vault wins. As of 2026-09-16 all
+  # four are `azure` against the account sparx provisions (ADR-051). Read them
+  # with `kubectl -n jotacular get secret jotacular-secrets`, never from here.
+  #
   # `fake` is REFUSED OUTRIGHT in production by both packages, which is the right
   # behaviour and worth knowing before a deploy: a fake embedder has no
   # semantics, and a fake recognizer returns fixed text that would be written

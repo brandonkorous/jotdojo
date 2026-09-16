@@ -5106,13 +5106,24 @@ refused outright at the door as well as in the code.
 of it: shipping with a feature off is a deliberate, documented state
 (01-config.yaml), and shipping with it broken never is.
 
-**This is the third time this shape has appeared.** ADR-090: the vault key kept
-an old name and the deploy asked for one that did not exist. ADR-091: a rename
-sweep could not see the end of a name it did not own. ADR-096: a green apex and
-Running pods while the database was unreachable. Same failure each time -- a
-signal that looks like success because the thing that would have contradicted
-it was never asked. The answer each time has been to make the deploy refuse,
-and that is the answer here.
+**ADR-051 already found this, and fixed four fifths of it.** Its closing
+paragraph is about exactly this failure -- "the endpoint, the key and all four
+deployment names can be present and correct and every feature still be off,
+with no error anywhere" -- and it added the four model switches to the optional
+list. `BILLING_PROVIDER` was not among them, because that ADR was about models
+and billing was not in its field of view. So the sweep was right, thorough, and
+one short; the fifth switch stayed unreachable for another three weeks.
+
+That is worth keeping separate from the others, because it is not the same
+mistake. ADR-090, ADR-091 and ADR-096 are all a signal that looked like success
+because nothing asked the question that would contradict it. **This one is a
+correct fix with a boundary drawn slightly too small** -- and the tell was
+available the whole time: four of five switches on a list is a list that was
+enumerated from one feature rather than from the code.
+
+The answer is still to make the deploy refuse, which is what the pairs check
+does. It is also why that check covers all five rather than the one that was
+missing.
 
 docs/21-go-live.md is the runbook this produced: what to set, in what order,
 and what to check after each one. Money is last, and the check that matters is
