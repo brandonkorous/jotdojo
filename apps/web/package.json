@@ -37,11 +37,11 @@
     "@jotacular/ink-render": "workspace:*",
     "@wizeworks/silicaui-react": "^0.55.0",
     "marked": "^15.0.12",
-    "next": "^15.1.6",
+    "next": "^15.5.25",
     "next-auth": "^5.0.0-beta.25",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "sharp": "^0.35.3"
+    "sharp": "^0.35.4"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.6",

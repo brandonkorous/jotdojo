@@ -79,7 +79,7 @@
   },
   "devDependencies": {
     "dotenv-cli": "^8.0.0",
-    "sharp": "^0.35.3",
+    "sharp": "^0.35.4",
     "tsx": "^4.19.2",
     "turbo": "^2.5.0",
     "typescript": "^5.7.3"
@@ -87,8 +87,13 @@
   "pnpm": {
     "overrides": {
       "postcss": "^8.5.26",
-      "sharp": "^0.35.3",
-      "@esbuild-kit/core-utils>esbuild": "^0.25.12"
+      "sharp": "^0.35.4",
+      "@esbuild-kit/core-utils>esbuild": "^0.25.12",
+      "fast-uri@^3": "^3.1.6",
+      "fast-uri@^4": "^4.1.3",
+      "js-yaml@^4": "^4.3.2",
+      "hono": "^4.13.5",
+      "qs": "^6.16.0"
     },
     "onlyBuiltDependencies": [
       "esbuild",
