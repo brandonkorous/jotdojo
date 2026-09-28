@@ -1,44 +1,17 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
-import { Icon } from "@/components/Icon";
-import type { IconName } from "@/lib/icons";
+import { useEffect, useRef } from "react";
+import { useBesideRail } from "@/lib/use-beside-rail";
 import type { CanvasTool } from "@/lib/canvas-tool";
 import type { Block, Mark } from "@/lib/markdown-marks";
-import { MARKER_COLORS, PEN_COLORS, type InkStyles } from "@/lib/ink-style";
-import { inkFor, paperIsDark, watchPaper } from "@/lib/ink-night";
-import { useModKey } from "@/lib/mod-key";
-import { PenSize } from "./PenSize";
+import type { InkStyles } from "@/lib/ink-style";
+import { MarkerPanel, PenPanel, TextPanel } from "./ToolPanels";
 
 /**
- * What the CURRENT tool can be set to. ADR-045.
- *
- * A second pill under the rail rather than a popover: the options are three to
- * eight small controls, and a menu that has to be opened is a menu nobody finds
- * on a surface where the whole point is not stopping to think.
- *
- * It renders nothing at all for the eraser and for select. The eraser has no
- * settings, and everything you can do to a selection belongs ON the selection,
- * where the strokes are.
- *
- * It is CLOSED until asked for. Picking up a pen is not a request to see the
- * palette -- tapping the pen you are already holding is. Left open by default
- * it occupies the band across the top of the page where the next line of
- * handwriting was going to go, which on a phone is most of the page.
+ * What the CURRENT tool can be set to. ADR-045, ADR-124.
+ * A card beside the tool's button, in the same look as the `+` menu, closed
+ * until the tool in hand is tapped again. Nothing for tools with no settings.
  */
-
-const BLOCKS: { id: Block; label: string; hint: string }[] = [
-  { id: "body", label: "Body", hint: "Body text" },
-  { id: "h1", label: "H1", hint: "Heading" },
-  { id: "h2", label: "H2", hint: "Subheading" },
-];
-
-const MARKS: { id: Mark; label: string; icon: IconName; key: string }[] = [
-  { id: "bold", label: "Bold", icon: "bold", key: "B" },
-  { id: "italic", label: "Italic", icon: "italic", key: "I" },
-  { id: "underline", label: "Underline", icon: "underline", key: "U" },
-];
-
 export function ToolOptions({
   tool, styles, block, open, onClose, onStyle, onMark, onBlock,
 }: {
@@ -54,127 +27,40 @@ export function ToolOptions({
   onMark?: (mark: Mark) => void;
   onBlock?: (block: Block) => void;
 }) {
-  const mod = useModKey();
-  // `sticker` joins the three that have nothing to set: what a sticker looks
-  // like was chosen in the tray, and everything you can do to one afterwards
-  // belongs ON it, where the canvas menu is. ADR-115.
-  if (tool === "eraser" || tool === "select" || tool === "textbox"
-    || tool === "sticker") return null;
+  const card = useRef<HTMLDivElement>(null);
+  const at = useBesideRail(card, tool, open);
+  useDismiss(card, tool, open, onClose);
+  if (tool !== "text" && tool !== "pen" && tool !== "highlighter") return null;
   if (!open) return null;
 
   return (
-    <div className="jd-chrome glass jd-tool-options top-16 left-1/2 z-20 flex -translate-x-1/2 items-center gap-1 rounded-full p-1">
-      {tool === "text" && (
-        <>
-          <nav aria-label="Formatting" className="flex items-center gap-0.5">
-            {MARKS.map(({ id, label, icon, key }) => (
-              <button
-                key={id}
-                type="button"
-                className="jd-tool"
-                title={`${label}  ${mod}${key}`}
-                aria-label={label}
-                onClick={() => onMark?.(id)}
-              >
-                <Icon name={icon} />
-              </button>
-            ))}
-          </nav>
-          <span aria-hidden className="jd-rail-sep-v" />
-          <nav aria-label="Text size" className="flex items-center gap-0.5">
-            {BLOCKS.map(({ id, label, hint }) => (
-              <button
-                key={id}
-                type="button"
-                className={`jd-tool jd-tool-text ${block === id ? "jd-tool-active" : ""}`}
-                title={hint}
-                aria-label={hint}
-                aria-pressed={block === id}
-                onClick={() => onBlock?.(id)}
-              >
-                {label}
-              </button>
-            ))}
-          </nav>
-        </>
-      )}
-
-      {tool === "pen" && (
-        <>
-          <Swatches
-            label="Pen colour"
-            colors={PEN_COLORS}
-            current={styles.pen.color}
-            onPick={(color) => onStyle("pen", { color })}
-          />
-          <span aria-hidden className="jd-rail-sep-v" />
-          <PenSize
-            label="Pen size"
-            width={styles.pen.width}
-            color={styles.pen.color}
-            onWidth={(width) => onStyle("pen", { width })}
-          />
-        </>
-      )}
-
-      {tool === "highlighter" && (
-        <Swatches
-          label="Highlighter colour"
-          colors={MARKER_COLORS}
-          current={styles.highlighter.color}
-          onPick={(color) => onStyle("highlighter", { color })}
-          marker
-        />
-      )}
-
-      <span aria-hidden className="jd-rail-sep-v" />
-      <button
-        type="button"
-        className="jd-tool"
-        title="Done"
-        aria-label="Hide these options"
-        onClick={onClose}
-      >
-        <Icon name="close" />
-      </button>
+    <div ref={card} style={at} role="dialog" aria-label="Tool options"
+      className="jd-chrome dropdown jd-tool-options">
+      {tool === "text" && <TextPanel block={block} onMark={onMark} onBlock={onBlock} />}
+      {tool === "pen" && <PenPanel styles={styles} onStyle={onStyle} />}
+      {tool === "highlighter" && <MarkerPanel styles={styles} onStyle={onStyle} />}
     </div>
   );
 }
 
-export function Swatches({
-  label, colors, current, onPick, marker = false,
-}: {
-  label: string;
-  colors: readonly { name: string; color: string }[];
-  current?: string;
-  onPick: (color: string) => void;
-  /** Drawn at the alpha it will actually paint at, so the swatch is not a
-   *  promise the canvas breaks. */
-  marker?: boolean;
-}) {
-  // The canvas paints inkFor(color) on a dark page, so the swatch must too --
-  // that is the promise two comments in this file exist to keep. Issue 047.
-  useSyncExternalStore(watchPaper, paperIsDark, () => false);
-
-  return (
-    <nav aria-label={label} className="flex items-center gap-0.5">
-      {colors.map(({ name, color }) => (
-        <button
-          key={color}
-          type="button"
-          className={`jd-tool jd-swatch ${current === color ? "jd-swatch-on" : ""}`}
-          title={name}
-          aria-label={name}
-          aria-pressed={current === color}
-          onClick={() => onPick(color)}
-        >
-          <span
-            aria-hidden
-            className={marker ? "jd-chip jd-chip-marker" : "jd-chip"}
-            style={{ background: inkFor(color) }}
-          />
-        </button>
-      ))}
-    </nav>
-  );
+/** Closed by a press anywhere else, or Escape, as a menu is. The tool's own
+ *  button is left out: it toggles the card, and would reopen it. */
+function useDismiss(
+  card: React.RefObject<HTMLDivElement | null>, tool: string, open: boolean, onClose: () => void,
+) {
+  useEffect(() => {
+    if (!open) return;
+    const press = (e: PointerEvent) => {
+      const t = e.target as Element | null;
+      if (!t || card.current?.contains(t) || t.closest(`[data-mode="${tool}"]`)) return;
+      onClose();
+    };
+    const key = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("pointerdown", press, true);
+    document.addEventListener("keydown", key);
+    return () => {
+      document.removeEventListener("pointerdown", press, true);
+      document.removeEventListener("keydown", key);
+    };
+  }, [card, tool, open, onClose]);
 }

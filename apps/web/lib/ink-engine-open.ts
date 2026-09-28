@@ -77,6 +77,13 @@ export class InkOpen {
     this.ctx.overlay();
   }
 
+  /** A recording lands as a voice card where somebody is looking. ADR-121. */
+  placeVoice(blockId: string) {
+    const r = this.ctx.surface().rect();
+    this.ctx.plane()?.images.placeVoice(blockId, this.ctx.view(), { w: r.width, h: r.height });
+    this.ctx.overlay();
+  }
+
   /**
    * Stick one on the page, centred where somebody clicked. ADR-115.
    *
@@ -98,6 +105,12 @@ export class InkOpen {
   }
 
   fit() { this.ctx.framing().fitTo(this.ctx.strokes(), this.ctx.plane()?.bounds()); }
+
+  /** One step in or out, about the middle of the screen. ADR-124. */
+  zoomBy(factor: number) {
+    const r = this.ctx.surface().rect();
+    if (this.ctx.view().zoomAbout(r.width / 2, r.height / 2, factor)) this.ctx.framing().moved();
+  }
 
   resize(cssWidth: number, cssHeight: number) {
     this.ctx.framing().resize(cssWidth, cssHeight);

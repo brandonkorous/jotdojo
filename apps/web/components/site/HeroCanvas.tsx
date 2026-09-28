@@ -142,7 +142,7 @@ export function HeroCanvas({ children }: Props) {
               </div>
             )}
 
-            <div className="jd-chrome glass jd-hero-rail top-3 left-1/2 z-20 flex -translate-x-1/2 items-center rounded-full p-1">
+            <div className="jd-chrome glass jd-side-rail jd-hero-rail" data-side="left" data-open="true">
               <ToolRail tool={tool} onTool={choose} />
               {/* Shown and refused, so a stranger sees the whole product
                   rather than a shorter one. */}
@@ -150,6 +150,7 @@ export function HeroCanvas({ children }: Props) {
                 onPhoto={() => {}}
                 onVoice={() => {}}
                 onNote={() => {}}
+                side="right"
                 unavailable
                 unavailableHint="sign in to add photos, voice notes and text"
               />

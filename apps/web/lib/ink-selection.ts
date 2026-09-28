@@ -4,6 +4,7 @@ import { boxAt, boxInPolygon } from "./ink-objects";
 import { imageAt, imageInPolygon, stickerAt, stickerInPolygon } from "./ink-rects";
 import { topmostAt } from "./ink-edit";
 import { Held } from "./ink-selection-held";
+import { gripAt, resizeTo, turnTo, type Grip, type Gripped } from "./ink-selection-grip";
 
 export { NO_SELECTION, type SelectionSummary } from "./ink-selection-held";
 
@@ -24,6 +25,8 @@ export class InkSelection {
   private box: Bounds | null = null;
   private dragFrom: { x: number; y: number } | null = null;
   private moved = false;
+  /** Which handle is being dragged, when it is a handle and not the body. */
+  private grip: Grip | null = null;
 
   get count() { return this.held.count; }
   get summary() { return this.held.summary(); }
@@ -34,6 +37,26 @@ export class InkSelection {
   get path(): readonly Point[] | null { return this.lasso; }
   get marquee(): Bounds | null { return this.box; }
   get dragging() { return this.dragFrom !== null; }
+
+  /** The one object the handles belong to: exactly one card, photo, voice
+   *  card or sticker, and no strokes. ADR-122. */
+  get gripped(): Gripped | null {
+    const h = this.held;
+    if (h.count !== 1 || h.strokes.length) return null;
+    if (h.boxes[0]) return { kind: "box", obj: h.boxes[0] };
+    if (h.pics[0]) return { kind: "pic", obj: h.pics[0] };
+    return h.marks[0] ? { kind: "mark", obj: h.marks[0] } : null;
+  }
+
+  gripAt(x: number, y: number, k: number): Grip | null {
+    const g = this.gripped;
+    return g ? gripAt(g, x, y, k) : null;
+  }
+
+  beginGrip(grip: Grip, x: number, y: number) {
+    this.beginDrag(x, y);
+    this.grip = grip;
+  }
 
   /** True when the point falls inside a settled marquee. */
   covers(x: number, y: number) { return this.box !== null && inBounds(this.box, x, y); }
@@ -119,6 +142,14 @@ export class InkSelection {
   /** Mutates the selected objects in place. Returns false when nothing moved. */
   dragTo(x: number, y: number): boolean {
     if (!this.dragFrom) return false;
+    const g = this.grip ? this.gripped : null;
+    if (g) {
+      if (this.grip === "turn") turnTo(g, x, y);
+      else resizeTo(g, x, y);
+      this.remeasure();
+      this.moved = true;
+      return true;
+    }
     const dx = x - this.dragFrom.x;
     const dy = y - this.dragFrom.y;
     if (dx === 0 && dy === 0) return false;
@@ -134,6 +165,7 @@ export class InkSelection {
   endDrag(): boolean {
     const moved = this.moved;
     this.dragFrom = null;
+    this.grip = null;
     this.moved = false;
     return moved;
   }

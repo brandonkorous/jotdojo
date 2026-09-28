@@ -193,3 +193,34 @@ export async function mediaUrl(actor: Actor, blockId: string): Promise<string> {
     return store.readUrl(row.blobUrl);
   });
 }
+
+/** What a voice card on the page shows: where to play it from, how long it
+ *  is, and what it said once the worker has read it. ADR-121. */
+export type MediaClip = {
+  url: string;
+  durationMs: number | null;
+  transcript: string | null;
+  pending: boolean;
+};
+
+export async function mediaClip(actor: Actor, blockId: string): Promise<MediaClip> {
+  const url = await mediaUrl(actor, blockId);
+  return withActor(actor.userId, async (tx) => {
+    const rows = await tx.select({
+      durationMs: mediaAssets.durationMs,
+      transcript: blocks.transcript,
+      state: blocks.transcriptState,
+    })
+      .from(blocks)
+      .innerJoin(mediaAssets, eq(mediaAssets.id, blocks.artifactId))
+      .where(eq(blocks.id, blockId)).limit(1);
+    const row = rows[0];
+    if (!row) throw new NotFound("No media for that block");
+    return {
+      url,
+      durationMs: row.durationMs ?? null,
+      transcript: row.transcript ?? null,
+      pending: row.state === "pending",
+    };
+  });
+}

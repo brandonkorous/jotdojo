@@ -1,6 +1,7 @@
 import type { InkDocument, Point, Sticker, Stroke } from "@jotacular/domain";
 import { cardBounds } from "./text-geometry";
 import { stickerBounds } from "./sticker-geometry";
+import { extent } from "./turn";
 
 /**
  * Where the ink actually is, in document units.
@@ -129,7 +130,7 @@ export function contentBounds(doc: InkDocument): Bounds | null {
   // The CARD, not the text: a frame drawn to the words would slice the colour
   // off every edge of an exported note.
   for (const text of doc.texts ?? []) {
-    const b = cardBounds(text);
+    const b = extent(cardBounds(text), text.rot);
     box = box ? union(box, b) : b;
   }
   // Stickers count too, and a page can be nothing but stickers -- somebody who
@@ -144,7 +145,7 @@ export function contentBounds(doc: InkDocument): Bounds | null {
 export function stickersBounds(stickers: readonly Sticker[]): Bounds | null {
   let box: Bounds | null = null;
   for (const sticker of stickers) {
-    const b = stickerBounds(sticker);
+    const b = extent(stickerBounds(sticker), sticker.rot);
     box = box ? union(box, b) : b;
   }
   return box;

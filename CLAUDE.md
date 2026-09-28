@@ -167,6 +167,25 @@ The dimming took its own three-second constant, its own ref and the whole
 performance argument for its guard with it — a hot-path detail that nothing else
 in the component reads, which is the same reason `use-blank-tap.ts` left.
 
+On 2026-09-28 one bill across every space (ADR-119, issue 051) hit both limits.
+`actions.ts` was three lines under 250 and the addition named its own seam:
+
+    actions.ts            what the CANVAS and the account do
+    billing-actions.ts    the four things that MOVE MONEY
+
+`PlanSection.tsx` was the other half, and it was not the file — the file was 149
+lines. `PlanActions` was **80 lines against a limit of 50**, and had been since
+it shipped, because only the file length is ever looked at. It split into the
+three states it was already a chain of `if`s over:
+
+    PlanActions           which of the three states this space is in
+    Covered               a space somebody else's subscription pays for
+    Bought                a space with a subscription of its own
+
+**The function limit needs its own check.** Every split above was found by
+reading the file while editing it, which is luck. `wc -l` over files says
+nothing about the functions inside them.
+
 **Checking is not optional.** Both of these passed typecheck, lint and fifty smoke
 suites while breaking a hard rule, because no tool enforces it. Run the command
 above before saying the list is empty.

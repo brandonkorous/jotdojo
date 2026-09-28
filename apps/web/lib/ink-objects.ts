@@ -1,7 +1,8 @@
 import type { Point, TextBox } from "@jotacular/domain";
 import { cardBounds, textBounds } from "@jotacular/ink-render";
-import { pointInPolygon, type Bounds } from "./ink-geometry";
-import { unionOf } from "./ink-rects";
+import type { Bounds } from "./ink-geometry";
+import { rectAt, rectInPolygon, unionOf } from "./ink-rects";
+import { extent } from "./ink-turned";
 
 /**
  * Text boxes as things on the plane. ADR-065.
@@ -37,7 +38,7 @@ export const boxBounds = (box: TextBox): Bounds => textBounds(box);
 export const boxArea = (box: TextBox): Bounds => cardBounds(box);
 
 export function boxesBounds(boxes: readonly TextBox[]): Bounds | null {
-  return unionOf(boxes.map(boxArea));
+  return unionOf(boxes.map((b) => extent(boxArea(b), b.rot)));
 }
 
 /**
@@ -50,23 +51,13 @@ export function boxesBounds(boxes: readonly TextBox[]): Bounds | null {
  * rule to both kinds is what makes a mixed selection explicable.
  */
 export function boxInPolygon(poly: readonly Point[], box: TextBox): boolean {
-  if (poly.length < 3) return false;
-  const b = boxArea(box);
-  const corners: Array<[number, number]> = [
-    [b.x, b.y], [b.x + b.w, b.y], [b.x + b.w, b.y + b.h], [b.x, b.y + b.h],
-  ];
-  return corners.every(([x, y]) => pointInPolygon(poly, x, y));
+  return rectInPolygon(poly, boxArea(box), box.rot);
 }
 
 /** Whether a point lands on a box, for tapping into one to edit it. Reversed
  *  so the topmost box wins, matching what is drawn. */
 export function boxAt(boxes: readonly TextBox[], x: number, y: number): TextBox | null {
-  for (let i = boxes.length - 1; i >= 0; i--) {
-    const box = boxes[i]!;
-    const b = boxArea(box);
-    if (x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h) return box;
-  }
-  return null;
+  return rectAt(boxes, boxArea, x, y);
 }
 
 /** Move boxes, in place, the way dragging a selection moves strokes. */

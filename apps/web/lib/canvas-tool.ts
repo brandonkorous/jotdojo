@@ -16,7 +16,9 @@
  * waiting to go wrong.
  */
 export type CanvasTool =
-  | "text" | "textbox" | "pen" | "highlighter" | "eraser" | "select" | "sticker";
+  | "text" | "textbox" | "pen" | "highlighter" | "eraser" | "select" | "sticker"
+  // Dragging moves the page, not what is on it. It shares Select's button. ADR-123.
+  | "pan";
 
 /** The tools the ink engine understands. It has no concept of the spine. */
 export type InkTool = Exclude<CanvasTool, "text">;

@@ -152,7 +152,7 @@ export function Canvas({
             waited for somebody to pick up a pen before it had either was a
             page you could not pan, pinch or hold on. `data-active` still
             decides whether it takes the pointer -- the spine is underneath. */}
-        <div className="jd-ink-mount" data-active={isInk(tool)}>
+        <div className="jd-ink-mount" data-active={isInk(tool)} data-tool={tool}>
           <InkCanvas
             noteId={noteId}
             tool={tool}
@@ -173,7 +173,10 @@ export function Canvas({
             bearing. All three are absolutely positioned, so the order changes
             nothing visually, but globals.css uses sibling selectors to stack
             them when more than one is on screen, and `~` only looks forward. */}
-        <Recorder noteId={noteId} startSignal={micSignal} />
+        <Recorder noteId={noteId} startSignal={micSignal} onRecorded={(blockId) => {
+          startInk();
+          engineRef.current?.open.placeVoice(blockId);
+        }} />
 
         {/* The picture goes ON the page, where somebody is looking, and is
             then an object like any other. ADR-103. */}

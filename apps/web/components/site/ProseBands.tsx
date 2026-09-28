@@ -8,9 +8,9 @@ const COST = [
   "Free is a plan here, not a trial with a fuse in it. One person, for as long"
   + " as you like, and nobody asks for a card to begin.",
   "Five dollars a month when you want Claude writing back as well as reading."
-  + " Nine covers everyone in the house. One price for the space, however many"
-  + " people are in it — nobody counts seats, and nothing meters how much you"
-  + " write.",
+  + " Nine covers everyone in the house. One price, however many people are in"
+  + " it and however many spaces you make — nobody counts seats, and nothing"
+  + " meters how much you write.",
 ];
 
 const CLOSING = "No account, no card, nothing to install. Write it in the box at the"

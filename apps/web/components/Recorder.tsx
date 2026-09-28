@@ -2,9 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { canRecord, startRecording, type RecorderHandle } from "@/lib/recorder";
-import {
-  createRecordingSlotAction, finalizeRecordingAction, noteBlocksAction,
-} from "@/app/actions/media";
+import { createRecordingSlotAction, finalizeRecordingAction } from "@/app/actions/media";
 
 /**
  * In-app recording, for long form: a meeting, a rant in the car.
@@ -17,47 +15,31 @@ import {
  * is named here rather than hidden: a tab closed mid-recording loses the
  * recording. Eager chunk upload is the fix and it is not built.
  */
-type Block = Awaited<ReturnType<typeof noteBlocksAction>>[number];
-
-const POLL_MS = 4000;
-const POLL_CEILING_MS = 30_000;
-
 const clock = (ms: number) => {
   const total = Math.floor(ms / 1000);
   return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, "0")}`;
 };
 
-export function Recorder({ noteId, startSignal }: { noteId: string; startSignal: number }) {
+/** Records, uploads, and hands the block to the page, which puts a voice card
+ *  where somebody is looking. ADR-121. */
+export function Recorder({ noteId, startSignal, onRecorded }: {
+  noteId: string;
+  startSignal: number;
+  onRecorded: (blockId: string) => void;
+}) {
   const handle = useRef<RecorderHandle | null>(null);
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const poll = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const timer = useRef<ReturnType<typeof setInterval> | null>(null);
   const seen = useRef(0);
 
   const [elapsed, setElapsed] = useState(0);
   const [recording, setRecording] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [clips, setClips] = useState<Block[]>([]);
 
-  const refresh = useCallback(async (delay = POLL_MS) => {
-    const blocks = await noteBlocksAction(noteId);
-    const audio = blocks.filter((b) => b.kind === "audio");
-    setClips(audio);
-    if (audio.some((b) => b.transcriptState === "pending")) {
-      poll.current = setTimeout(
-        () => void refresh(Math.min(delay * 1.5, POLL_CEILING_MS)), delay,
-      );
-    }
-  }, [noteId]);
-
-  useEffect(() => {
-    void refresh();
-    return () => {
-      if (poll.current) clearTimeout(poll.current);
-      if (timer.current) clearInterval(timer.current);
-      handle.current?.cancel();
-    };
-  }, [refresh]);
+  useEffect(() => () => {
+    if (timer.current) clearInterval(timer.current);
+    handle.current?.cancel();
+  }, []);
 
   const stop = useCallback(async () => {
     const active = handle.current;
@@ -83,14 +65,14 @@ export function Recorder({ noteId, startSignal }: { noteId: string; startSignal:
         byteSize: blob.size, durationMs,
       });
       if (!done.ok) { setError(done.message ?? "That recording could not be saved."); return; }
-      await refresh();
+      onRecorded(slot.slot.blockId);
     } catch (err) {
       setError((err as Error).message);
     } finally {
       setBusy(false);
       setElapsed(0);
     }
-  }, [noteId, refresh]);
+  }, [noteId, onRecorded]);
 
   const begin = useCallback(async () => {
     setError(null);
@@ -118,7 +100,7 @@ export function Recorder({ noteId, startSignal }: { noteId: string; startSignal:
     }
   }, [startSignal, recording, begin, stop]);
 
-  if (!recording && !busy && !error && clips.length === 0) return null;
+  if (!recording && !busy && !error) return null;
 
   return (
     <div className="jd-chrome glass jd-recorder">
@@ -135,23 +117,6 @@ export function Recorder({ noteId, startSignal }: { noteId: string; startSignal:
       {busy && <p className="jd-transcript-note">Saving the recording&hellip;</p>}
       {error && <p className="jd-recorder-error">{error}</p>}
 
-      <ul className="jd-clips">
-        {clips.map((b) => (
-          <li key={b.id} className="jd-clip">
-            <span aria-hidden className="jd-clip-glyph">{"\u25B6"}</span>
-            <span className="jd-clip-text">
-              {b.transcriptState === "pending" && "Transcribing\u2026"}
-              {b.transcriptState === "failed" && "Saved, but not transcribed yet"}
-              {b.transcriptState === "ready" && (b.transcript || "Nothing was said")}
-            </span>
-            {b.transcriptState === "ready" && b.confidence !== null && (
-              <span className="badge badge-sm badge-soft">
-                {Math.round((b.confidence ?? 0) * 100)}%
-              </span>
-            )}
-          </li>
-        ))}
-      </ul>
     </div>
   );
 }

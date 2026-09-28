@@ -9,6 +9,7 @@ import { ViewGestures } from "./ink-gestures";
 import { HoldToSnap } from "./ink-input-snap";
 import { TextDrag } from "./ink-text-drag";
 import { LassoInput } from "./ink-input-select";
+import { PanDrag } from "./ink-input-pan";
 import type { InputHost } from "./ink-input-host";
 
 /**
@@ -37,6 +38,7 @@ export class InkInput {
   private readonly hold = new HoldToSnap();
   private readonly textDrag = new TextDrag();
   private readonly lasso = new LassoInput();
+  private readonly pan = new PanDrag();
   private readonly unbind: () => void;
   private readonly gestures: ViewGestures;
   /** True when the camera listens on an outer element and drives itself, so
@@ -122,9 +124,14 @@ export class InkInput {
     // go wrong without this and only one of them is visible: a right-click
     // starts a lasso, and `preventDefault` below suppresses the `contextmenu`
     // event that follows, so the menu never opens at all. ADR-084.
-    if (e.button !== 0 && e.button !== -1) return;
+    if (e.button !== 0 && e.button !== -1 && e.button !== 1) return;
     if (!this.writingWithPen && this.camera(e, (ev) => this.gestures.down(ev))) {
       return void e.preventDefault();
+    }
+    if (PanDrag.wants(this.host.tool, e)) {
+      e.preventDefault();
+      this.el.setPointerCapture(e.pointerId);
+      return void this.pan.down(e);
     }
     if (!this.palm.accepts(e)) return;
     e.preventDefault();
@@ -154,7 +161,7 @@ export class InkInput {
 
     if (host.tool === "eraser") return void this.erase(p);
 
-    if (host.tool === "select") return void this.lasso.down(host, p);
+    if (host.tool === "select") return void this.lasso.down(host, p, host.view.k);
 
     host.capture.begin(p);
     host.scheduleLive();
@@ -166,6 +173,7 @@ export class InkInput {
     if (!this.writingWithPen && this.camera(e, (ev) => this.gestures.move(ev))) {
       return void e.preventDefault();
     }
+    if (this.pan.move(this.host, e)) return void e.preventDefault();
     if (!this.penDown || e.pointerId !== this.activePointer) return;
     e.preventDefault();
     const host = this.host;
@@ -197,6 +205,7 @@ export class InkInput {
 
   private up = (e: PointerEvent) => {
     if (this.camera(e, (ev) => this.gestures.up(ev))) return;
+    if (this.pan.up(e)) return void this.el.releasePointerCapture(e.pointerId);
     if (!this.penDown || e.pointerId !== this.activePointer) return;
     this.penDown = false;
     this.activePointer = null;

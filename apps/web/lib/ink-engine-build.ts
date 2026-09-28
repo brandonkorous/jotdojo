@@ -95,6 +95,7 @@ export function assemble(
       onDelta: publish,
       onGeometry: w.overlay,
       imageSrc: opts.imageSrc ?? (async () => null),
+      clipSrc: opts.clipSrc,
     })
     : null;
 

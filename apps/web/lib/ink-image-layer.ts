@@ -3,6 +3,8 @@ import type { ViewSnapshot } from "./ink-viewport";
 import type { Bounds } from "./ink-geometry";
 import { imagesBounds } from "./ink-rects";
 import { InkImagePlane, type ImageSource } from "./ink-image-plane";
+import type { ClipSource } from "./ink-voice-card";
+import { VOICE_H, VOICE_W, voiceSize } from "./ink-voice";
 
 /**
  * The photograph half of the engine. ADR-103.
@@ -36,9 +38,9 @@ export class InkImageLayer {
   private readonly host: ImageLayerHost;
   private images: ImageOnPage[] = [];
 
-  constructor(el: HTMLElement, host: ImageLayerHost, src: ImageSource) {
+  constructor(el: HTMLElement, host: ImageLayerHost, src: ImageSource, clips?: ClipSource) {
     this.host = host;
-    this.plane = new InkImagePlane(el, src);
+    this.plane = new InkImagePlane(el, src, clips);
   }
 
   destroy() { this.plane.destroy(); }
@@ -87,13 +89,18 @@ export class InkImageLayer {
     const scale = fit / Math.max(natural.w, natural.h);
     const w = Math.max(1, natural.w * scale);
     const h = Math.max(1, natural.h * scale);
-    const image: ImageOnPage = {
-      id: crypto.randomUUID(),
-      blockId,
-      x: (screen.w / 2 - view.x) / view.k - w / 2,
-      y: (screen.h / 2 - view.y) / view.k - h / 2,
-      w, h,
-    };
+    return this.add({ id: crypto.randomUUID(), blockId, ...centred(w, h, view, screen) });
+  }
+
+  /** A voice card, the same way: in the middle of the view, a fixed size on
+   *  the glass whatever the zoom. ADR-121. */
+  placeVoice(blockId: string, view: ViewSnapshot, screen: { w: number; h: number }) {
+    const { w, h } = voiceSize(screen, view.k);
+    return this.add({ id: crypto.randomUUID(), blockId, media: "audio", ...centred(w, h, view, screen) });
+  }
+
+  private add(image: ImageOnPage): ImageOnPage {
+    clearOf(image, this.images);
     this.images = [...this.images, image];
     this.plane.render(this.images);
     this.publish();
@@ -113,7 +120,7 @@ export class InkImageLayer {
    * every page, after the first time -- costs no write.
    */
   adoptOrphans(
-    known: readonly { blockId: string; width: number | null; height: number | null }[],
+    known: readonly { blockId: string; kind?: "image" | "audio"; width: number | null; height: number | null }[],
     at: Bounds | null,
   ): boolean {
     const placed = new Set(this.images.map((i) => i.blockId));
@@ -124,6 +131,12 @@ export class InkImageLayer {
     let x = at ? at.x : 0;
     const y = (at ? at.y : 0) - side - ORPHAN_GAP;
     for (const orphan of orphans) {
+      if (orphan.kind === "audio") {
+        this.images.push({ id: crypto.randomUUID(), blockId: orphan.blockId, media: "audio",
+          x, y: y + side - VOICE_H, w: VOICE_W, h: VOICE_H });
+        x += VOICE_W + ORPHAN_GAP;
+        continue;
+      }
       const ratio = orphan.width && orphan.height ? orphan.width / orphan.height : 1;
       const w = ratio >= 1 ? side : side * ratio;
       const h = ratio >= 1 ? side / ratio : side;
@@ -138,4 +151,26 @@ export class InkImageLayer {
 
   /** Every placement, as the delta carries them. */
   private publish() { this.host.onChange(this.images); }
+}
+
+/** A w-by-h rectangle centred on what is on screen, in document units. */
+function centred(w: number, h: number, view: ViewSnapshot, screen: { w: number; h: number }) {
+  return {
+    x: (screen.w / 2 - view.x) / view.k - w / 2,
+    y: (screen.h / 2 - view.y) / view.k - h / 2,
+    w, h,
+  };
+}
+
+/** Step a new placement down until it covers nothing already placed, so a
+ *  voice note recorded over a photo lands beside it, not on it. ADR-121. */
+export function clearOf(item: ImageOnPage, placed: readonly ImageOnPage[], tries = 12) {
+  const gap = Math.max(item.w, item.h) * 0.08;
+  const hit = (o: ImageOnPage) => item.x < o.x + o.w && o.x < item.x + item.w
+    && item.y < o.y + o.h && o.y < item.y + item.h;
+  for (let i = 0; i < tries; i++) {
+    const under = placed.find(hit);
+    if (!under) return;
+    item.y = under.y + under.h + gap;
+  }
 }

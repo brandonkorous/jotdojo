@@ -2,6 +2,7 @@ import type { TextBox } from "@jotacular/domain";
 import { CARD_PAD, inkOn } from "@jotacular/ink-render";
 import { nightInk } from "./ink-night";
 import { isEmpty } from "./ink-objects";
+import { applyTurn } from "./ink-turned";
 
 /**
  * The object plane: typed text, on the same surface as the ink. ADR-065.
@@ -201,6 +202,7 @@ export class InkPlane {
     node.style.borderRadius = box.fill ? `${size * 0.5}px` : "";
     node.style.left = `${box.x - pad}px`;
     node.style.top = `${box.y - pad}px`;
+    applyTurn(node, box.rot);
   }
 
   /**

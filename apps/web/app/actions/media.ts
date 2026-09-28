@@ -1,7 +1,8 @@
 "use server";
 
 import {
-  createMediaBlock, finalizeMedia, mediaUrl, getNote, noteImages, type NoteImage,
+  createMediaBlock, finalizeMedia, mediaUrl, mediaClip, getNote, noteImages,
+  type MediaClip, type NoteImage,
 } from "@jotacular/domain";
 import { requireActor } from "@/lib/session";
 
@@ -50,6 +51,15 @@ export async function finalizePhotoAction(
 export async function photoUrlAction(blockId: string): Promise<string | null> {
   try {
     return await mediaUrl(await requireActor(), blockId);
+  } catch {
+    return null;
+  }
+}
+
+/** A voice card's sound, length and words. Null when it cannot be reached. */
+export async function clipAction(blockId: string): Promise<MediaClip | null> {
+  try {
+    return await mediaClip(await requireActor(), blockId);
   } catch {
     return null;
   }

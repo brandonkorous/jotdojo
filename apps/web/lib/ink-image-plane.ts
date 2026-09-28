@@ -1,4 +1,6 @@
 import type { ImageOnPage } from "@jotacular/domain";
+import { VoiceCards, type ClipSource } from "./ink-voice-card";
+import { applyTurn } from "./ink-turned";
 
 /**
  * The `<img>` elements on the object plane. ADR-103.
@@ -25,24 +27,32 @@ export class InkImagePlane {
   private readonly urls = new Map<string, string>();
   private readonly asking = new Set<string>();
 
-  constructor(el: HTMLElement, src: ImageSource) {
+  /** A recording's placement is drawn as a voice card instead. ADR-121. */
+  private readonly voices: VoiceCards | null;
+
+  constructor(el: HTMLElement, src: ImageSource, clips?: ClipSource) {
     this.el = el;
     this.src = src;
+    this.voices = clips ? new VoiceCards(el, clips) : null;
   }
 
   destroy() {
     for (const node of this.nodes.values()) node.remove();
     this.nodes.clear();
+    this.voices?.destroy();
   }
 
   render(images: readonly ImageOnPage[]) {
-    const live = new Set(images.map((i) => i.id));
+    const pics = images.filter((i) => i.media !== "audio");
+    const live = new Set(pics.map((i) => i.id));
     for (const [id, node] of this.nodes) {
       if (live.has(id)) continue;
       node.remove();
       this.nodes.delete(id);
     }
-    for (const image of images) this.one(image);
+    for (const image of pics) this.one(image);
+    this.voices?.keep(new Set(images.filter((i) => i.media === "audio").map((i) => i.id)));
+    for (const v of images) if (v.media === "audio") this.voices?.render(v);
   }
 
   private one(image: ImageOnPage) {
@@ -68,6 +78,9 @@ export class InkImagePlane {
     node.style.top = `${image.y}px`;
     node.style.width = `${image.w}px`;
     node.style.height = `${image.h}px`;
+    // The polaroid frame is sized from the shorter side. ADR-120.
+    node.style.setProperty("--jd-print", `${Math.min(image.w, image.h)}px`);
+    applyTurn(node, image.rot);
 
     const url = this.urls.get(image.blockId);
     if (url) { if (node.src !== url) node.src = url; return; }

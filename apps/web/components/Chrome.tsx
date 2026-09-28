@@ -1,48 +1,27 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { Icon } from "@/components/Icon";
 import { CommandPalette } from "@wizeworks/silicaui-react";
 import { RemarksButton } from "./RemarksButton";
-import type { CommandItem } from "@wizeworks/silicaui-react";
-import type { Align } from "@/lib/toolbar-side";
+import { SideRail } from "./SideRail";
+import { cornerSide, railSide, type Align } from "@/lib/toolbar-side";
 import type { CanvasTool } from "@/lib/canvas-tool";
-import { listNotesAction, createNoteAction } from "@/app/actions";
-import { ToolRail } from "./ToolRail";
-import { AddMenu } from "./AddMenu";
-import { useNarrow } from "@/lib/use-narrow";
 import { useModKey } from "@/lib/mod-key";
-import { applyTheme, pageIsDark, rememberTheme, type ThemeChoice } from "@/lib/theme";
+import { useCommandItems } from "@/lib/use-command-items";
 
 /**
- * All of the app's chrome: one floating pill, top of the canvas.
- *
- * It was two pills -- a tool rail down one side and a small palette affordance
- * in a corner. With four tools, an avatar and a search box, two pieces of
- * furniture for a handful of controls was one too many, and splitting them put
- * the search where nothing else was.
- *
- * Search leads, because it is the thing people reach for most and because a
- * wide field in the middle of the top edge is where every application has
- * trained them to look. The tools and the avatar sit after it, behind a seam.
- *
- * Two things here are load-bearing and easy to break:
- *
- *  - Positioning comes from `.jd-chrome` in globals.css, NOT from a Tailwind
- *    `absolute` class. Silica's `glass` outranks single-class utilities.
- *  - `.jd-chrome` also sets its own `--u-accent`. `glass` tints from that
- *    variable, and it inherits -- so a `text-base-content` on <body> otherwise
- *    makes the pill tint with the *ink* colour and render as a dark slab with
- *    invisible icons on it.
- *
- * Read the comments on both rules before changing either.
+ * All of the app's chrome: the tools down one side, and search, remarks and
+ * you in the opposite top corner. ADR-120. Positioning is `.jd-chrome` in
+ * canvas.css and side-rail.css, never a Tailwind `absolute` -- read why there.
  */
+type User = { name?: string | null; image?: string | null; email?: string | null } | null;
+
 export function Chrome({
   align, user, dimmed, tool, onTool, onCamera, onMic, onTextBox, onSticker,
 }: {
   align: Align;
-  user: { name?: string | null; image?: string | null; email?: string | null } | null;
+  user: User;
   dimmed: boolean;
   tool: CanvasTool;
   onTool: (tool: CanvasTool) => void;
@@ -52,158 +31,17 @@ export function Chrome({
   /** Open the sticker tray. ADR-115. */
   onSticker: () => void;
 }) {
-  const router = useRouter();
   const [open, setOpen] = useState(false);
-  const mod = useModKey();
-  const narrow = useNarrow();
-  // Only ever false on a phone -- CSS keeps every mode showing above the
-  // breakpoint, and a rail that cannot collapse must not pretend it is shut.
-  const [railOpen, setRailOpen] = useState(true);
-  useEffect(() => { setRailOpen(!narrow); }, [narrow]);
-
-  /**
-   * On a phone the first tap OPENS the rail and chooses nothing.
-   *
-   * Otherwise the one visible button would be both "the tool you are holding"
-   * and "the four you are not", and tapping it would have to guess which was
-   * meant. Expand, choose, collapse -- and choosing the tool already in hand
-   * still opens its options, because by then the rail is showing. ADR-101.
-   */
-  const tapTool = (next: CanvasTool) => {
-    if (!railOpen) return void setRailOpen(true);
-    onTool(next);
-    if (narrow) setRailOpen(false);
-  };
-  const [notes, setNotes] = useState<CommandItem[]>([]);
-
-  /** What is ON SCREEN, not what was chosen: `auto` on a dark machine is a dark
-   *  page with nothing stored, and the offer has to be the opposite of what a
-   *  person is looking at. Read after mount; the server has no theme. */
-  const [dark, setDark] = useState(false);
-  useEffect(() => { setDark(pageIsDark()); }, []);
-  const nextTheme: ThemeChoice = dark ? "paper" : "paper-night";
-  const [, startTransition] = useTransition();
-
-  // Reloaded whenever the palette opens, then filtered locally with no round
-  // trip. Loading it once per mount listed the note somebody wrote a minute
-  // ago as "Untitled", because the chrome never unmounts. Issue 010.
-  //
-  // It holds the hundred most recent and no more: Silica's CommandPalette
-  // filters `items` itself and exposes no query, so there is nowhere to hang a
-  // server search. Past a hundred notes the Dashboard is the way back. Issue 053.
-  useEffect(() => {
-    if (!open) return;
-    startTransition(async () => {
-      const recent = await listNotesAction();
-      setNotes(recent.slice(0, 100).map((n) => ({
-        id: n.id,
-        label: n.title ?? "Untitled",
-        description: n.preview,
-        // The palette matches label, description and keywords. `preview` stops
-        // at 180 characters, so without this a word she typed in the middle of
-        // a long note is answered with "not in your jots". Issue 016.
-        keywords: n.words ? [n.words] : undefined,
-        group: "Notes",
-        onSelect: () => router.push(`/n/${n.id}`),
-      })));
-    });
-  }, [router, open]);
-
-  const items: CommandItem[] = [
-    {
-      id: "new",
-      label: "New note",
-      group: "Actions",
-      shortcut: `${mod}N`,
-      onSelect: () => startTransition(async () => {
-        const { id } = await createNoteAction();
-        router.push(`/n/${id}`);
-      }),
-    },
-    { id: "dashboard", label: "Dashboard", group: "Actions", onSelect: () => router.push("/dashboard") },
-    // The way to the promise on the consent screen. Issue 029.
-    {
-      id: "review",
-      label: "What agents did",
-      group: "Actions",
-      keywords: ["agent", "claude", "revert", "undo", "review"],
-      onSelect: () => router.push("/review"),
-    },
-    // The keywords are the six words Kwabena actually searched before giving
-    // up, in the order he tried them. Issue 032.
-    {
-      id: "account", label: "Account, people and capture tokens", group: "Actions",
-      keywords: ["invite", "member", "people", "family", "share", "add", "seat", "space"],
-      onSelect: () => router.push("/account"),
-    },
-    // Turning the lights down is something you want WHERE you are writing, not
-    // three screens away in a settings page. ADR-116.
-    {
-      id: "theme",
-      label: dark ? "Turn the lights up" : "Turn the lights down",
-      group: "Actions",
-      keywords: ["theme", "dark", "light", "night", "mode"],
-      onSelect: () => { rememberTheme(nextTheme); applyTheme(nextTheme); setDark(!dark); },
-    },
-    ...notes,
-  ];
-
-  // `auto` centres it. A stored left/right preference still means what it
-  // always meant -- keep the chrome away from the hand holding the pencil --
-  // it just moves the one pill along the top edge instead of choosing a side
-  // for a rail that no longer exists. ADR-012.
-  const pos = {
-    auto: "left-1/2 -translate-x-1/2",
-    left: "left-3",
-    right: "right-3",
-  }[align];
+  const items = useCommandItems(open);
 
   return (
     <>
-      <div
-        data-dimmed={dimmed}
-        // `gap-0.5` matches the tool rail's own gap, so every button in the bar
-        // is spaced like every other one and the separators do the grouping.
-        // Sized by what is in it, now that nothing in it stretches. ADR-062.
-        className={`jd-chrome glass top-3 z-20 flex items-center gap-0.5 rounded-full p-1 ${pos}`}
-        style={{ maxWidth: "calc(100vw - 1.5rem)" }}
-      >
-        <button
-          type="button"
-          onClick={() => setOpen(true)}
-          aria-label="Search notes and commands"
-          title={`Search notes, or jump somewhere  ${mod}K`}
-          className="jd-tool"
-        >
-          <Icon name="search" />
-        </button>
+      <SideRail
+        side={railSide(align)} dimmed={dimmed} tool={tool} onTool={onTool}
+        onCamera={onCamera} onMic={onMic} onTextBox={onTextBox} onSticker={onSticker}
+      />
 
-        <span aria-hidden className="jd-rail-sep-v" />
-
-        <ToolRail tool={tool} onTool={tapTool} open={railOpen} />
-
-        <AddMenu
-          onPhoto={onCamera}
-          onVoice={onMic}
-          onNote={() => { onTextBox(); if (narrow) setRailOpen(false); }}
-          onSticker={() => { onSticker(); if (narrow) setRailOpen(false); }}
-        />
-
-        <span aria-hidden className="jd-rail-sep-v" />
-
-        {/* The way back to what an agent said, days after it said it. The live
-            line only speaks while something is outstanding. ADR-061. */}
-        <RemarksButton />
-
-        <a href="/account" aria-label="Account" className="jd-tool overflow-hidden">
-          {/* A 24px avatar on the provider's own CDN. next/image would need a
-              remotePatterns entry per provider to save nothing measurable. */}
-          {user?.image
-            // eslint-disable-next-line @next/next/no-img-element
-            ? <img src={user.image} alt="" className="h-6 w-6 rounded-full" />
-            : <span aria-hidden className="text-xs font-medium">{initial(user)}</span>}
-        </a>
-      </div>
+      <Corner side={cornerSide(align)} dimmed={dimmed} user={user} onSearch={() => setOpen(true)} />
 
       <CommandPalette
         items={items}
@@ -216,13 +54,47 @@ export function Chrome({
   );
 }
 
-/**
- * The letter on the account button.
- *
- * A Google account without a display name, or a sign-in that only knows an
- * address, used to land on a literal "?" -- which on a round button next to a
- * toolbar reads as "help", not as "you".
- */
+/** Search, remarks and you, in the top corner opposite the tools. ADR-120. */
+function Corner({ side, dimmed, user, onSearch }: {
+  side: "left" | "right";
+  dimmed: boolean;
+  user: User;
+  onSearch: () => void;
+}) {
+  const mod = useModKey();
+  return (
+    <div data-side={side} data-dimmed={dimmed} className="jd-chrome glass jd-corner">
+      <button
+        type="button"
+        onClick={onSearch}
+        aria-label="Search notes and commands"
+        title={`Search notes, or jump somewhere  ${mod}K`}
+        className="jd-corner-search"
+      >
+        <Icon name="search" />
+        <span className="jd-corner-search-text">Search notes…</span>
+        <kbd className="jd-corner-search-key">{mod}K</kbd>
+      </button>
+
+      <span aria-hidden className="jd-rail-sep-v" />
+
+      {/* The way back to what an agent said, days after it said it. ADR-061. */}
+      <RemarksButton />
+
+      <a href="/account" aria-label="Account" className="jd-tool overflow-hidden">
+        {/* A 24px avatar on the provider's own CDN; next/image would need a
+            remotePatterns entry per provider to save nothing measurable. */}
+        {user?.image
+          // eslint-disable-next-line @next/next/no-img-element
+          ? <img src={user.image} alt="" className="h-6 w-6 rounded-full" />
+          : <span aria-hidden className="text-xs font-medium">{initial(user)}</span>}
+      </a>
+    </div>
+  );
+}
+
+/** The letter on the account button. Never "?", which next to a toolbar reads
+ *  as "help" rather than as "you". */
 function initial(user: { name?: string | null; email?: string | null } | null): string {
   const source = user?.name?.trim() || user?.email?.trim() || "";
   return source ? source.slice(0, 1).toUpperCase() : "·";

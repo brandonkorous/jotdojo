@@ -7,7 +7,7 @@ import { InkSync, type SyncState } from "./ink-sync";
 import { InkCatchup } from "./ink-catchup";
 import type { InkStyle } from "./ink-style";
 import { inkLayerAction, getInkAction } from "@/app/actions";
-import { photoUrlAction, noteImagesAction } from "@/app/actions/media";
+import { clipAction, photoUrlAction, noteImagesAction } from "@/app/actions/media";
 
 /**
  * Standing the engine up, and taking it down again.
@@ -106,6 +106,7 @@ export function useInkEngine(o: MountOptions) {
         gestures: surfaces.outer?.current ?? undefined,
         // Signed on demand and never stored in the page. ADR-103.
         imageSrc: photoUrlAction,
+        clipSrc: clipAction,
         onStrokes: (strokes) => { sync!.push(strokes); o.onDraw.current?.(); },
         onDelta: (delta) => sync!.delta(delta),
         onSelectionChange: o.onSelection,

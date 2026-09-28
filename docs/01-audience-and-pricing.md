@@ -27,6 +27,12 @@ No IT department, no procurement, no appetite for Notion Enterprise. Wants a sha
 
 Priced on the "affordable" value. Per **space**, not per seat — families will not do seat math and small businesses resent it.
 
+**One plan covers every space you make** (ADR-119, issue 051). A Family customer who
+makes a second space joins it to the plan they already pay for: same bill, same people,
+and the reading allowance shared between the rooms rather than handed out again per
+room. Making somebody track WHICH of their spaces is the paid one is the same seat math
+this section refuses, in a different currency.
+
 | Plan | Price | Members | What you get |
 |---|---|---|---|
 | **Free** | $0 | 1 | Unlimited typed notes, search, **an assistant can read your notes**, 100 readings/mo (a page, a photo or a started minute is one) |

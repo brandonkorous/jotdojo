@@ -42,10 +42,6 @@
 @keyframes jd-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
 @media (prefers-reduced-motion: reduce) { .jd-recorder-dot { animation: none; } }
 
-.jd-clips { display: flex; flex-direction: column; gap: 0.375rem; }
-.jd-clip { display: flex; align-items: baseline; gap: 0.5rem; }
-.jd-clip-glyph { flex: none; opacity: 0.4; font-size: 0.625rem; }
-.jd-clip-text { flex: 1 1 auto; line-height: 1.4; }
 
 /* When several float at once they stack rather than overlap. */
 .jd-recorder ~ .jd-transcript { bottom: 10rem; }

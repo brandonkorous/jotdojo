@@ -19,8 +19,10 @@ import { Icon } from "@/components/Icon";
  * that lists what CAN be added is how a stranger finds out that voice exists.
  */
 export function AddMenu({
-  onPhoto, onVoice, onNote, onSticker, unavailable = false, unavailableHint,
+  onPhoto, onVoice, onNote, onSticker, unavailable = false, unavailableHint, side = "bottom",
 }: {
+  /** Where the menu opens: below a top bar, or beside a side rail. */
+  side?: "bottom" | "left" | "right";
   onPhoto: () => void;
   onVoice: () => void;
   /** Arm placing a text box on the canvas. ADR-065. */
@@ -46,11 +48,12 @@ export function AddMenu({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger>
-        <button type="button" title="Add a photo, a voice note, a note or a sticker" aria-label={label} className="jd-tool">
+        <button type="button" title="Add a photo, a voice note, a note or a sticker" aria-label={label}
+          className="jd-tool" data-choice="">
           <Icon name="addBox" />
         </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent side="bottom" align="center" sideOffset={10}>
+      <DropdownMenuContent side={side} align="center" sideOffset={10}>
         <DropdownMenuItem onClick={onPhoto}>
           <Icon name="photo" />
           Photo

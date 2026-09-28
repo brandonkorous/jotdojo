@@ -337,17 +337,19 @@ green.
    boundary check, "search for it yesterday", and the whole of P08's two-year
    history are recorded as `not checked` rather than passed, because a run may not
    write to the database.
-2. **Decide [051](issues/051-he-paid-for-six-then-made-a-space-that-seats-one.md).**
-   Kwabena pays £9 for *"up to 6 people"*, makes the space he actually wants to
-   share, and it arrives on the free plan seating one and asking for £9 again. The
-   Family plan card says *"Shared spaces, one bill"*. **This is what to charge for,
-   not a broken control**, so it is filed and left open rather than guessed at.
+2. ~~**Decide [051](issues/051-he-paid-for-six-then-made-a-space-that-seats-one.md).**~~
+   **Decided and fixed, 2026-09-28.** Kwabena paid £9 for *"up to 6 people"*, made the
+   space he actually wanted to share, and it arrived on free, seating one, asking for
+   £9 again. The answer was the one the Family card had already promised: a second
+   space costs **nothing**. ADR-119, `one-bill:smoke`. **Not yet re-run from the
+   screen** — P05 act 6 is what would confirm it.
 
 ### Where the suites stand
 
-**50 of 50 pass**, with `pnpm typecheck` and `pnpm lint` clean and no file over the
+**51 of 51 pass**, with `pnpm typecheck` and `pnpm lint` clean and no file over the
 250-line limit. The suite count grew with the exercise: `rename`, `undelete`,
-`invite` and `box-width` were written to hold the fixes this roster produced.
+`invite`, `box-width` and now `one-bill` were written to hold the fixes this roster
+produced — the last of them for issue 051, the only one that was ever open.
 
 (Five of them — `live:http`, `api`, `share`, `oauth:http`, `mcp` — fetch over HTTP
 and report `ECONNREFUSED` if the dev server is down. That is "not run", not

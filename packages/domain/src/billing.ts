@@ -1,5 +1,7 @@
 import { and, eq, sql } from "drizzle-orm";
-import { withActor, withoutActor, spaceBilling, spaceMembers, spaces } from "@jotacular/db";
+import {
+  withActor, withoutActor, spaceBilling, spaceMembers, spaces, type Tx,
+} from "@jotacular/db";
 import type { BillingEvent, BillingProvider, PaidPlan } from "@jotacular/billing";
 import type { Actor } from "./actor";
 import { Forbidden, NotFound } from "./errors";
@@ -18,6 +20,9 @@ export type BillingStatus = {
   status: string | null;
   currentPeriodEnd: Date | null;
   managedBy: string | null;
+  /** The space whose subscription covers this one, when it is not its own.
+   *  Null is the ordinary case. ADR-119. */
+  includedIn: { spaceId: string; name: string } | null;
 };
 
 async function assertOwner(actor: Actor, spaceId: string): Promise<void> {
@@ -33,8 +38,8 @@ async function assertOwner(actor: Actor, spaceId: string): Promise<void> {
 export async function billingStatus(actor: Actor, spaceId: string): Promise<BillingStatus> {
   await assertOwner(actor, spaceId);
   return withActor(actor.userId, async (tx) => {
-    const space = (await tx.select({ plan: spaces.plan }).from(spaces)
-      .where(eq(spaces.id, spaceId)).limit(1))[0];
+    const space = (await tx.select({ plan: spaces.plan, billedWith: spaces.billedWith })
+      .from(spaces).where(eq(spaces.id, spaceId)).limit(1))[0];
     if (!space) throw new NotFound("No such space");
 
     const row = (await tx.select().from(spaceBilling)
@@ -46,8 +51,26 @@ export async function billingStatus(actor: Actor, spaceId: string): Promise<Bill
       status: row?.status ?? null,
       currentPeriodEnd: row?.currentPeriodEnd ?? null,
       managedBy: row?.provider ?? null,
+      includedIn: await payerOf(tx, space.billedWith),
     };
   });
+}
+
+/**
+ * The space paying for this one, named. ADR-119.
+ *
+ * Named rather than identified, because the sentence on the account page is
+ * "included in The Okonkwo house" and an id is not a place anybody recognises.
+ */
+async function payerOf(
+  tx: Tx, billedWith: string | null,
+): Promise<{ spaceId: string; name: string } | null> {
+  if (!billedWith) return null;
+  const rows = await tx.select({ name: spaces.name }).from(spaces)
+    .where(eq(spaces.id, billedWith)).limit(1);
+  // RLS hides a payer this person cannot reach, and the fact that somebody
+  // else covers it is still true and still worth saying.
+  return { spaceId: billedWith, name: rows[0]?.name ?? "another space" };
 }
 
 /**
@@ -63,6 +86,16 @@ export async function startCheckout(
 ): Promise<{ url: string }> {
   if (!provider) throw new Forbidden("Billing is not configured");
   await assertOwner(actor, spaceId);
+
+  // A covered space must never grow a bill of its own -- that second charge is
+  // exactly what issue 051 was. `app_apply_subscription` refuses it too; this
+  // is the half that refuses it before a card is ever asked for. ADR-119.
+  const covered = await withActor(actor.userId, (tx) =>
+    tx.select({ billedWith: spaces.billedWith }).from(spaces)
+      .where(eq(spaces.id, spaceId)).limit(1));
+  if (covered[0]?.billedWith) {
+    throw new Forbidden("This space is already covered by another space's plan");
+  }
 
   const existing = await withActor(actor.userId, (tx) =>
     tx.select({ customerId: spaceBilling.customerId }).from(spaceBilling)
@@ -122,4 +155,31 @@ export async function applyBillingEvent(
     `);
   });
   return { applied: true };
+}
+
+/**
+ * Put a space you already made onto the plan you already pay for. ADR-119.
+ *
+ * The other order of Kwabena's story: the room exists before the card does.
+ * Nothing adopts it on its own, because guessing which of somebody's spaces a
+ * payment meant is how a bill surprises people.
+ */
+export async function joinBilling(
+  actor: Actor, spaceId: string, payerSpaceId: string,
+): Promise<void> {
+  if (actor.type !== "user") throw new Forbidden("Only a person manages billing");
+  await withActor(actor.userId, async (tx) => {
+    await tx.execute(
+      sql`SELECT app_join_billing(${spaceId}::uuid, ${payerSpaceId}::uuid)`,
+    );
+  });
+}
+
+/** The undo, and the only way back to buying a plan for this space alone --
+ *  `startCheckout` refuses a space somebody else is already paying for. */
+export async function leaveBilling(actor: Actor, spaceId: string): Promise<void> {
+  if (actor.type !== "user") throw new Forbidden("Only a person manages billing");
+  await withActor(actor.userId, async (tx) => {
+    await tx.execute(sql`SELECT app_leave_billing(${spaceId}::uuid)`);
+  });
 }

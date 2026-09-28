@@ -20,6 +20,11 @@ import type { CanvasTool } from "@/lib/canvas-tool";
 
 type Spec = { id: CanvasTool; label: string; icon: IconName };
 
+const PAN: Spec = { id: "pan", label: "Pan", icon: "pan" };
+
+/** The modes with something behind a second tap: options, or Select's Pan. */
+const HAS_CHOICES: ReadonlySet<CanvasTool> = new Set(["text", "pen", "highlighter", "select"]);
+
 const MODES: Spec[] = [
   { id: "text", label: "Text", icon: "text" },
   { id: "pen", label: "Handwriting", icon: "pen" },
@@ -47,14 +52,16 @@ export function ToolRail({
 }) {
   // `textbox` is armed from the text tool's options and has no button of its
   // own (ADR-065), so the chip keeps showing text while a box is being placed.
-  const held = tool === "textbox" ? "text" : tool;
+  const held = tool === "textbox" ? "text" : tool === "pan" ? "select" : tool;
 
   return (
     <nav aria-label="Tools" data-open={open} className="jd-rail flex items-center gap-0.5">
-      {MODES.map(({ id, label, icon }) => {
+      {MODES.map((mode) => {
+        // Select and Pan share one button; it shows whichever is in hand. ADR-123.
+        const { id, label, icon } = mode.id === "select" && tool === "pan" ? PAN : mode;
         const off = unavailable.includes(id);
         const hint = off && unavailableHint ? `${label} — ${unavailableHint}` : label;
-        const active = id === held;
+        const active = mode.id === held;
         return (
           <button
             key={id}
@@ -66,6 +73,8 @@ export function ToolRail({
             // Read by the collapsed chip's chevron, which is drawn in CSS so
             // there is no second button to hit by mistake.
             data-chip={active && !open ? "" : undefined}
+            data-mode={mode.id}
+            data-choice={HAS_CHOICES.has(mode.id) ? "" : undefined}
             onClick={() => { if (!off) onTool(id); }}
             className={`jd-tool ${active ? "jd-tool-active" : ""}`}
           >

@@ -5,7 +5,7 @@ import { MARKER_COLORS, PEN_COLORS } from "@/lib/ink-style";
 import { CARD_COLORS } from "@/lib/ink-cards";
 import { PenSize } from "./PenSize";
 import type { SelectionSummary } from "@/lib/ink-engine";
-import { Swatches } from "./ToolOptions";
+import { Swatches } from "./Swatches";
 
 /**
  * What you can do with a lasso selection. ADR-033, ADR-045.

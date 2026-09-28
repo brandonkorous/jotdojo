@@ -34,7 +34,20 @@ export type PlanView = {
    *  members plus invites nobody has used yet. ADR-112. */
   seats: number;
   seatsTaken: number;
+  /** The space whose subscription covers this one, named. A covered space has
+   *  nothing to buy and nothing to cancel, so it is offered neither. ADR-119. */
+  includedIn: { spaceId: string; name: string } | null;
 };
+
+/**
+ * The space that is paying, if this person has one. ADR-119.
+ *
+ * What the "make a shared space" control needs in order to say what the next
+ * space will cost, which before issue 051 it did not say at all.
+ */
+export function payingSpace(plans: PlanView[]): PlanView | null {
+  return plans.find((p) => p.includedIn === null && p.plan !== "free") ?? null;
+}
 
 /** Only spaces this person owns. A member sees usage on their own screen; the
  *  paperwork belongs to whoever pays for it (ADR-036). */
@@ -62,6 +75,7 @@ export async function ownedPlans(actor: Actor): Promise<PlanView[]> {
       renewsAt: paperwork.currentPeriodEnd,
       seats: seats.seats,
       seatsTaken: seats.taken,
+      includedIn: paperwork.includedIn,
     };
   }));
 }

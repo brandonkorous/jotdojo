@@ -17,6 +17,10 @@ export const spaces = pgTable("spaces", {
   name: text("name").notNull(),
   kind: text("kind").notNull().default("personal"),
   plan: text("plan").notNull().default("free"),
+  /** The space whose subscription pays for this one, or null when it pays for
+   *  itself. `plan` above is still what this space is ALLOWED -- a rider is
+   *  kept in step with its payer rather than read through this. ADR-119. */
+  billedWith: uuid("billed_with"),
   /** The triage agent, off until an owner turns it on. ADR-048. */
   triageEnabled: boolean("triage_enabled").notNull().default(false),
   triageLastRunAt: timestamp("triage_last_run_at", { withTimezone: true }),

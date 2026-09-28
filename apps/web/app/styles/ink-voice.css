@@ -1,0 +1,71 @@
+/**
+ * A voice note on the page. ADR-121.
+ * Sized in `--jd-u`, one 88th of the card's height, so it scales as a whole
+ * when somebody resizes it. Only the button takes a pointer.
+ */
+.jd-plane-voice {
+  --u: var(--jd-u, 1px);
+  position: absolute;
+  box-sizing: border-box;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  grid-template-rows: 1fr auto;
+  align-items: center;
+  column-gap: calc(var(--u) * 14);
+  padding: calc(var(--u) * 12) calc(var(--u) * 18);
+  border-radius: calc(var(--u) * 18);
+  background: #fdfcf9;
+  color: #2a2620;
+  font-family: var(--font-sans, ui-sans-serif, system-ui, sans-serif);
+  pointer-events: none;
+  user-select: none;
+  box-shadow: 0 1px 2px var(--jd-depth-near), 0 12px 24px -12px var(--jd-depth-far);
+}
+
+.jd-voice-play {
+  grid-row: 1 / span 2;
+  width: calc(var(--u) * 52);
+  height: calc(var(--u) * 52);
+  display: grid;
+  place-items: center;
+  border-radius: 9999px;
+  background: #ef5a5a;
+  color: #fff;
+  pointer-events: auto;
+  cursor: pointer;
+}
+.jd-voice-play svg { width: 46%; height: 46%; fill: currentColor; }
+.jd-voice-play:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+
+.jd-voice-wave {
+  display: flex;
+  align-items: center;
+  height: calc(var(--u) * 36);
+  gap: calc(var(--u) * 2.5);
+}
+.jd-voice-wave span {
+  flex: 1 1 0;
+  min-height: calc(var(--u) * 3);
+  border-radius: 9999px;
+  background: color-mix(in oklch, #2a2620 38%, transparent);
+  transition: background-color 120ms ease;
+}
+.jd-voice-wave span[data-on='true'] { background: #ef5a5a; }
+
+.jd-voice-time {
+  font-size: calc(var(--u) * 15);
+  font-variant-numeric: tabular-nums;
+  opacity: 0.75;
+}
+
+.jd-voice-words {
+  grid-column: 2 / span 2;
+  margin: 0;
+  font-size: calc(var(--u) * 13);
+  line-height: 1.3;
+  opacity: 0.65;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.jd-voice-words:empty { display: none; }

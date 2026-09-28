@@ -6,7 +6,7 @@ import {
   faArrowRotateLeft, faArrowRotateRight, faBold, faCamera,
   faCirclePlus, faClipboard, faComment, faCopy, faItalic, faKeyboard,
   faMagnifyingGlass, faMinus, faMicrophone, faPaintbrush, faPenLine, faPlus,
-  faFaceSmile, faSparkles, faText, faTrash, faUnderline, faXmark,
+  faCheck, faFaceSmile, faHand, faSparkles, faText, faTrash, faUnderline, faXmark,
 } from "@awesome.me/kit-2fb7fafdba/icons/whiteboard/semibold";
 
 /**
@@ -32,6 +32,8 @@ export const ICONS = {
   eraser: faTrash,
   /** No `lasso`. The select-cursor is the honest stand-in. */
   select: faArrowPointer,
+  pan: faHand,
+  check: faCheck,
   voice: faMicrophone,
   photo: faCamera,
   keyboard: faKeyboard,

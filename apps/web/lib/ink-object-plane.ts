@@ -4,7 +4,9 @@ import { unionOf } from "./ink-rects";
 import { InkTextLayer } from "./ink-text-layer";
 import { InkImageLayer } from "./ink-image-layer";
 import { InkStickerLayer } from "./ink-sticker-layer";
+import { GripOverlay } from "./ink-grip-overlay";
 import type { ImageSource } from "./ink-image-plane";
+import type { ClipSource } from "./ink-voice-card";
 
 /**
  * Everything on the object plane: typed text, photographs, stickers.
@@ -24,12 +26,15 @@ export type PlaneHooks = {
   onGeometry: () => void;
   /** Where a photograph's bytes are. Signed on demand. */
   imageSrc: ImageSource;
+  /** Where a recording's sound is, for voice cards. Absent on the hero. */
+  clipSrc?: ClipSource;
 };
 
 export class ObjectPlane {
   readonly texts: InkTextLayer;
   readonly images: InkImageLayer;
   readonly stickers: InkStickerLayer;
+  readonly grips: GripOverlay;
 
   constructor(el: HTMLElement, hooks: PlaneHooks) {
     // Every kind travels as the SAME delta the strokes do -- one version, one
@@ -42,7 +47,8 @@ export class ObjectPlane {
     this.images = new InkImageLayer(el, {
       onChange: (images) => hooks.onDelta({ remove: [], upsert: [], images: [...images] }),
       onGeometry: hooks.onGeometry,
-    }, hooks.imageSrc);
+    }, hooks.imageSrc, hooks.clipSrc);
+    this.grips = new GripOverlay(el);
     this.stickers = new InkStickerLayer(el, {
       onChange: (stickers) => hooks.onDelta({ remove: [], upsert: [], stickers: [...stickers] }),
       onGeometry: hooks.onGeometry,
@@ -53,6 +59,7 @@ export class ObjectPlane {
     this.texts.destroy();
     this.images.destroy();
     this.stickers.destroy();
+    this.grips.destroy();
   }
 
   load(

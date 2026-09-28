@@ -1,3 +1,4 @@
+import type { ClipSource } from "./ink-voice-card";
 import type { InkDelta, Stroke } from "@jotacular/domain";
 import type { SelectionSummary } from "./ink-selection";
 
@@ -59,6 +60,8 @@ export type EngineOptions = {
    * than once per frame.
    */
   imageSrc?: (blockId: string) => Promise<string | null>;
+  /** A recording's sound, length and words, for its voice card. ADR-121. */
+  clipSrc?: ClipSource;
   /**
    * The whole canvas shell, for camera gestures. ADR-102.
    *

@@ -10,7 +10,7 @@
  * What this CANNOT check is whether any of it feels right under a thumb.
  */
 import { InkViewport } from "../lib/ink-viewport";
-import { ViewGestures, wheelPixels, wheelZoom } from "../lib/ink-gestures";
+import { ViewGestures, wheelPan, wheelPixels, wheelZoom } from "../lib/ink-gestures";
 
 let failures = 0;
 const check = (label: string, ok: boolean, detail?: string) => {
@@ -28,6 +28,14 @@ console.log("\nwheel deltas are read in the unit the browser reported");
     wheelPixels({ deltaX: 0, deltaY: 3, deltaMode: 1 }).dy === 48);
   check("pages are scaled",
     wheelPixels({ deltaX: 0, deltaY: 1, deltaMode: 2 }).dy === 800);
+
+  // Shift+wheel is sideways, whether or not the browser swapped the axes. ADR-123.
+  const side = wheelPan({ deltaX: 0, deltaY: 120, deltaMode: 0, shiftKey: true });
+  check("shift turns a vertical wheel sideways", side.dx === 120 && side.dy === 0);
+  const swapped = wheelPan({ deltaX: 120, deltaY: 0, deltaMode: 0, shiftKey: true });
+  check("an axis the browser already swapped is left alone", swapped.dx === 120 && swapped.dy === 0);
+  check("no shift, no turn",
+    wheelPan({ deltaX: 0, deltaY: 120, deltaMode: 0, shiftKey: false }).dy === 120);
 
   // One notched detent is 100+ deltaY. Unclamped that is exp(120/320) per
   // notch compounding on a trackpad's stream of them.

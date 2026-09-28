@@ -1,8 +1,6 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
-import { billing, type PaidPlan } from "@jotacular/billing";
 import {
   createNote, saveNote, listNotes, searchNotes, defaultSpaceId, setToolbarSide,
   createCaptureToken, listCaptureTokens, revokeCaptureToken, listSpaces,
@@ -10,11 +8,9 @@ import {
   commentOnNote, type CommentView,
   ensureInkBlock, appendStrokes, getInk, correctTranscript,
   assertAnonRoom, assertAnonInkRoom, AnonLimit, ANON_MAX_CHARS,
-  startCheckout, billingPortal,
   RevisionConflict, type NoteSummary, type ListedNote, type CaptureTokenSummary,
 } from "@jotacular/domain";
 import { requireActor, captureActor } from "@/lib/session";
-import { appOrigin } from "@/lib/hosts";
 
 export type SaveResult =
   | { ok: true; revision: number; title: string | null }
@@ -123,23 +119,6 @@ export async function revokeConnectionAction(clientId: string): Promise<void> {
 // --- money ----------------------------------------------------------------
 // docs/01-audience-and-pricing.md, ADR-038. Owners only, enforced in the
 // domain layer -- these two just carry the browser to the provider and back.
-
-export async function startCheckoutAction(spaceId: string, plan: PaidPlan): Promise<never> {
-  const { url } = await startCheckout(billing(), await requireActor(), spaceId, plan, {
-    // Back to the same page either way. The plan does not change on return --
-    // it changes when the WEBHOOK lands, which may be a second later.
-    successUrl: `${appOrigin()}/account?bought=${plan}`,
-    cancelUrl: `${appOrigin()}/account`,
-  });
-  redirect(url);
-}
-
-export async function billingPortalAction(spaceId: string): Promise<never> {
-  const { url } = await billingPortal(
-    billing(), await requireActor(), spaceId, `${appOrigin()}/account`,
-  );
-  redirect(url);
-}
 
 // --- the triage agent -----------------------------------------------------
 // docs/07-capture-pipeline.md, ADR-048. Owners only, and it is off until

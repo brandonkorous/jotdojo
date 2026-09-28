@@ -234,6 +234,7 @@ export function InkCanvas({
         zoom={view.k}
         home={view.home}
         onFit={() => engine()?.open.fit()}
+        onZoom={(f) => engine()?.open.zoomBy(f)}
       />
     </div>
   );

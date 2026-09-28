@@ -1,13 +1,13 @@
 # 051 — He paid for six, then made the space he wanted and it seats one
 
-**Status:** open
+**Status:** fixed
 **Severity:** design
 **Found by:** P05 · Kwabena Ballantyne-Osei · act 6
 **Surface:** app › Account › What you are on · Who is in your spaces · and site › /pricing
 **Filed:** 2026-09-16
-**Fixed:** —
-**Confirmed by:** —
-**Blocked on:** decision — this is what to charge for, not a broken control
+**Fixed:** 2026-09-28
+**Confirmed by:** `one-bill:smoke`, 34 checks · 2026-09-28
+**Blocked on:** —
 
 ## What happened
 
@@ -87,12 +87,52 @@ rescue the word **spaces**.
 
 ## The fix
 
-—
+**One bill covers every space a person makes.** ADR-119, migrations 0040 and 0041.
+
+`spaces.billed_with` is the whole mechanism: NULL means a space pays for itself, and a
+value means it rides on that space's subscription. A space made by somebody who already
+pays now arrives on their plan, seating six, with no price list under it.
+
+**Readings are pooled and seats are not**, and that asymmetry is the pricing. Readings
+are the cost of goods (ADR-036) so a fresh 2,000 per room would turn $9 into an
+unbounded vision bill. Seats were never the fence (ADR-112), so every space in the group
+holds the plan's number — which is what turns *1 of 1 seat taken* into *1 of 6*.
+
+The decision this was blocked on: **nothing extra.** A second space costs nothing,
+because the alternative was asking a customer to remember which of his spaces was the
+paid one, and docs/01 has said since M0 that families will not do that arithmetic.
+
+What changed:
+
+- [0040_one_bill_many_spaces.sql](../../../packages/db/migrations/0040_one_bill_many_spaces.sql)
+  — the column, the pooled allowance, `app_create_space` attaching a new space to the
+  payer, and `app_join_billing` / `app_leave_billing` for a space made before the card.
+- [0041_a_webhook_never_refuses_money.sql](../../../packages/db/migrations/0041_a_webhook_never_refuses_money.sql)
+  — 0040 raised when a subscription arrived for a covered space. Right at the checkout
+  button, wrong on the other side of the card: the charge would stand and nothing would
+  be recorded. It detaches and applies instead. `smoke-seats` found it.
+- [NewSpace.tsx](../../../apps/web/components/NewSpace.tsx) — says what the next space
+  costs BEFORE it is made, which is the half of this that was never about billing.
+- [PlanSection.tsx](../../../apps/web/components/PlanSection.tsx) — a covered space is
+  offered neither checkout nor a portal, and a free one is offered *Add to <payer>*
+  first. Its `PlanActions` was 80 lines, so it split three ways on the way past.
+- [billing-actions.ts](../../../apps/web/app/billing-actions.ts) — split out of
+  `actions.ts`, which was three lines under its limit.
+- [pricing/page.tsx](../../../apps/web/app/site/pricing/page.tsx) — *"Shared spaces,
+  one bill"* becomes *"Every space you make, on the one bill"*, and the lede and the
+  home page band say the same thing.
 
 ## Confirmed by
 
-—
+`pnpm one-bill:smoke` — 34 checks, all green. Act 6 walked as SQL: he pays for Family,
+makes *The boiler cupboard*, and it arrives on `family`, naming *The Ballantyne-Osei
+house* as its payer, seating six with five free, on the 2,000 allowance shared between
+them. `seats:smoke`, `billing:smoke`, `members:smoke`, `metering:smoke`, `anon:smoke`
+and `db:smoke` all still green.
+
+**Not yet confirmed from the screen.** The suites are green and green suites have missed
+things on this account page before (issue 049). The account page wants opening.
 
 ## Rating effect
 
-—
+Pending — the P05 re-run has not happened.

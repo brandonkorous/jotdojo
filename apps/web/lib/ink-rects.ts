@@ -1,6 +1,7 @@
 import type { ImageOnPage, Point, Sticker } from "@jotacular/domain";
 import { stickerBounds } from "@jotacular/ink-render";
 import { pointInPolygon, type Bounds } from "./ink-geometry";
+import { corners, extent, hits } from "./ink-turned";
 
 /**
  * The objects that are simply a rectangle: photographs and stickers.
@@ -39,21 +40,18 @@ export function unionOf(boxes: readonly Bounds[]): Bounds | null {
  * forgiving and worse: a wide object overlapping the edge of a loop would come
  * along with whatever was actually circled, for no visible reason.
  */
-export function rectInPolygon(poly: readonly Point[], b: Bounds): boolean {
+export function rectInPolygon(poly: readonly Point[], b: Bounds, rot?: number): boolean {
   if (poly.length < 3) return false;
-  return ([
-    [b.x, b.y], [b.x + b.w, b.y], [b.x + b.w, b.y + b.h], [b.x, b.y + b.h],
-  ] as Array<[number, number]>).every(([x, y]) => pointInPolygon(poly, x, y));
+  return corners(b, rot).every(([x, y]) => pointInPolygon(poly, x, y));
 }
 
 /** Reversed, so the topmost wins -- matching what is drawn. */
-export function rectAt<T>(
+export function rectAt<T extends { rot?: number }>(
   items: readonly T[], area: (item: T) => Bounds, x: number, y: number,
 ): T | null {
   for (let i = items.length - 1; i >= 0; i--) {
     const item = items[i]!;
-    const b = area(item);
-    if (x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h) return item;
+    if (hits(area(item), item.rot, x, y)) return item;
   }
   return null;
 }
@@ -75,10 +73,10 @@ export const imageArea = (image: ImageOnPage): Bounds =>
   ({ x: image.x, y: image.y, w: image.w, h: image.h });
 
 export const imagesBounds = (images: readonly ImageOnPage[]): Bounds | null =>
-  unionOf(images.map(imageArea));
+  unionOf(images.map((i) => extent(imageArea(i), i.rot)));
 
 export const imageInPolygon = (poly: readonly Point[], image: ImageOnPage): boolean =>
-  rectInPolygon(poly, imageArea(image));
+  rectInPolygon(poly, imageArea(image), image.rot);
 
 export const imageAt = (images: readonly ImageOnPage[], x: number, y: number) =>
   rectAt(images, imageArea, x, y);
@@ -96,10 +94,10 @@ export const translateImages = (images: readonly ImageOnPage[], dx: number, dy: 
 export const stickerArea = (sticker: Sticker): Bounds => stickerBounds(sticker);
 
 export const stickersBounds = (stickers: readonly Sticker[]): Bounds | null =>
-  unionOf(stickers.map(stickerArea));
+  unionOf(stickers.map((s) => extent(stickerArea(s), s.rot)));
 
 export const stickerInPolygon = (poly: readonly Point[], sticker: Sticker): boolean =>
-  rectInPolygon(poly, stickerArea(sticker));
+  rectInPolygon(poly, stickerArea(sticker), sticker.rot);
 
 export const stickerAt = (stickers: readonly Sticker[], x: number, y: number) =>
   rectAt(stickers, stickerArea, x, y);

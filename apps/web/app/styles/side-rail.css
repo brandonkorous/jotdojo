@@ -1,0 +1,128 @@
+/**
+ * The tools down one side, and the corner opposite. ADR-120.
+ * Every rule here is on `.jd-chrome`, whose doubled [class] makes `position:
+ * absolute` beat Silica's `glass` (canvas.css says why).
+ */
+.jd-side-rail {
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.125rem;
+  padding: 0.375rem;
+  border-radius: 1.25rem;
+}
+.jd-side-rail[data-side='left'] { left: 0.75rem; }
+.jd-side-rail[data-side='right'] { right: 0.75rem; }
+
+.jd-side-rail .jd-rail { flex-direction: column; gap: 0.125rem; }
+.jd-side-rail .jd-tool { width: 2.5rem; height: 2.5rem; border-radius: 0.75rem; }
+.jd-side-rail .jd-tool svg { font-size: 1.15rem; }
+.jd-side-rail .jd-rail-sep-v { width: 1.25rem; height: 1px; margin: 0.25rem auto; }
+.jd-side-rail > span.jd-rail-extra:not(.jd-rail-sep-v) { display: contents; }
+
+@media (pointer: coarse) {
+  .jd-side-rail .jd-tool { width: 2.75rem; height: 2.75rem; }
+}
+
+/* On a phone it folds to one button in the top corner, and unfolds downward
+   from there. The breakpoint is `use-narrow.ts`'s; keep the two in step. */
+@media (max-width: 30rem) {
+  .jd-side-rail { top: 0.75rem; transform: none; padding: 0.25rem; border-radius: 1.5rem; }
+  /* Doubled, to beat the `display: contents` on the add menu's wrapper. */
+  .jd-side-rail[data-open='false'] .jd-rail-extra.jd-rail-extra { display: none; }
+}
+
+/* ---- The corner: search, remarks, you. -------------------------------- */
+.jd-corner {
+  top: 0.75rem;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 0.125rem;
+  padding: 0.25rem;
+  border-radius: 9999px;
+}
+.jd-corner[data-side='left'] { left: 0.75rem; }
+.jd-corner[data-side='right'] { right: 0.75rem; }
+
+/* It looks like a field because people look for a field, and it opens the
+   palette because typing into the page is what the page is for. */
+.jd-corner-search {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  height: 2rem;
+  min-width: 13rem;
+  padding: 0 0.5rem 0 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.8125rem;
+  color: color-mix(in oklch, var(--color-base-content) 60%, transparent);
+  background: color-mix(in oklch, var(--color-base-content) 5%, transparent);
+}
+.jd-corner-search:hover { background: color-mix(in oklch, var(--color-base-content) 9%, transparent); }
+.jd-corner-search-text { margin-right: auto; }
+.jd-corner-search-key { font: inherit; font-size: 0.6875rem; opacity: 0.7; }
+
+@media (pointer: coarse) { .jd-corner-search { height: 2.75rem; } }
+
+/* A phone keeps the magnifier and drops the words; the band across the top
+   is where the next line of writing goes. */
+@media (max-width: 40rem) {
+  .jd-corner-search { min-width: 0; width: 2rem; padding: 0; justify-content: center; background: none; }
+  .jd-corner-search-text, .jd-corner-search-key { display: none; }
+}
+@media (max-width: 40rem) and (pointer: coarse) { .jd-corner-search { width: 2.75rem; } }
+
+/* What the tool in hand can be set to: a card beside its button, in the
+   `+` menu's own `dropdown` look, placed by `use-beside-rail.ts`. ADR-124. */
+.jd-tool-options {
+  z-index: 21;
+  width: 13.5rem;
+  max-width: calc(100% - 1.5rem);
+}
+.jd-options-label {
+  margin: 0.375rem 0.5rem 0.25rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  opacity: 0.5;
+}
+.jd-options-label:first-child { margin-top: 0.125rem; }
+.jd-tool-options nav { display: flex; flex-wrap: wrap; gap: 0.125rem; padding: 0 0.25rem; }
+.jd-tool-options nav[aria-label='Text size'] { flex-direction: column; padding: 0; }
+.jd-options-item { width: 100%; justify-content: space-between; }
+.jd-options-item[data-block='h1'] span { font-size: 1.05rem; font-weight: 700; }
+.jd-options-item[data-block='h2'] span { font-size: 0.95rem; font-weight: 600; }
+.jd-options-item[aria-pressed='true'] {
+  background: color-mix(in oklch, var(--color-primary) 16%, transparent);
+}
+.jd-tool-options .jd-pen-size { margin: 0 0.5rem 0.25rem; }
+
+/* A small corner mark on every control with more behind it: options, a
+   menu, or Select's Pan. ADR-123. The grab hand is the pan tool's cursor. */
+.jd-side-rail .jd-tool[data-choice] { position: relative; }
+.jd-side-rail .jd-tool[data-choice]::before {
+  content: "";
+  position: absolute;
+  right: 0.3rem;
+  bottom: 0.3rem;
+  border: 0.18rem solid transparent;
+  border-right-color: currentColor;
+  border-bottom-color: currentColor;
+  opacity: 0.45;
+}
+/* Folded on a phone, the chip's own chevron sits in that corner instead. */
+.jd-side-rail .jd-tool[data-chip]::before { display: none; }
+.jd-ink-mount[data-tool='pan'] { cursor: grab; }
+.jd-ink-mount[data-tool='pan']:active { cursor: grabbing; }
+
+/* Typing starts clear of the rail, on whichever side it stands. A phone's
+   folded rail is in the top corner, which the spine's top padding clears. */
+@media (min-width: 30.0625rem) {
+  .jd-canvas-shell:has(.jd-side-rail[data-side='left']) .jd-spine { padding-left: 5rem; }
+  .jd-canvas-shell:has(.jd-side-rail[data-side='right']) .jd-spine { padding-right: 5rem; }
+}

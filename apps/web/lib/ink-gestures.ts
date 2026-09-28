@@ -57,6 +57,15 @@ export function wheelPixels(
   return { dx: e.deltaX * s, dy: e.deltaY * s };
 }
 
+/** Shift turns a wheel sideways. Some browsers already swap the axes and
+ *  some do not, so only a delta that is still vertical is turned. */
+export function wheelPan(
+  e: { deltaX: number; deltaY: number; deltaMode: number; shiftKey: boolean },
+): { dx: number; dy: number } {
+  const { dx, dy } = wheelPixels(e);
+  return e.shiftKey && dx === 0 ? { dx: dy, dy: 0 } : { dx, dy };
+}
+
 /** Exponential, so zooming in and back out by the same delta returns exactly
  *  where it started -- and clamped, because one notch is 100+ deltaY. */
 export function wheelZoom(dy: number): number {
@@ -184,15 +193,16 @@ export class ViewGestures {
     // Always prevented: ctrl+wheel is the browser's own page zoom, and over an
     // endless canvas a plain wheel should move the canvas, not the document.
     e.preventDefault();
-    const { dx, dy } = wheelPixels(e);
     const p = this.at(e);
     const v = this.host.view;
 
     if (e.ctrlKey || e.metaKey) {
+      const { dy } = wheelPixels(e);
       if (v.zoomAbout(p.x, p.y, wheelZoom(dy))) this.host.onView();
       return;
     }
 
+    const { dx, dy } = wheelPan(e);
     if (dx === 0 && dy === 0) return;
     v.panBy(-dx, -dy);
     this.host.onView();

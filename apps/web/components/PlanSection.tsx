@@ -1,7 +1,9 @@
 "use client";
 
 import { useTransition } from "react";
-import { startCheckoutAction, billingPortalAction } from "@/app/actions";
+import {
+  startCheckoutAction, billingPortalAction, joinBillingAction, leaveBillingAction,
+} from "@/app/billing-actions";
 import type { PaidPlan } from "@jotacular/billing";
 import type { PlanView } from "@/lib/plans-view";
 
@@ -26,7 +28,12 @@ const PRICE: Record<PaidPlan, { label: string; price: string; who: string }> = {
   team: { label: "Team", price: "$19", who: "up to 25 people, and the agent that reads new notes" },
 };
 
-export function PlanSection({ plans }: { plans: PlanView[] }) {
+/** `payer` is computed on the server (plans-view.ts) and handed down: this
+ *  file is a client component, and importing that module would pull the whole
+ *  domain layer into the browser bundle to answer one question. */
+export function PlanSection(
+  { plans, payer }: { plans: PlanView[]; payer: PlanView | null },
+) {
   const [pending, startTransition] = useTransition();
   if (plans.length === 0) return null;
 
@@ -34,77 +41,133 @@ export function PlanSection({ plans }: { plans: PlanView[] }) {
     <section>
       <h2 className="font-head text-xl">What you are on</h2>
       <p className="mb-4 mt-1 text-sm jd-quiet">
-        One price for the space, however many people are in it. Only reading
-        costs anything — pages of handwriting, photos, and minutes of audio.
-        Writing notes never counts against it.
+        One price, however many people are in it and however many spaces you
+        make. Only reading costs anything — pages of handwriting, photos, and
+        minutes of audio. Writing notes never counts against it.
       </p>
 
       <ul className="flex flex-col gap-3">
         {plans.map((space) => (
-          <li key={space.spaceId} className="rounded-xl border border-black/10 px-4 py-3">
-            <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-              <span className="font-medium">{space.name}</span>
-              <span className="badge badge-neutral badge-sm">{space.plan}</span>
-              <span className="ml-auto text-sm jd-quiet">{usage(space)}</span>
-            </div>
-
-            {trouble(space) && (
-              <p className="mt-2 text-sm text-accent">{trouble(space)}</p>
-            )}
-
-            <div className="mt-3 flex flex-wrap items-center gap-2">
-              {/* ONE path per state, and they must not both be offered.
-                *
-                * Checkout STARTS a subscription. Offering it to somebody who
-                * already has one does not move them between plans -- it opens a
-                * second subscription alongside the first and bills them for
-                * both. Changing an existing plan belongs to the portal, which
-                * switches it in place and prorates. */}
-              {!space.sellable ? null : space.billed ? (
-                <>
-                  <button
-                    type="button"
-                    disabled={pending}
-                    className="btn btn-sm btn-ghost"
-                    onClick={() => startTransition(async () => {
-                      await billingPortalAction(space.spaceId);
-                    })}
-                  >
-                    Change plan or cancel
-                  </button>
-                  {/* The second sentence is the one somebody cancelling actually
-                      wants, and this button hands them to a payment portal that
-                      cannot answer it. Measured: cancelling drops the plan to
-                      free and deletes nothing. Issue 035. */}
-                  <span className="text-sm jd-quiet">
-                    Switching plans and cancelling both happen here.
-                    {" "}Your notes stay either way — nothing is deleted by cancelling.
-                  </span>
-                </>
-              ) : (
-                (Object.keys(PRICE) as PaidPlan[])
-                  .filter((plan) => plan !== space.plan)
-                  .map((plan) => (
-                    <button
-                      key={plan}
-                      type="button"
-                      disabled={pending}
-                      className="btn btn-sm btn-ghost"
-                      onClick={() => startTransition(async () => {
-                        await startCheckoutAction(space.spaceId, plan);
-                      })}
-                      aria-label={`Move this space to ${PRICE[plan].label}, `
-                        + `${PRICE[plan].price} a month, ${PRICE[plan].who}`}
-                    >
-                      {PRICE[plan].label} {PRICE[plan].price}
-                    </button>
-                  ))
-              )}
-            </div>
-          </li>
+          <PlanRow key={space.spaceId} space={space} payer={payer}
+            pending={pending} run={startTransition} />
         ))}
       </ul>
     </section>
+  );
+}
+
+type RowProps = {
+  space: PlanView;
+  /** The space already paying, if any -- what a free space can join. */
+  payer: PlanView | null;
+  pending: boolean;
+  run: (fn: () => void) => void;
+};
+
+/** One space: what it is on, what it has spent, and what can be done about it. */
+function PlanRow({ space, payer, pending, run }: RowProps) {
+  return (
+    <li className="rounded-xl border border-black/10 px-4 py-3">
+      <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+        <span className="font-medium">{space.name}</span>
+        <span className="badge badge-neutral badge-sm">{space.plan}</span>
+        <span className="ml-auto text-sm jd-quiet">{usage(space)}</span>
+      </div>
+
+      {trouble(space) && <p className="mt-2 text-sm text-accent">{trouble(space)}</p>}
+
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <PlanActions space={space} payer={payer} pending={pending} run={run} />
+      </div>
+    </li>
+  );
+}
+
+/**
+ * The one path out of this state, and never two.
+ *
+ * Checkout STARTS a subscription. Offering it to somebody who already has one
+ * does not move them between plans — it opens a second subscription alongside
+ * the first and bills them for both. Changing a plan belongs to the portal.
+ *
+ * A COVERED SPACE IS OFFERED NEITHER. It rides on another space's bill, so a
+ * price list here is the £9-twice trap of issue 051 drawn one screen later.
+ */
+function PlanActions({ space, payer, pending, run }: RowProps) {
+  if (space.includedIn) return <Covered space={space} pending={pending} run={run} />;
+  if (!space.sellable) return null;
+  if (space.billed) return <Bought space={space} pending={pending} run={run} />;
+
+  return (
+    <>
+      {/* A space made BEFORE the card. Offered first, because "add it to what
+          you already pay for" is the answer to the price list beside it. */}
+      {payer && payer.spaceId !== space.spaceId && space.plan === "free" && (
+        <button type="button" disabled={pending} className="btn btn-sm"
+          onClick={() => run(async () => {
+            await joinBillingAction(space.spaceId, payer.spaceId);
+          })}>
+          Add to {payer.name}
+        </button>
+      )}
+      {(Object.keys(PRICE) as PaidPlan[])
+        .filter((plan) => plan !== space.plan)
+        .map((plan) => (
+          <button key={plan} type="button" disabled={pending} className="btn btn-sm btn-ghost"
+            onClick={() => run(async () => { await startCheckoutAction(space.spaceId, plan); })}
+            aria-label={`Move this space to ${PRICE[plan].label}, `
+              + `${PRICE[plan].price} a month, ${PRICE[plan].who}`}>
+            {PRICE[plan].label} {PRICE[plan].price}
+          </button>
+        ))}
+    </>
+  );
+}
+
+/** A space somebody else's subscription pays for, and the way back out. */
+function Covered({ space, pending, run }: Omit<RowProps, "payer">) {
+  return (
+    <>
+      {/* The cancelled case is the one worth spelling out. The grouping
+          survives a cancellation on purpose, so putting the payer back on a
+          plan covers this space again — but saying "no second bill" about two
+          free spaces would be describing a plan neither of them is on. */}
+      <span className="text-sm jd-quiet">
+        {space.plan === "free" ? (
+          <>
+            Included in <strong>{space.includedIn?.name}</strong>, which is not on
+            a plan just now. Put that one back on a plan, or bill this one alone.
+          </>
+        ) : (
+          <>
+            Included in <strong>{space.includedIn?.name}</strong> — no second bill.
+            The reading above is what those spaces have used between them.
+          </>
+        )}
+      </span>
+      <button type="button" disabled={pending} className="btn btn-sm btn-ghost"
+        onClick={() => run(async () => { await leaveBillingAction(space.spaceId); })}>
+        Bill this space on its own
+      </button>
+    </>
+  );
+}
+
+/** A space with a subscription of its own. The portal, and the sentence the
+ *  portal cannot answer: cancelling drops the plan and deletes nothing.
+ *  Measured, issue 035. */
+function Bought({ space, pending, run }: Omit<RowProps, "payer">) {
+  return (
+    <>
+      <button type="button" disabled={pending} className="btn btn-sm btn-ghost"
+        onClick={() => run(async () => { await billingPortalAction(space.spaceId); })}>
+        Change plan or cancel
+      </button>
+      <span className="text-sm jd-quiet">
+        Switching plans and cancelling both happen here.
+        {" "}Your notes stay either way — nothing is deleted by cancelling.
+      </span>
+    </>
   );
 }
 

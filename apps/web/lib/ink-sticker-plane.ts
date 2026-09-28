@@ -1,5 +1,6 @@
 import type { Sticker } from "@jotacular/domain";
 import { placeSticker } from "@jotacular/ink-render";
+import { applyTurn } from "./ink-turned";
 
 /**
  * The stickers on the object plane. ADR-115.
@@ -56,6 +57,7 @@ export class InkStickerPlane {
     node.style.top = `${sticker.y}px`;
     node.style.width = `${sticker.size}px`;
     node.style.height = `${sticker.size}px`;
+    applyTurn(node, sticker.rot);
 
     // Everything except the position; a drag changes only left and top, and
     // rebuilding the path on every frame of one would be a parse per pixel.

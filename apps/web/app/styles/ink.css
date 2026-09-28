@@ -47,8 +47,8 @@
   background-position: var(--jd-grid-x) var(--jd-grid-y);
 }
 
-/* Where the camera is, and the way back to the writing. Bottom right: the
-   toolbar owns the top and the agent's remarks own the bottom left. */
+/* The zoom bar: out, where the camera is, in. Bottom right, where the agent's
+   remarks (bottom left) and the chrome (top) are not. ADR-124. */
 .jd-ink-zoom {
   right: max(0.75rem, env(safe-area-inset-right));
   bottom: calc(0.75rem + env(safe-area-inset-bottom));
@@ -56,14 +56,23 @@
   /* Clickable even when the mount is transparent to pointers, so switching to
      the text tool cannot strand somebody miles from their ink. */
   pointer-events: auto;
-  padding: 0.25rem 0.625rem;
+  display: flex;
+  align-items: center;
+  padding: 0.125rem;
+  border-radius: 999px;
+  opacity: 0.8;
+}
+.jd-ink-zoom:hover,
+.jd-ink-zoom:focus-within { opacity: 1; }
+.jd-zoom-readout {
+  min-width: 3.25rem;
+  padding: 0.25rem 0.375rem;
   border-radius: 999px;
   font-size: 0.75rem;
   font-variant-numeric: tabular-nums;
-  opacity: 0.7;
 }
-.jd-ink-zoom:hover,
-.jd-ink-zoom:focus-visible { opacity: 1; }
+.jd-zoom-readout:hover:not(:disabled) { background: color-mix(in oklch, var(--color-base-content) 8%, transparent); }
+.jd-zoom-readout:disabled { cursor: default; }
 
 
 .jd-ink-layer {
@@ -178,13 +187,7 @@
   color: var(--jd-ink-night);
 }
 
-/* A note with a colour behind it. ADR-079.
-   Lifted, not flat: ADR-077 retired `--depth: 0` along with the seal, and a
-   card is exactly the "lifted paper" that scale exists for. The shadow is the
-   house token, warm-tinted, so it reads as paper rather than as a UI card. */
-.jd-card {
-  box-shadow: var(--shadow-lift);
-}
+/* A note with a colour behind it is lifted: see ink-depth.css. ADR-079. */
 
 .jd-text-box:focus {
   /* Enough to see which box has the caret on a page of them, and not a box
@@ -234,10 +237,7 @@
   pointer-events: none;
   user-select: none;
   -webkit-user-drag: none;
-  /* A hairline of paper under the picture, so a photo of a white page does not
-     dissolve into the canvas it is lying on. */
-  border-radius: 2px;
-  box-shadow: 0 1px 6px -2px color-mix(in oklch, var(--color-base-content) 35%, transparent);
+  /* Its frame and shadow are in ink-depth.css. */
 }
 
 /* Bytes that will not load. The placement stays -- a page is not ours to edit

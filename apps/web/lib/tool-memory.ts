@@ -14,7 +14,9 @@ const KEY = "jotacular.tool";
 /** `textbox` is a ONE-SHOT, not a mode -- placing a box hands the tool straight
  *  back to the spine (ADR-065), so remembering it would restore a state the app
  *  itself leaves immediately. */
-const REMEMBERED: readonly CanvasTool[] = ["text", "pen", "highlighter", "eraser", "select"];
+const REMEMBERED: readonly CanvasTool[] = [
+  "text", "pen", "highlighter", "eraser", "select", "pan",
+];
 
 const isRemembered = (v: string): v is CanvasTool =>
   (REMEMBERED as readonly string[]).includes(v);

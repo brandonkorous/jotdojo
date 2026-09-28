@@ -27,7 +27,8 @@
     "smoke:images": "tsx scripts/smoke-images.ts",
     "smoke:links": "tsx scripts/smoke-links.ts",
     "smoke:history": "tsx scripts/smoke-history.ts",
-    "smoke:stickers": "tsx scripts/smoke-stickers.ts"
+    "smoke:stickers": "tsx scripts/smoke-stickers.ts",
+    "smoke:turn": "tsx scripts/smoke-turn.ts"
   },
   "dependencies": {
     "@auth/core": "^0.41.3",

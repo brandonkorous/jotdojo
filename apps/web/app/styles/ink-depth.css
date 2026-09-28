@@ -1,0 +1,53 @@
+/**
+ * How far each object sits off the paper. ADR-120.
+ *
+ * One file so the page has one light source: a card, a print and a sticker
+ * cast shadows the same way. Depth is screen-only, like the card shadow was.
+ */
+:root {
+  --jd-depth-near: rgb(60 46 24 / 0.14);
+  --jd-depth-far: rgb(60 46 24 / 0.2);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) { --jd-depth-near: rgb(0 0 0 / 0.4); --jd-depth-far: rgb(0 0 0 / 0.5); }
+}
+:root[data-theme='paper-night'] { --jd-depth-near: rgb(0 0 0 / 0.4); --jd-depth-far: rgb(0 0 0 / 0.5); }
+
+/* A card is lifted paper: a tight contact shadow and a soft one below it. */
+.jd-card {
+  box-shadow:
+    0 1px 2px var(--jd-depth-near),
+    0 10px 22px -10px var(--jd-depth-far);
+}
+
+/* A photograph is a polaroid: a thin white edge, a deeper one at the foot,
+   softly rounded corners, and a little more lift than a card. The picture is
+   cropped to the window rather than letterboxed inside it, as a print is. */
+.jd-plane-image {
+  --e: var(--jd-print, 200px);
+  box-sizing: border-box;
+  padding: calc(var(--e) * 0.045) calc(var(--e) * 0.045) calc(var(--e) * 0.14);
+  background: #fdfcf9;
+  object-fit: cover;
+  border-radius: calc(var(--e) * 0.025);
+  box-shadow:
+    0 1px 3px var(--jd-depth-near),
+    0 16px 30px -14px var(--jd-depth-far);
+}
+
+/* A sticker is die-cut, so its shadow follows the cut rather than a box. */
+.jd-plane-sticker {
+  filter: drop-shadow(0 2px 3px var(--jd-depth-near));
+}
+
+/* The handles on one held object sit above every object. ADR-122. */
+.jd-grips {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 1px;
+  height: 1px;
+  overflow: visible;
+  pointer-events: none;
+  z-index: 10;
+}

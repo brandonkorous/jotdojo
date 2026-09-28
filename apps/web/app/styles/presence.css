@@ -6,7 +6,8 @@
  * rendered at all when nobody else is here, which is nearly always. */
 .jd-presence {
   position: absolute;
-  top: 0.75rem;
+  /* Under the search corner, never beside it: ADR-120. */
+  top: 4.25rem;
   z-index: 16;
   display: flex;
   align-items: center;
@@ -17,8 +18,7 @@
   pointer-events: none;
 }
 
-/* The side is the chrome's opposite, not a constant. It shared the corner with
- * the tool pill and lost, at every width, on every screen. Issue 039. */
+/* The corner's side, which the preference moves. Issue 039, ADR-120. */
 .jd-presence[data-side='left'] { left: 0.9rem; }
 .jd-presence[data-side='right'] { right: 0.9rem; }
 

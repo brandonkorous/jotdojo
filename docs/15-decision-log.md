@@ -5612,3 +5612,250 @@ point. Nothing tells the owner's browser that a *guest* accepted, so a handler h
 nothing to fire on; but `pending` already filters `!acceptedAt && !revokedAt`, so the
 next render for any reason drops the link on its own. **One rule covers both endings
 because both endings are the same fact: the invite is no longer pending.**
+
+---
+
+### ADR-119 — One bill covers every space a person makes
+
+**Status.** Accepted, 2026-09-28. Issue 051.
+
+**Context.** Kwabena pays $9 for Family — *"up to 6 people"* — and the first thing he
+does after paying is act 6: make a space for the house, because a space called
+*Personal* is not where you put the boiler cover. The button is right there and says
+**Make a shared space**.
+
+```
+The Ballantyne-Osei house    free      0 of 100 read this month
+                                       [Solo $5]  [Family $9]  [Team $19]
+                             1 of 1 seat taken
+                             Every seat is taken. Change the plan to add more.
+```
+
+**He has just paid for six people, and the space he actually wants to share seats one
+and asks him for $9 again.** Every control on that screen was behaving correctly.
+`app_plan_seats` seats `free` at 1, `createSpaceAction` passed `"family"` as a KIND
+rather than a plan, and a price list is what an unpaid space is always offered. The
+defect was the rule underneath all of it: billing was per space, and nothing said so
+before the space existed.
+
+And the pricing page had already promised otherwise. The Family card read **"Shared
+spaces, one bill"** — plural spaces, one bill. The honest rule was in the lede above
+it, *"One price for the space, however many people are in it"*, and a person comparing
+plan cards reads the card. Both readings were available on the page where money
+changes hands, and only one of them was true.
+
+**Decision.** Make the card true. A space made by somebody who already pays **joins
+that plan**: same bill, same people, no second charge.
+
+`spaces.billed_with` is the whole mechanism. NULL means a space pays for itself; a
+value means it rides on that space's subscription. `spaces.plan` stays the single
+source of truth for what a space is ALLOWED — a rider is kept in step with its payer
+rather than read through a join — so metering, seats and entitlement are all correct
+without being told any of this exists.
+
+**Readings are pooled and seats are not, and the asymmetry IS the pricing.** Readings
+are the cost of goods (ADR-007, ADR-036): a fresh 2,000 per room would turn $9 into an
+unbounded vision bill. Seats were never the fence (ADR-112), so every space in a group
+holds the plan's number — which for a house of six is the same six people in every
+room. That one line is what turns *1 of 1 seat taken* into *1 of 6*.
+
+**Consequences.**
+
+- **Attaching happens at creation**, and creation is the only thing that happens by
+  itself. A space made BEFORE the card is not swept up — guessing which of somebody's
+  spaces a payment meant is how a bill surprises people — so it is a control instead:
+  *Add to The Ballantyne-Osei house*, beside the price list it answers.
+- **And its undo.** `startCheckout` refuses a covered space, so without *Bill this
+  space on its own* joining would be a door that locks behind you.
+- **One hop, never a chain.** Nothing ever points a space at another rider, so a root
+  is always exactly one step away and none of this recurses.
+- **Cancelling takes the rooms with the house**, and the grouping survives it. Paying
+  again covers them again. While it is cancelled the screen says exactly that, rather
+  than claiming "no second bill" about two spaces that are both on free.
+- **A webhook never refuses money that has already been taken.** The first version of
+  `app_apply_subscription` raised on a covered space. That is the right answer at the
+  checkout button and the wrong one on the other side of the card: refusing the
+  webhook leaves the charge standing and nothing recorded. A subscription arriving for
+  a space now MEANS that space pays for itself — it detaches and applies. Migration
+  0041, and `smoke-seats` is what found it, by paying for two spaces in a row.
+
+**What this is not.** It is not per-seat pricing arriving by the back door, and it is
+not unlimited spaces for $9 — the reading pool is the same pool however many rooms it
+is spread across. docs/01 has said *"per space, never per seat"* since M0, and the
+correction here is that making somebody track WHICH space is the paid one is the same
+sin in a different currency.
+
+**Proved by** `one-bill:smoke`, 34 checks: that a new space arrives on the plan and
+seats six, that a reading in one room counts against the other, that spending the
+allowance in one room puts the whole group over, that a stranger's space is in nobody
+else's pool and cannot be added to one, that checkout is refused on a covered space
+while the webhook detaches instead, and that cancelling and paying again both move the
+whole group.
+
+---
+
+### ADR-120 — The tools stand down one side, and the page has depth
+
+**Status.** Accepted, 2026-09-28.
+
+**Context.** Brandon put a mockup beside the live canvas and preferred the mockup. Three
+things carried it: a tall tool rail on the left, search and the avatar in the top-right
+corner, and cards and photographs that sit ON the paper with a shadow under them. The
+live canvas had one pill across the top, and flat objects.
+
+**Decision.** The one pill is two pieces of furniture again, each with one job.
+
+- **The rail** (`SideRail.tsx`) stands down one side: the five modes, a seam, then
+  voice, photo and the `+` menu. ADR-101's line between modes and actions survives as
+  the seam; voice and photo are back as buttons because a vertical rail has the room
+  that the pill never had.
+- **The corner** holds search, remarks and the avatar. Search looks like a field again
+  on a wide screen (ADR-062 took that away for width, which the corner now has).
+- **The preference moves both.** `left` (and `auto`) puts the rail left and the corner
+  right; `right` mirrors both. Account now offers only Left and Right: with the rail
+  on a side, "auto" had nothing different to mean.
+- **On a phone the rail folds to one button** in its top corner: the tool in hand. The
+  first tap unfolds it and chooses nothing, exactly as ADR-101's collapsed chip did.
+  This takes less of the page than the old pill did.
+- **Tool options** move to the top middle, which nothing else uses now; under the
+  corners on a phone. **Presence** sits under the corner.
+- **Depth** lives in `ink-depth.css`: one light source for every object. A card gets a
+  contact shadow and a soft one; a photograph is a polaroid -- a thin white edge,
+  a deeper one at the foot, softly rounded corners, the picture cropped to the
+  window -- with a little more lift; a sticker gets a drop-shadow that follows its die-cut. Night mode uses
+  black shadows, because warm brown ones vanish on charcoal.
+
+The marketing hero wears the same rail (ADR-010: it must not advertise a different
+product).
+
+**Consequences.** The shadows are screen-only, like the card shadow before them;
+exports stay flat (ADR-079's reasoning is unchanged). `Chrome.tsx` split into the
+rail, the corner and `use-command-items.ts`, which is what search offers.
+
+---
+
+### ADR-121 — A voice note is a card on the page
+
+**Status.** Accepted, 2026-09-28.
+
+**Context.** A recording was a `blocks` row shown in a floating panel at the foot of the
+page, with a play glyph that did not play. It could not be moved, put next to what it
+was about, or heard.
+
+**Decision.** A recording is placed on the page as a **voice card**: a play button, a
+waveform, its length, and its first words once the worker has read it.
+
+**It is a placement in the `images` array, with `media: "audio"`.** Not a sixth array.
+A voice card is exactly what ADR-103 said a photo is — bytes in a block, and only
+*where it sits* in the layer document — so the same array gives it moving, resizing,
+lassoing, deleting, undo, copy and live merge with no new code in any of them. A sixth
+array would have repeated the 60-file sticker change to say the same thing. The field
+is refused if it holds anything but `"audio"` (`bad_images`).
+
+- **Placing.** `Recorder` hands the finished block to the canvas, which puts a card in
+  the middle of the view at a fixed size on the glass. Recordings made before this are
+  adopted like old photos: `noteImages` now returns audio blocks too.
+- **The sound.** `mediaClip` returns the signed URL, the duration and the transcript.
+  The URL is asked for again on first play, because it expires.
+- **The waveform** is the real peaks of the decoded audio. If the storage will not
+  share its bytes with the page, or the clip is longer than ten minutes, the bars stay
+  flat. A flat line is honest; invented bars would not be.
+- **Only the play button takes a pointer.** The card itself is selected on the ink
+  surface underneath, like every other object, so there is still one hit test.
+
+**Consequences.** Voice cards are not drawn in exports or shown to vision models, as
+photos are not. The floating clip list is gone; the recorder panel now shows only a
+recording in progress and errors.
+
+---
+
+### ADR-122 — One held object can be resized by its corner and turned by a knob
+
+**Status.** Accepted, 2026-09-28.
+
+**Context.** Brandon asked for cards that resize, rotate and copy. Copy existed
+(ADR-110). Resize existed only as one step bigger or smaller from a menu (ADR-084),
+and nothing could turn.
+
+**Decision.**
+
+- **`rot`, in degrees clockwise about the object's centre**, on text boxes, photos,
+  voice cards and stickers. Absent means upright, so every page written before this
+  reads unchanged; within one degree of upright stores as upright.
+- **The object keeps its upright rectangle.** Every question about what a person
+  SEES — a tap, a lasso, the frame, an arrow's end — asks about the turned shape. The
+  maths lives once, in `@jotacular/ink-render`'s `turn.ts`, because ADR-078 recorded
+  what two copies of the same geometry cost.
+- **Handles appear when exactly one object is held**: a square on the far corner and a
+  round knob above the top edge. The knob turns the object to face the pointer and
+  lands on right angles within four degrees. The corner resizes along the object's own
+  turned axes, with the near corner fixed. A photo and a voice card keep their shape;
+  a sticker stays square; a card's text box grows inside its colour.
+- **Exports turn with the screen.** A turned card or sticker is wrapped in an SVG
+  `rotate`.
+- **The handles are drawn on the object plane**, in an SVG above every object, not
+  on the canvas under it: there, a photo or card beside the held one covered them.
+
+**Consequences.** The handles are the select tool's. A card can still be made bigger
+or smaller one step from the menu, which changes its text size; the corner changes the
+card's size and leaves the text alone.
+
+---
+
+### ADR-123 — A mouse can move the page sideways, and Select has a Pan beside it
+
+**Status.** Accepted, 2026-09-28.
+
+**Context.** Brandon could not scroll the canvas left or right. He tried Shift, Ctrl
+and Alt with the wheel. The wheel already panned by `deltaX`, but some browsers and
+mice send Shift+wheel as a plain vertical delta, so nothing moved sideways. A mouse
+also had no way to drag the page at all: only fingers could, with two of them.
+
+**Decision.**
+
+- **Shift turns the wheel sideways** (`wheelPan`), but only when the delta is still
+  vertical. A browser that already swapped the axes is left alone.
+- **A Pan tool.** Dragging moves the page, never what is on it. It shares the Select
+  button, because both are about *where* things are rather than making marks: the
+  button shows whichever is in hand, a small corner mark says there is a second
+  choice, and tapping it again pops *Select | Pan* out beside the button, the way
+  the `+` menu opens. It was first put in the options pill at the top of the page;
+  Brandon found that too far for the eye to travel for a two-way choice.
+- **The middle mouse button pans under every ink tool**, the idiom from every design
+  tool. Its browser autoscroll is stopped on `mousedown`, the only event that can.
+
+**Consequences.** Pan is remembered per device like the other modes (ADR-101). The
+middle button does not pan while the spine (the text tool) is in hand, because the
+ink surface takes no pointers then; the wheel still does.
+
+---
+
+### ADR-124 — Options pop out beside their tool, and zoom is a bar you can see
+
+**Status.** Accepted, 2026-09-28.
+
+**Context.** With the tools down one side (ADR-120), each tool's options still
+opened as a pill across the top middle of the page. Brandon found that too far for
+the eye to travel, as he had for Select and Pan (ADR-123). He also expected a
+visible zoom control; zoom was only Ctrl+wheel, a pinch, and a readout that
+appeared once the camera had moved.
+
+**Decision.**
+
+- **Options pop out beside the button that opened them**, on the side away from
+  the screen edge, as the `+` and Select menus do. `use-beside-rail.ts` places the
+  card against the tool's own button, dropping below it only where there is no
+  room beside. **It is a card, not the old pill moved:** the first version moved
+  the glass pill beside the rail, and Brandon pointed out it still looked like the
+  old layout. It now wears Silica's `dropdown` look, the same as the `+` menu —
+  small headings, colours under "Colour", the size slider under "Size", and text
+  sizes as list rows that preview themselves. It closes on a press elsewhere or
+  Escape, as a menu does, so it needs no ✕.
+- **A small corner tick marks every control with more behind it**: Text, Pen,
+  Highlighter, Select and `+`.
+- **The zoom bar**, bottom right: `−`, the readout, `+`. Always there. One step is
+  ×1.25 about the middle of the screen, so in and back out returns exactly. The
+  readout keeps its old job (ADR-053): tapping it frames the writing again.
+
+**Consequences.** ToolOptions is no longer centred by CSS; it is placed by
+measuring, and it is hidden until measured so it never flashes elsewhere first.

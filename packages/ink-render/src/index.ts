@@ -23,6 +23,8 @@ export {
   textBounds, textContentHeight, cardBounds, inkOn, TEXT_LINE_HEIGHT, CARD_PAD,
 } from "./text-geometry";
 
+export { spin, centreOf, corners, extent, hits, bearing, turnAttr } from "./turn";
+
 export { toSvg, scaleFor, type RenderOptions } from "./svg";
 
 export { tiles, type Tile, type TileOptions } from "./tiles";

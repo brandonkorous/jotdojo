@@ -1,4 +1,5 @@
 import { DomainError } from "./errors";
+import { turn, withTurn, type Turned } from "./ink-turn";
 
 /**
  * A photograph, ON the canvas rather than in a tray beside it. ADR-103.
@@ -19,7 +20,7 @@ import { DomainError } from "./errors";
  * placement would put N objects on one optimistic counter, which is the
  * conflict machine that ADR explicitly refused.
  */
-export type ImageOnPage = {
+export type ImageOnPage = Turned & {
   /** The PLACEMENT's identity, not the picture's. One photo may be put on a
    *  page twice, and dragging one copy must not drag the other. */
   id: string;
@@ -30,6 +31,9 @@ export type ImageOnPage = {
   y: number;
   w: number;
   h: number;
+  /** Set when the block is a recording: the placement is a voice card, not a
+   *  picture. Same array, same moves, same undo. ADR-121. */
+  media?: "audio";
 };
 
 export const MAX_IMAGES = 500;
@@ -61,12 +65,17 @@ function one(raw: unknown, where: string): ImageOnPage {
   if (p.w! <= 0 || p.h! <= 0 || p.w! > MAX_SIDE || p.h! > MAX_SIDE) {
     throw new DomainError(`${where}: implausible size`, "bad_images", 400);
   }
+  if (p.media !== undefined && p.media !== null && p.media !== "audio") {
+    throw new DomainError(`${where}: unknown media "${String(p.media)}"`, "bad_images", 400);
+  }
   return {
     id: shortId(p.id, `${where}: id`),
     // NOT optional and never minted here: a placement with no block behind it
     // is a hole on the page that nothing can ever fill in.
     blockId: shortId(p.blockId, `${where}: blockId`, false),
     x: p.x!, y: p.y!, w: p.w!, h: p.h!,
+    ...(p.media === "audio" ? { media: "audio" as const } : {}),
+    ...withTurn(turn(p.rot, where, "bad_images")),
   };
 }
 

@@ -93,5 +93,12 @@ export function bindPointer(
     ["pointercancel", h.up],
   ] as const;
   for (const [name, fn] of pairs) el.addEventListener(name, fn);
-  return () => { for (const [name, fn] of pairs) el.removeEventListener(name, fn); };
+  // The middle button pans the page (ADR-123), so the browser's autoscroll
+  // must not start as well. Only a mousedown can stop that.
+  const noAutoscroll = (e: MouseEvent) => { if (e.button === 1) e.preventDefault(); };
+  el.addEventListener("mousedown", noAutoscroll);
+  return () => {
+    for (const [name, fn] of pairs) el.removeEventListener(name, fn);
+    el.removeEventListener("mousedown", noAutoscroll);
+  };
 }

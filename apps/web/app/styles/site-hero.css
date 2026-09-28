@@ -118,13 +118,13 @@
   position: absolute;
   inset: 0;
   z-index: 1;
-  padding: calc(var(--pad-block) + 2.75rem) 1.25rem calc(var(--foot) + 0.75rem);
+  /* Clear of the side rail, as the app is. ADR-120. */
+  padding: calc(var(--pad-block) + 0.5rem) 1.25rem calc(var(--foot) + 0.75rem) 4.25rem;
   background: transparent;
 }
 .jd-hero-input::placeholder { opacity: 0.5; }
 
-/* The same pill as the app, in the same place on the surface. */
-.jd-hero-rail { gap: 0.125rem; }
+/* The same rail as the app, in the same place on the surface. */
 
 .jd-hero-foot {
   position: absolute;
@@ -165,7 +165,8 @@
   flex-direction: column;
   justify-content: space-between;
   gap: 1rem;
-  padding: calc(var(--pad-block) + 2.75rem) 1.25rem calc(var(--foot) + 0.75rem);
+  /* Clear of the side rail, as the app is. ADR-120. */
+  padding: calc(var(--pad-block) + 0.5rem) 1.25rem calc(var(--foot) + 0.75rem) 4.25rem;
   pointer-events: none;
 }
 

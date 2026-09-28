@@ -16,6 +16,8 @@ export type SelectHost = {
     readonly dragging: boolean;
     covers(x: number, y: number): boolean;
     beginDrag(x: number, y: number): void;
+    gripAt(x: number, y: number, k: number): "resize" | "turn" | null;
+    beginGrip(grip: "resize" | "turn", x: number, y: number): void;
     beginLasso(p: Point): void;
     extendLasso(p: Point): void;
   };
@@ -45,7 +47,13 @@ export class LassoInput {
    * INSIDE an existing marquee means "move this", not "start over" -- otherwise
    * a selection could never be dragged, only redrawn.
    */
-  down(host: SelectHost, p: Point) {
+  down(host: SelectHost, p: Point, k: number) {
+    // A handle first: the turn knob sits OUTSIDE the marquee. ADR-122.
+    const grip = host.sel.gripAt(p[0], p[1], k);
+    if (grip) {
+      this.from = null;
+      return void host.sel.beginGrip(grip, p[0], p[1]);
+    }
     if (host.sel.covers(p[0], p[1])) {
       this.from = null;
       return void host.sel.beginDrag(p[0], p[1]);

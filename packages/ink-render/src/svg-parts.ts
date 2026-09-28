@@ -2,7 +2,8 @@ import type { InkDocument, Link, Stroke, TextBox } from "@jotacular/domain";
 import { control, widthAt } from "./geometry";
 import { cardBounds, inkOn } from "./text-geometry";
 import { segmentFor, type Segment } from "./links";
-import { placeSticker } from "./sticker-geometry";
+import { placeSticker, stickerBounds } from "./sticker-geometry";
+import { turnAttr } from "./turn";
 
 /**
  * What one THING on the page looks like: a stroke, a typed box, the card
@@ -75,7 +76,9 @@ export function textLines(box: TextBox, escape: (v: string) => string): string[]
     + ` font-family="ui-sans-serif, system-ui, sans-serif" font-size="${n(box.size)}"`
     + ` fill="${escape(ink)}" xml:space="preserve">${escape(line)}</text>`);
 
-  return box.fill ? [cardRect(box, escape), ...lines] : lines;
+  const parts = box.fill ? [cardRect(box, escape), ...lines] : lines;
+  // Turned about the card's centre, as the editor turns it. ADR-122.
+  return box.rot ? [`<g${turnAttr(cardBounds(box), box.rot)}>`, ...parts, "</g>"] : parts;
 }
 
 /**
@@ -150,10 +153,11 @@ export function stickers(doc: InkDocument, escape: (v: string) => string): strin
     const p = placeSticker(sticker);
     if (!p) continue;
     out.push(
-      `<g transform="translate(${n(p.tx)} ${n(p.ty)}) scale(${p.k.toFixed(5)})">`
+      `<g${turnAttr(stickerBounds(sticker), sticker.rot)}>`
+      + `<g transform="translate(${n(p.tx)} ${n(p.ty)}) scale(${p.k.toFixed(5)})">`
       + `<path d="${p.art.d}" fill="${escape(sticker.color)}"`
       + ` stroke="#FFFFFF" stroke-width="${n(p.stroke)}" stroke-linejoin="round"`
-      + ` paint-order="stroke fill"/></g>`,
+      + ` paint-order="stroke fill"/></g></g>`,
     );
   }
   return out;

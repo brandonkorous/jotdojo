@@ -4,6 +4,7 @@ import type {
 import { strokeBounds, type Bounds } from "./geometry";
 import { cardBounds } from "./text-geometry";
 import { stickerBounds } from "./sticker-geometry";
+import { extent } from "./turn";
 
 /**
  * Where an arrow actually starts and stops. ADR-108.
@@ -43,11 +44,11 @@ const CLEARANCE = 6;
  */
 export function objectBounds(page: LinkPage, id: string): Bounds | null {
   const sticker = page.stickers?.find((s) => s.id === id);
-  if (sticker) return stickerBounds(sticker);
+  if (sticker) return extent(stickerBounds(sticker), sticker.rot);
   const box = page.texts?.find((b) => b.id === id);
-  if (box) return cardBounds(box);
+  if (box) return extent(cardBounds(box), box.rot);
   const image = page.images?.find((i) => i.id === id);
-  if (image) return { x: image.x, y: image.y, w: image.w, h: image.h };
+  if (image) return extent({ x: image.x, y: image.y, w: image.w, h: image.h }, image.rot);
   const stroke = page.strokes.find((s) => s.id === id);
   return stroke ? strokeBounds(stroke) : null;
 }

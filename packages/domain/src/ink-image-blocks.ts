@@ -1,4 +1,4 @@
-import { and, asc, eq, isNotNull } from "drizzle-orm";
+import { and, asc, eq, inArray, isNotNull } from "drizzle-orm";
 import { withActor, blocks, mediaAssets } from "@jotacular/db";
 import { canReachSpace, type Actor } from "./actor";
 
@@ -16,6 +16,8 @@ import { canReachSpace, type Actor } from "./actor";
  */
 export type NoteImage = {
   blockId: string;
+  /** A recording lands as a voice card, for the same reason. ADR-121. */
+  kind: "image" | "audio";
   /** Null on anything uploaded before the client measured its own photos. The
    *  canvas places those at a default and lets `object-fit` letterbox them
    *  rather than guessing an aspect ratio and stretching somebody's picture. */
@@ -27,6 +29,7 @@ export async function noteImages(actor: Actor, noteId: string): Promise<NoteImag
   return withActor(actor.userId, async (tx) => {
     const rows = await tx.select({
       blockId: blocks.id,
+      kind: blocks.kind,
       spaceId: blocks.spaceId,
       width: mediaAssets.width,
       height: mediaAssets.height,
@@ -41,13 +44,16 @@ export async function noteImages(actor: Actor, noteId: string): Promise<NoteImag
       // `finalizeMedia` and by nothing else, which makes it the honest test.
       .where(and(
         eq(blocks.noteId, noteId),
-        eq(blocks.kind, "image"),
+        inArray(blocks.kind, ["image", "audio"]),
         isNotNull(mediaAssets.byteSize),
       ))
       .orderBy(asc(blocks.position));
 
     return rows
       .filter((r) => canReachSpace(actor, r.spaceId))
-      .map((r) => ({ blockId: r.blockId, width: r.width, height: r.height }));
+      .map((r) => ({
+        blockId: r.blockId, kind: r.kind === "audio" ? "audio" : "image",
+        width: r.width, height: r.height,
+      }));
   });
 }

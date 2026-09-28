@@ -232,7 +232,7 @@ export class InkEngine implements InputHost {
   private get scene(): Scene {
     return {
       strokes: this.strokes, sel: this.editor.sel, capture: this.strokeCapture,
-      index: this.index, k: this.view.k, pendingText: this.pendingText,
+      index: this.index, k: this.view.k, pendingText: this.pendingText, grips: this.plane?.grips,
       // A thunk, so a frame that only repaints the overlay never resolves an
       // arrow. `Scene` says why that matters. ADR-108.
       links: () => this.links?.segments() ?? [],

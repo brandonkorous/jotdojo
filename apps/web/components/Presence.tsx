@@ -1,7 +1,7 @@
 "use client";
 
 import type { Presence as Who } from "@jotacular/domain";
-import type { Align, Side } from "@/lib/toolbar-side";
+import { cornerSide, type Align } from "@/lib/toolbar-side";
 
 /**
  * Who else is in this note, and whether they are writing right now. ADR-058.
@@ -20,7 +20,7 @@ export function Presence({ who, align }: { who: Who[]; align: Align }) {
   return (
     <div
       className="jd-chrome jd-presence"
-      data-side={opposite(align)}
+      data-side={cornerSide(align)}
       role="status"
       aria-live="polite"
     >
@@ -42,10 +42,6 @@ export function Presence({ who, align }: { who: Who[]; align: Align }) {
   );
 }
 
-/** Opposite the chrome, which MOVES. ADR-012 merged two rails into one pill
- *  that the toolbar preference slides along the top edge, and a fixed top-left
- *  then sat underneath it on the commonest setting. Issue 039. */
-const opposite = (align: Align): Side => (align === "left" ? "right" : "left");
 
 /**
  * What is happening, in the fewest words that are true.

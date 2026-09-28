@@ -50,7 +50,9 @@ const PLANS: Plan[] = [
     reads: "2,000 pages, photos or voice minutes, shared between you",
     lines: [
       "Everything in Solo, for everyone in the house",
-      "Shared spaces, one bill",
+      // Plural, and now true: a second space joins this plan rather than
+      // starting a second bill. Issue 051, ADR-119.
+      "Every space you make, on the one bill",
       "Nobody counts seats",
     ],
   },
@@ -74,8 +76,8 @@ export default function Pricing() {
           <Underline keep>No notebook math</Underline>.
         </h1>
         <p className="jd-lede">
-          One price for the space, however many people are in it. Free is a real plan
-          rather than a trial, and it does not run out.
+          One price, however many people are in it and however many spaces you
+          make. Free is a real plan rather than a trial, and it does not run out.
         </p>
 
         <div className="jd-plans">

@@ -8,6 +8,8 @@ import {
   paintAim, paintLasso, paintLink, paintSelection, paintStroke, paintTextRect,
 } from "./ink-paint";
 import type { Bounds } from "./ink-geometry";
+import { paintGrips } from "./ink-paint-grip";
+import type { GripOverlay } from "./ink-grip-overlay";
 import type { Segment } from "@jotacular/ink-render";
 
 /**
@@ -40,8 +42,11 @@ export function drawOverlay(surface: InkSurface, scene: Scene) {
   if (scene.pendingText) paintTextRect(surface.lctx, scene.pendingText, scene.k);
   if (scene.aim) paintAim(surface.lctx, scene.aim, scene.k);
   const path = scene.sel.path;
+  const one = path ? null : scene.sel.gripped;
+  scene.grips?.draw(one, scene.k);
   if (path) paintLasso(surface.lctx, path, scene.k);
-  else if (scene.sel.marquee) paintSelection(surface.lctx, scene.sel.marquee, scene.k);
+  else if (one && !scene.grips) paintGrips(surface.lctx, one, scene.k);
+  else if (!one && scene.sel.marquee) paintSelection(surface.lctx, scene.sel.marquee, scene.k);
 }
 
 /** Everything a frame might need to draw. The engine owns these; this module
@@ -66,6 +71,8 @@ export type Scene = {
   links: () => ReadonlyArray<{ link: Link; seg: Segment }>;
   /** The arrow being aimed, which exists nowhere else until it lands. */
   aim: Segment | null;
+  /** Where the handles go when there is an object plane to put them on. */
+  grips?: GripOverlay;
 };
 
 /**

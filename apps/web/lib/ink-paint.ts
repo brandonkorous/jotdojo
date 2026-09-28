@@ -15,7 +15,7 @@ export const PRESSURE_RANGE = [0.45, 1.6] as const;
 export const ERASE_RADIUS = 10;
 
 /** The house `agent` blue, so a selection never reads as ink. docs/10. */
-const SELECT_STROKE = "#4B5FA8";
+export const SELECT_STROKE = "#4B5FA8";
 const SELECT_FILL = "rgba(75, 95, 168, 0.10)";
 
 /** Mint, the house primary -- design.md §11 gives it "capture cues", and a box
