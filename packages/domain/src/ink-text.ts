@@ -1,5 +1,5 @@
 import { DomainError } from "./errors";
-import { turn, withTurn, type Turned } from "./ink-turn";
+import { layer, turn, withLayer, withTurn, type Layered, type Turned } from "./ink-turn";
 
 
 /**
@@ -24,7 +24,7 @@ import { turn, withTurn, type Turned } from "./ink-turn";
  * rather than merely unlikely.
  */
 
-export type TextBox = Turned & {
+export type TextBox = Turned & Layered & {
   id: string;
   /** Top-left, in DOCUMENT units -- the same space strokes live in. */
   x: number;
@@ -107,6 +107,7 @@ export function validateTexts(input: unknown): TextBox[] {
       ...(t.fill ? { fill: t.fill } : {}),
       text: t.text, color: t.color,
       ...withTurn(turn(t.rot, where, "bad_texts")),
+      ...withLayer(layer(t.z, where, "bad_texts")),
     };
   });
 }

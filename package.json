@@ -59,6 +59,8 @@
     "history:smoke": "pnpm --filter @jotacular/web smoke:history",
     "sticker-place:smoke": "pnpm --filter @jotacular/web smoke:stickers",
     "turn:smoke": "pnpm --filter @jotacular/web smoke:turn",
+    "note-ink:smoke": "pnpm --filter @jotacular/web smoke:note-ink",
+    "stack:smoke": "pnpm --filter @jotacular/web smoke:stack",
     "shapes:smoke": "pnpm --filter @jotacular/web smoke:shapes",
     "viewport:smoke": "pnpm --filter @jotacular/web smoke:viewport",
     "gestures:smoke": "pnpm --filter @jotacular/web smoke:gestures",

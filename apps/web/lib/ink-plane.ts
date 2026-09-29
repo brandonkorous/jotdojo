@@ -3,6 +3,7 @@ import { CARD_PAD, fillOf, inkOn } from "@jotacular/ink-render";
 import { nightInk } from "./ink-night";
 import { isEmpty } from "./ink-objects";
 import { applyTurn } from "./ink-turned";
+import { NoteArt, type StrokesIn } from "./ink-note-art";
 
 /**
  * The object plane: typed text, on the same surface as the ink. ADR-065.
@@ -32,6 +33,8 @@ export type PlaneHost = {
   /** Editing finished. An empty box is removed rather than saved. */
   onDone: (box: TextBox) => void;
   onRemove: (id: string) => void;
+  /** What was drawn in a note, for its sheet. ADR-134. */
+  strokesIn?: StrokesIn;
 };
 
 export class InkPlane {
@@ -46,14 +49,18 @@ export class InkPlane {
    *  caret must survive that. ADR-065. */
   private wanted = false;
 
+  private readonly art: NoteArt;
+
   constructor(el: HTMLElement, host: PlaneHost) {
     this.el = el;
     this.host = host;
+    this.art = new NoteArt(host.strokesIn ?? (() => []));
   }
 
   destroy() {
     for (const node of this.nodes.values()) node.remove();
     this.nodes.clear();
+    this.art.destroy();
   }
 
   /** Where the camera is. Written every frame beside the grid, so the text
@@ -103,6 +110,7 @@ export class InkPlane {
       if (seen.has(id)) continue;
       node.remove();
       this.nodes.delete(id);
+      this.art.drop(id);
       if (this.editing === id) this.editing = null;
     }
   }
@@ -125,6 +133,11 @@ export class InkPlane {
 
   get isEditing() { return this.editing !== null; }
 
+  /** What stands on the page for a note: its sheet, then its words. ADR-136. */
+  els(id: string): Element[] {
+    return [this.art.el(id), this.nodes.get(id)].filter((e): e is Element => e !== undefined);
+  }
+
   private box(id: string): TextBox | undefined {
     return this.boxes.find((b) => b.id === id);
   }
@@ -143,6 +156,7 @@ export class InkPlane {
       if (!current) return;
       current.text = node.value;
       this.grow(node, current);
+      this.art.draw(node, current);
       this.host.onEdit(current);
     });
     node.addEventListener("focus", () => { this.editing = box.id; this.apply(); });
@@ -169,12 +183,15 @@ export class InkPlane {
 
   private place(node: HTMLTextAreaElement, box: TextBox) {
     const size = Math.max(MIN_SIZE, box.size);
-    node.style.width = `${box.w}px`;
+    // The element is border-box, so its width is the CARD: the words' width
+    // plus the padding both sides, as `cardBounds` has it.
+    node.style.width = `${box.w + size * CARD_PAD * 2}px`;
     node.style.fontSize = `${size}px`;
     // `dress` owns left and top: a card's padding shifts the element back by
     // what it gains, so the two cannot be set independently.
     this.dress(node, box, size);
     this.grow(node, box);
+    this.art.draw(node, box);
   }
 
   /**
@@ -188,11 +205,10 @@ export class InkPlane {
    * impossible to end up with a card whose text cannot be read on it.
    */
   private dress(node: HTMLTextAreaElement, box: TextBox, size: number) {
-    // Every note is a card; an unset colour is paper. ADR-131.
+    // Every note is a card; an unset colour is paper (ADR-131). The colour is
+    // on the note's sheet under it, so a drawing sits between. ADR-134.
     const fill = fillOf(box);
     const pad = size * CARD_PAD;
-    node.classList.add("jd-card");
-    node.style.background = fill;
     // Words straight on the page are INK and follow the page (ADR-116): both
     // values go on the node and CSS picks. A card carries its own ground, so
     // its ink is derived from that and does not flip.
@@ -223,6 +239,7 @@ export class InkPlane {
     // Reset first, or it only ever grows and a deleted paragraph leaves the
     // gap behind.
     node.style.height = "auto";
-    node.style.height = `${Math.max(box.h ?? 0, node.scrollHeight)}px`;
+    const pad = Math.max(MIN_SIZE, box.size) * CARD_PAD * 2;
+    node.style.height = `${Math.max((box.h ?? 0) + pad, node.scrollHeight)}px`;
   }
 }

@@ -44,6 +44,11 @@ export class InkStickerPlane {
     for (const sticker of stickers) this.one(sticker);
   }
 
+  els(id: string): Element[] {
+    const el = this.nodes.get(id);
+    return el ? [el] : [];
+  }
+
   private one(sticker: Sticker) {
     let node = this.nodes.get(sticker.id);
     if (!node) {

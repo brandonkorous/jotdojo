@@ -31,6 +31,8 @@ export type ImageLayerHost = {
   onChange: (images: readonly ImageOnPage[]) => void;
   /** Something moved that the camera should be able to frame. */
   onGeometry: () => void;
+  /** The layer number just above everything on the page. ADR-136. */
+  nextZ?: () => number;
 };
 
 export class InkImageLayer {
@@ -44,6 +46,9 @@ export class InkImageLayer {
   }
 
   destroy() { this.plane.destroy(); }
+
+  /** The elements standing for one object, for stacking. ADR-136. */
+  els(id: string): Element[] { return this.plane.els(id); }
 
   get all(): readonly ImageOnPage[] { return this.images; }
 
@@ -101,6 +106,7 @@ export class InkImageLayer {
 
   private add(image: ImageOnPage): ImageOnPage {
     clearOf(image, this.images);
+    if (this.host.nextZ) image.z = this.host.nextZ();
     this.images = [...this.images, image];
     this.plane.render(this.images);
     this.publish();
@@ -132,7 +138,7 @@ export class InkImageLayer {
     const y = (at ? at.y : 0) - side - ORPHAN_GAP;
     for (const orphan of orphans) {
       if (orphan.kind === "audio") {
-        this.images.push({ id: crypto.randomUUID(), blockId: orphan.blockId, media: "audio",
+        this.images.push({ id: crypto.randomUUID(), blockId: orphan.blockId, media: "audio", z: this.host.nextZ?.(),
           x, y: y + side - VOICE_H, w: VOICE_W, h: VOICE_H });
         x += VOICE_W + ORPHAN_GAP;
         continue;
@@ -140,7 +146,7 @@ export class InkImageLayer {
       const ratio = orphan.width && orphan.height ? orphan.width / orphan.height : 1;
       const w = ratio >= 1 ? side : side * ratio;
       const h = ratio >= 1 ? side / ratio : side;
-      this.images.push({ id: crypto.randomUUID(), blockId: orphan.blockId, x, y, w, h });
+      this.images.push({ id: crypto.randomUUID(), blockId: orphan.blockId, x, y, w, h, z: this.host.nextZ?.() });
       x += w + ORPHAN_GAP;
     }
     this.plane.render(this.images);

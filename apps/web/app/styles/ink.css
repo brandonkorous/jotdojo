@@ -86,6 +86,7 @@
    Its touch-action is set imperatively by the engine, because a two-finger
    drag would otherwise scroll the page out from under a stroke in progress. */
 .jd-ink-live { pointer-events: inherit; }
+.jd-ink-live[data-drawing] { z-index: 3; } /* over the notes mid-line. ADR-134 */
 
 /* Tier 1 handwriting, announced once. docs/08-ink.md, ADR-034. */
 .jd-scribble-hint {
@@ -148,6 +149,8 @@
   position: absolute;
   inset: 0;
   z-index: 2;
+  /* Children are ranked by ink-stacker.ts; one not yet ranked is new, and new
+     things belong on top. ADR-136. */
   pointer-events: none;
   transform-origin: 0 0;
   /* No transition. This is written every frame from the paint loop, and an

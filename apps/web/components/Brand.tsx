@@ -27,3 +27,15 @@ export function Wordmark({ className = "" }: { className?: string }) {
     />
   );
 }
+
+/**
+ * The mark: "jot" alone, for where the wordmark is too wide -- the canvas,
+ * heading a rail 52px across. ADR-133. Swapped for night like the wordmark.
+ */
+export function Mark({ className = "" }: { className?: string }) {
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img src="/brand/mark.svg" alt={brand.name} width={947} height={912}
+      className={`jd-mark-art ${className}`} />
+  );
+}

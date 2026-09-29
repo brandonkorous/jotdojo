@@ -174,3 +174,6 @@
     opacity: 0.5;
   }
 }
+
+/* A shortcut beside a menu item, quiet enough not to read as a second label. */
+.jd-menu-key { margin-left: 1.25rem; font: inherit; font-size: 0.6875rem; opacity: 0.5; }

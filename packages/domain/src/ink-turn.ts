@@ -30,3 +30,19 @@ export function normalTurn(deg: number): number | undefined {
 
 /** Spread into a validated object, so upright stays absent. */
 export const withTurn = (rot: number | undefined): Turned => (rot === undefined ? {} : { rot });
+
+/**
+ * Where a thing sits in the page's one stacking order, bottom to top. ADR-136.
+ * Absent keeps the order every page had before there was one.
+ */
+export type Layered = { z?: number };
+
+export function layer(given: unknown, where: string, code: string): number | undefined {
+  if (given === undefined || given === null) return undefined;
+  if (typeof given !== "number" || !Number.isFinite(given) || Math.abs(given) > 1e12) {
+    throw new DomainError(`${where}: z must be a finite number`, code, 400);
+  }
+  return given;
+}
+
+export const withLayer = (z: number | undefined): Layered => (z === undefined ? {} : { z });

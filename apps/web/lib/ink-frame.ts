@@ -11,7 +11,8 @@
  * Marking is cheap and idempotent; the paint happens once, on the frame.
  */
 
-export type Dirty = "page" | "overlay" | "live" | "grid";
+/** `camera`: only the view moved, so the painted ink can be slid. ADR-137. */
+export type Dirty = "page" | "overlay" | "live" | "grid" | "camera";
 
 export class FrameLoop {
   private readonly dirty = new Set<Dirty>();

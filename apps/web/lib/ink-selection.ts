@@ -1,11 +1,13 @@
 import type { ImageOnPage, Point, Sticker, Stroke, TextBox } from "@jotacular/domain";
 import { type Bounds, inBounds, strokeInPolygon } from "./ink-geometry";
-import { boxAt, boxInPolygon } from "./ink-objects";
-import { imageAt, imageInPolygon, stickerAt, stickerInPolygon } from "./ink-rects";
+import { boxArea, boxInPolygon } from "./ink-objects";
+import { imageArea, imageInPolygon, stickerArea, stickerInPolygon } from "./ink-rects";
+import { hits } from "./ink-turned";
+import { topHit, topOfKind } from "./ink-stack";
 import { topmostAt } from "./ink-edit";
 import { Held } from "./ink-selection-held";
 import {
-  frameOf, gripAt, resizeTo, snapTurn, turnTo, type Frame, type Grip, type Gripped,
+  carry, frameOf, gripAt, resizeTo, snapTurn, turnTo, type Frame, type Grip, type Gripped,
 } from "./ink-selection-grip";
 import { GroupGrip, snapshot } from "./ink-selection-group";
 import { bearing, centreOf } from "./ink-turned";
@@ -48,8 +50,11 @@ export class InkSelection {
    *  card or sticker, and no strokes. ADR-122. */
   get gripped(): Gripped | null {
     const h = this.held;
-    if (h.count !== 1 || h.strokes.length) return null;
-    if (h.boxes[0]) return { kind: "box", obj: h.boxes[0] };
+    if (h.count - h.strokes.length !== 1) return null;
+    // A note carries its drawing through the handles; nothing else carries ink.
+    const box = h.boxes[0];
+    if (box && h.strokes.every((st) => st.in === box.id)) return { kind: "box", obj: box };
+    if (h.strokes.length) return null;
     if (h.pics[0]) return { kind: "pic", obj: h.pics[0] };
     return h.marks[0] ? { kind: "mark", obj: h.marks[0] } : null;
   }
@@ -101,6 +106,7 @@ export class InkSelection {
       enclosing ? images.filter((i) => imageInPolygon(poly, i)) : [],
       enclosing ? stickers.filter((s) => stickerInPolygon(poly, s)) : [],
     );
+    this.held.withNotes(all);
     this.remeasure();
     return this.count;
   }
@@ -114,9 +120,8 @@ export class InkSelection {
    * second. So a tap picks one, and everything a selection can already do --
    * recolour, drag, delete, export -- works on it with no new machinery.
    *
-   * Topmost kind first: stickers, then boxes, then photographs, then strokes.
-   * That is the order they are drawn in, reversed, so what a tap picks is what
-   * a person can see under their finger.
+   * The highest thing under the finger wins, whatever kind it is, by the
+   * page's one order -- which is what a person can see there. ADR-136.
    */
   pick(
     all: readonly Stroke[], texts: readonly TextBox[],
@@ -124,11 +129,21 @@ export class InkSelection {
     images: readonly ImageOnPage[] = [], stickers: readonly Sticker[] = [],
   ): number {
     this.lasso = null;
-    const mark = stickerAt(stickers, x, y);
-    const box = mark ? null : boxAt(texts, x, y);
-    const pic = mark || box ? null : imageAt(images, x, y);
-    const stroke = mark || box || pic ? null : topmostAt(all, x, y, radius);
-    this.held.set(stroke ? [stroke] : [], box ? [box] : [], pic ? [pic] : [], mark ? [mark] : []);
+    const top = topHit<{ id: string; z?: number }>([
+      { kind: "sticker", list: stickers, item: topOfKind("sticker", stickers, (m) => hits(stickerArea(m), m.rot, x, y)) },
+      { kind: "text", list: texts, item: topOfKind("text", texts, (b) => hits(boxArea(b), b.rot, x, y)) },
+      { kind: "image", list: images, item: topOfKind("image", images, (i) => hits(imageArea(i), i.rot, x, y)) },
+      { kind: "stroke", list: all, item: topmostAt(all, x, y, radius) },
+    ]);
+    const mark = stickers.find((m) => m === top) ?? null;
+    const box = texts.find((b) => b === top) ?? null;
+    const pic = images.find((i) => i === top) ?? null;
+    let stroke = all.find((st) => st === top) ?? null;
+    // A tap on a note's drawing picks the note it belongs to. ADR-134.
+    const owner = stroke?.in ? texts.find((t) => t.id === stroke!.in) ?? null : null;
+    if (owner) stroke = null;
+    this.held.set(stroke ? [stroke] : [], box ?? owner ? [(box ?? owner)!] : [], pic ? [pic] : [], mark ? [mark] : []);
+    this.held.withNotes(all);
     this.remeasure();
     return this.count;
   }
@@ -187,7 +202,13 @@ export class InkSelection {
 
   private dragGrip(x: number, y: number) {
     const g = this.gripped;
-    if (g) return this.grip === "turn" ? turnTo(g, x, y) : resizeTo(g, x, y);
+    if (g) {
+      const before = frameOf(g);
+      before.b = { ...before.b };
+      if (this.grip === "turn") turnTo(g, x, y);
+      else resizeTo(g, x, y);
+      return carry(this.held.strokes, before, frameOf(g));
+    }
     const group = this.group;
     if (!group) return;
     if (this.grip === "resize") return group.resize(this.held, x, y);

@@ -56,8 +56,11 @@ export function nextPage(row: PageObjects, parts: Parts): PageObjects {
   ceiling(next.stickers.length, MAX_STICKERS, "stickers");
   // An arrow outlives neither of the things it ties. ADR-108 says why this is
   // the one place a page disagrees with a comment.
-  const orphans = new Set(orphanedBy(next.links, new Set(parts.remove)));
+  const removed = new Set(parts.remove);
+  const orphans = new Set(orphanedBy(next.links, removed));
   next.links = next.links.filter((l) => !orphans.has(l.id));
+  // Nor does a drawing outlive the note it was drawn in. ADR-134.
+  next.strokes = next.strokes.filter((st) => !(st.in && removed.has(st.in)));
   return next;
 }
 

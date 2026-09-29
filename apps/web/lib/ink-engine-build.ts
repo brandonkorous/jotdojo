@@ -1,4 +1,5 @@
 import type { InkDelta, Stroke } from "@jotacular/domain";
+import { nextZ } from "@jotacular/ink-render";
 import type { Scene } from "./ink-draw";
 import type { EngineOptions } from "./ink-engine-options";
 import { locate, type Page } from "./ink-engine-page";
@@ -96,6 +97,8 @@ export function assemble(
       onGeometry: w.overlay,
       imageSrc: opts.imageSrc ?? (async () => null),
       clipSrc: opts.clipSrc,
+      strokesIn: (id) => w.strokes().filter((s) => s.in === id),
+      nextZ: () => nextZ(w.page()),
     })
     : null;
 
@@ -116,7 +119,7 @@ export function assemble(
     : null;
 
   const painter = new InkPainter(
-    surface, view, w.scene, opts.grid, plane?.texts, pins ?? undefined,
+    surface, view, w.scene, opts.grid, plane ?? undefined, pins ?? undefined,
   );
   const framing = new InkFraming(view, surface, painter, opts.onView);
   const p: EditorParts = { plane, links, doc, publish, onChange: opts.onSelectionChange };

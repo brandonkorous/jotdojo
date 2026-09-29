@@ -9,7 +9,7 @@ import {
 } from "./ink-paint";
 import type { Bounds } from "./ink-geometry";
 import { paintGrips } from "./ink-paint-grip";
-import type { GripOverlay } from "./ink-grip-overlay";
+import type { ObjectPlane } from "./ink-object-plane";
 import { paintHighlights } from "./ink-paint-highlight";
 import type { Segment } from "@jotacular/ink-render";
 
@@ -30,7 +30,11 @@ export function drawPage(surface: InkSurface, scene: Scene) {
   for (const { link, seg } of scene.links()) paintLink(surface.cctx, seg, link);
   // Highlights first, laid once so overlaps do not stack; ink on top of them,
   // so the words stay crisp. ADR-132.
-  const shown = scene.index.visible(scene.strokes, surface.visibleWorld());
+  // A stroke drawn in a note is on that note's sheet instead. ADR-134.
+  // Only what sits under every object: the rest is on the plane. ADR-136.
+  const plane = scene.plane;
+  const shown = scene.index.visible(scene.strokes, surface.visibleWorld())
+    .filter((s) => !s.in && (!plane || plane.onCanvas(s)));
   paintHighlights(surface.cctx, shown.filter((s) => s.tool === "highlighter"));
   for (const stroke of shown) if (stroke.tool !== "highlighter") paintStroke(surface.cctx, stroke);
 }
@@ -46,9 +50,9 @@ export function drawOverlay(surface: InkSurface, scene: Scene) {
   if (scene.aim) paintAim(surface.lctx, scene.aim, scene.k);
   const path = scene.sel.path;
   const one = path ? null : scene.sel.frame;
-  scene.grips?.draw(one, scene.k);
+  scene.plane?.grips.draw(one, scene.k);
   if (path) paintLasso(surface.lctx, path, scene.k);
-  else if (one && !scene.grips) paintGrips(surface.lctx, one, scene.k);
+  else if (one && !scene.plane) paintGrips(surface.lctx, one, scene.k);
   else if (!one && scene.sel.marquee) paintSelection(surface.lctx, scene.sel.marquee, scene.k);
 }
 
@@ -74,8 +78,9 @@ export type Scene = {
   links: () => ReadonlyArray<{ link: Link; seg: Segment }>;
   /** The arrow being aimed, which exists nowhere else until it lands. */
   aim: Segment | null;
-  /** Where the handles go when there is an object plane to put them on. */
-  grips?: GripOverlay;
+  /** The handles, and the order that decides which strokes the canvas draws.
+   *  Absent on the hero, which has no plane. ADR-136. */
+  plane?: ObjectPlane;
 };
 
 /**
@@ -105,8 +110,11 @@ export function drawAll(surface: InkSurface, scene: Scene) {
 /** Move a finished stroke onto the durable layer, so it stops being repainted
  *  from scratch every frame. False for a highlight: it has to be laid with the
  *  others or it stacks on them, so the page is repainted instead. ADR-132. */
-export function commitStroke(surface: InkSurface, stroke: Stroke): boolean {
+export function commitStroke(surface: InkSurface, stroke: Stroke, onPlane = false): boolean {
   surface.clearLive();
+  // A note's sheet or an ink sheet has it now, and the canvas never does. The
+  // repaint that follows is what draws it there. ADR-134, ADR-136.
+  if (onPlane) return false;
   if (stroke.tool === "highlighter") return false;
   surface.applyView();
   paintStroke(surface.cctx, stroke);

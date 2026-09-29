@@ -48,3 +48,11 @@
 :root[data-theme='paper-night'] .jd-band-ink .jd-wordmark {
     content: url("/brand/wordmark.svg");
 }
+
+/* The "jot" mark on its own. Dark letters on paper, light ones at night; the
+   mint dot and the violet stroke are the same on both. ADR-133. */
+.jd-mark-art { display: block; height: 2.5rem; width: auto; aspect-ratio: 947 / 912; }
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme]) .jd-mark-art { content: url("/brand/mark-dark.svg"); }
+}
+:root[data-theme='paper-night'] .jd-mark-art { content: url("/brand/mark-dark.svg"); }

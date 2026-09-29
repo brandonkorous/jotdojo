@@ -193,6 +193,8 @@ jobs:
           # that followed the pointer promised. ADR-115.
           pnpm sticker-place:smoke
           pnpm turn:smoke
+          pnpm note-ink:smoke
+          pnpm stack:smoke
           # Seats, counted at invite time and again at accept time. ADR-112.
           pnpm seats:smoke
           # One bill across every space a person makes. Issue 051, ADR-119.

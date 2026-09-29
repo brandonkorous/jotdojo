@@ -69,5 +69,12 @@ function act(engine: InkEngine, e: KeyboardEvent, selected: number): boolean {
   if (key === "x") return engine.doc.copy() && (engine.selection.remove(), true);
   if (key === "v") return engine.doc.paste();
   if (key === "d") return engine.doc.duplicate();
+  // The page's one order, as Figma and Keynote bind it. `code`, not `key`:
+  // Shift turns "]" into "}" on most layouts. ADR-136.
+  if (selected > 0 && (e.code === "BracketRight" || e.code === "BracketLeft")) {
+    const up = e.code === "BracketRight";
+    engine.selection.reorder(e.shiftKey ? (up ? "front" : "back") : (up ? "forward" : "backward"));
+    return true;
+  }
   return false;
 }

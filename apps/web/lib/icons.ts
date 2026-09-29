@@ -6,7 +6,7 @@ import {
   faArrowRotateLeft, faArrowRotateRight, faBold, faCamera,
   faCirclePlus, faClipboard, faComment, faCopy, faItalic, faKeyboard,
   faMagnifyingGlass, faMinus, faMicrophone, faPaintbrush, faPenLine, faPlus,
-  faCheck, faFaceSmile, faHand, faSparkles, faText, faTrash, faUnderline, faXmark,
+  faArrowDown, faArrowDownToLine, faArrowUp, faCheck, faFaceSmile, faHand, faLayerGroup, faSparkles, faText, faTrash, faUnderline, faXmark,
 } from "@awesome.me/kit-2fb7fafdba/icons/whiteboard/semibold";
 
 /**
@@ -34,6 +34,11 @@ export const ICONS = {
   select: faArrowPointer,
   pan: faHand,
   check: faCheck,
+  /* the page's one order. ADR-136 */
+  toFront: faLayerGroup,
+  forward: faArrowUp,
+  backward: faArrowDown,
+  toBack: faArrowDownToLine,
   voice: faMicrophone,
   photo: faCamera,
   keyboard: faKeyboard,

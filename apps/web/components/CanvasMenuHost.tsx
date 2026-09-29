@@ -69,6 +69,7 @@ export function CanvasMenuHost({
         onStickerColour: (color) => at()?.selection.recolourStickers(color),
         onResize: (bigger) => at()?.selection.resize(bigger),
         onTidy: () => at()?.selection.tidyShape(),
+        onReorder: (how) => at()?.selection.reorder(how),
         onExport: () => void downloadSelection(noteId, selection.ids),
         onDelete: () => at()?.selection.remove(),
         onTextBoxHere: (x, y) => at()?.textAtClient(x, y),

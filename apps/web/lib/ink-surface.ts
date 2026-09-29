@@ -61,6 +61,11 @@ export class InkSurface {
     }
   }
 
+  /** Device pixels per CSS pixel, as the canvases are backed. */
+  get ratio() { return this.dpr; }
+  /** The camera, for a layer that paints in the same space. ADR-136. */
+  get camera() { return this.view; }
+
   get width() { return this.cssW; }
   get height() { return this.cssH; }
 
@@ -72,7 +77,28 @@ export class InkSurface {
 
   rect() { return this.live.getBoundingClientRect(); }
   clearLive() { wipe(this.lctx, this.live); }
-  clearCommitted() { wipe(this.cctx, this.committed); }
+  clearCommitted() {
+    wipe(this.cctx, this.committed);
+    // A fresh paint is at the camera as it is now; nothing left to slide.
+    this.painted = { x: this.view.x, y: this.view.y, k: this.view.k };
+    this.committed.style.transform = "";
+  }
+
+  /** Where the committed ink was last painted from. ADR-137. */
+  private painted = { x: 0, y: 0, k: 1 };
+
+  /**
+   * Slide and scale the ink already painted to where the camera is now,
+   * instead of painting it again: a moving camera costs a CSS transform, and
+   * the repaint waits until it stops. ADR-137.
+   */
+  follow() {
+    const p = this.painted;
+    const s = this.view.k / p.k;
+    this.committed.style.transformOrigin = "0 0";
+    this.committed.style.transform =
+      `translate(${this.view.x - p.x * s}px, ${this.view.y - p.y * s}px) scale(${s})`;
+  }
 }
 
 /**

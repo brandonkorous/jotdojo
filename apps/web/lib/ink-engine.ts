@@ -25,6 +25,7 @@ import type { InkPainter } from "./ink-painter";
 import type { InkPins } from "./ink-pins";
 import { DEFAULT_PEN, type InkStyle } from "./ink-style";
 import type { ObjectPlane } from "./ink-object-plane";
+import { nextZ } from "@jotacular/ink-render";
 
 /**
  * The ink engine: an imperative island React mounts and then leaves alone.
@@ -215,8 +216,8 @@ export class InkEngine implements InputHost {
   endErase(erased: boolean) { this.eraser.end(erased); }
 
   commit(stroke: Stroke) {
-    this.strokes.push(stroke);
-    if (!commitStroke(this.surface, stroke)) this.repaint();
+    this.strokes.push(Object.assign(stroke, { z: nextZ(this.objects) }));
+    if (!commitStroke(this.surface, stroke, this.plane?.claims(stroke))) this.repaint();
     // Recorded, not published: the stroke goes out as an APPEND, and only the
     // way back from it is a delta. ADR-109.
     this.doc.history.record({ remove: [], upsert: [stroke] });
@@ -232,7 +233,7 @@ export class InkEngine implements InputHost {
   private get scene(): Scene {
     return {
       strokes: this.strokes, sel: this.editor.sel, capture: this.strokeCapture,
-      index: this.index, k: this.view.k, pendingText: this.pendingText, grips: this.plane?.grips,
+      index: this.index, k: this.view.k, pendingText: this.pendingText, plane: this.plane ?? undefined,
       // A thunk, so a frame that only repaints the overlay never resolves an
       // arrow. `Scene` says why that matters. ADR-108.
       links: () => this.links?.segments() ?? [],

@@ -5,7 +5,7 @@ import { Icon } from "@/components/Icon";
 import { CommandPalette } from "@wizeworks/silicaui-react";
 import { RemarksButton } from "./RemarksButton";
 import { SideRail } from "./SideRail";
-import { Wordmark } from "./Brand";
+import { Mark } from "./Brand";
 import { cornerSide, railSide, type Align } from "@/lib/toolbar-side";
 import type { CanvasTool } from "@/lib/canvas-tool";
 import { useModKey } from "@/lib/mod-key";
@@ -37,9 +37,9 @@ export function Chrome({
 
   return (
     <>
-      {/* The logo heads the tools, on their side, and goes home. ADR-129. */}
+      {/* The mark heads the tools, on their side, and goes home. ADR-129, ADR-133. */}
       <a href="/dashboard" className="jd-rail-logo" data-side={railSide(align)} aria-label="Dashboard">
-        <Wordmark />
+        <Mark />
       </a>
       <SideRail
         side={railSide(align)} dimmed={dimmed} tool={tool} onTool={onTool}

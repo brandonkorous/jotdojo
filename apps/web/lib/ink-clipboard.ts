@@ -88,8 +88,12 @@ export function reborn(clipping: Clipping, dx: number, dy: number): Clipping {
     return next;
   };
 
-  const strokes = clipping.strokes.map((s) => ({
+  // A drawing copied with its note belongs to the copy; copied without it, it
+  // is ink on the page. ADR-134.
+  const notes = new Set(clipping.texts.map((t) => t.id));
+  const strokes = clipping.strokes.map(({ in: note, ...s }) => ({
     ...cloneStroke(s), id: rename(s.id),
+    ...(note && notes.has(note) ? { in: rename(note) } : {}),
     pts: s.pts.map((p) => [p[0] + dx, p[1] + dy, p[2], p[3], p[4], p[5]] as Point),
   }));
   const texts = clipping.texts.map((t) => ({ ...t, id: rename(t.id), x: t.x + dx, y: t.y + dy }));

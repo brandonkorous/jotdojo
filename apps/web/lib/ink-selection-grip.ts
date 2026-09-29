@@ -1,4 +1,4 @@
-import type { ImageOnPage, Sticker, TextBox } from "@jotacular/domain";
+import type { ImageOnPage, Sticker, Stroke, TextBox } from "@jotacular/domain";
 import { CARD_PAD, cardBounds } from "@jotacular/ink-render";
 import type { Bounds } from "./ink-geometry";
 import { imageArea, stickerArea } from "./ink-rects";
@@ -99,4 +99,25 @@ function place(g: Gripped, r: Bounds) {
     x: r.x + pad, y: r.y + pad,
     w: Math.max(g.obj.size, r.w - pad * 2), h: Math.max(g.obj.size, r.h - pad * 2),
   });
+}
+
+/**
+ * Take a note's drawing from one frame to another: each point keeps its place
+ * as a fraction of the note, in the note's own turned axes. So a note made
+ * wider stretches its sketch, and a turned one turns it. ADR-134.
+ */
+export function carry(strokes: readonly Stroke[], from: Frame, to: Frame) {
+  const [fx, fy] = centreOf(from.b);
+  const [tx, ty] = centreOf(to.b);
+  const sx = to.b.w / Math.max(1e-6, from.b.w);
+  const sy = to.b.h / Math.max(1e-6, from.b.h);
+  for (const stroke of strokes as Stroke[]) {
+    for (const p of stroke.pts) {
+      const [ux, uy] = spin(p[0], p[1], fx, fy, -from.rot);
+      const [x, y] = spin(tx + (ux - fx) * sx, ty + (uy - fy) * sy, tx, ty, to.rot);
+      p[0] = x;
+      p[1] = y;
+    }
+    stroke.width = Math.max(0.5, stroke.width * Math.sqrt(sx * sy));
+  }
 }

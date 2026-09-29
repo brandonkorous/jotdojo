@@ -47,6 +47,12 @@ export class InkImagePlane {
     this.voices?.destroy();
   }
 
+  /** The print or the voice card standing for a placement. ADR-136. */
+  els(id: string): Element[] {
+    const el = this.nodes.get(id)?.frame ?? this.voices?.elOf(id);
+    return el ? [el] : [];
+  }
+
   render(images: readonly ImageOnPage[]) {
     const pics = images.filter((i) => i.media !== "audio");
     const live = new Set(pics.map((i) => i.id));

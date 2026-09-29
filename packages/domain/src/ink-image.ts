@@ -1,5 +1,5 @@
 import { DomainError } from "./errors";
-import { turn, withTurn, type Turned } from "./ink-turn";
+import { layer, turn, withLayer, withTurn, type Layered, type Turned } from "./ink-turn";
 
 /**
  * A photograph, ON the canvas rather than in a tray beside it. ADR-103.
@@ -20,7 +20,7 @@ import { turn, withTurn, type Turned } from "./ink-turn";
  * placement would put N objects on one optimistic counter, which is the
  * conflict machine that ADR explicitly refused.
  */
-export type ImageOnPage = Turned & {
+export type ImageOnPage = Turned & Layered & {
   /** The PLACEMENT's identity, not the picture's. One photo may be put on a
    *  page twice, and dragging one copy must not drag the other. */
   id: string;
@@ -76,6 +76,7 @@ function one(raw: unknown, where: string): ImageOnPage {
     x: p.x!, y: p.y!, w: p.w!, h: p.h!,
     ...(p.media === "audio" ? { media: "audio" as const } : {}),
     ...withTurn(turn(p.rot, where, "bad_images")),
+    ...withLayer(layer(p.z, where, "bad_images")),
   };
 }
 

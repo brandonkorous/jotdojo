@@ -1,6 +1,7 @@
-import type { InkDocument, Stroke } from "@jotacular/domain";
+import type { InkDocument } from "@jotacular/domain";
 import { bounds, contentBounds, medianWidth, type Bounds } from "./geometry";
-import { arrows, escapeAttr, n, segments, stickers, textLines } from "./svg-parts";
+import { arrows, escapeAttr, n } from "./svg-parts";
+import { stackedBody } from "./svg-stack";
 
 /**
  * Strokes to SVG, for recognition and for thumbnails.
@@ -106,33 +107,13 @@ export function toSvg(doc: InkDocument, options: RenderOptions): string {
   const vw = box.w + padU * 2;
   const vh = box.h + padU * 2;
 
-  // Text UNDER the ink, so a highlighter drawn over a typed line reads the way
-  // it does on the canvas rather than being painted out by it.
-  const typed = options.text
-    ? (doc.texts ?? []).flatMap((box) => textLines(box, escapeAttr))
-    : [];
   // Arrows follow `text` for the reason typed boxes do: recognition must never
   // see them. A vision model handed an arrow reads it as a pen stroke, and the
   // sentence it is worth is already in the block's body. ADR-108.
   const drawn = options.text ? arrows(doc, escapeAttr) : [];
-  // Stickers follow `text` for the same reason again, and it matters more here:
-  // a vision model handed a fire icon transcribes it as a squiggle, so a mark
-  // somebody put ON the writing would come back as part of the writing. ADR-115.
-  const stuck = options.text ? stickers(doc, escapeAttr) : [];
-
-  // Colour is thrown away for recognition on purpose. The highlighter keeps
-  // some transparency either way so struck-through text stays readable.
-  const ink = (stroke: Stroke) => (recognition ? "#000000" : escapeAttr(stroke.color));
-  // Highlights solid inside ONE translucent group, so overlaps are one coat
-  // rather than three -- the canvas does the same. Ink goes on top. ADR-132.
-  const marks = doc.strokes.filter((st) => st.tool === "highlighter");
-  const wash = marks.length === 0 ? [] : [
-    `<g opacity="${recognition ? 0.25 : 0.35}">`,
-    ...marks.flatMap((st) => segments(st, ink(st), 1)), "</g>",
-  ];
-  const body = [...wash, ...doc.strokes
-    .filter((st) => st.tool !== "highlighter")
-    .flatMap((st) => segments(st, ink(st), 1))];
+  // Strokes, notes and stickers in the page's one order; recognition gets the
+  // strokes alone. svg-stack.ts says how. ADR-115, ADR-134, ADR-136.
+  const body = stackedBody(doc, recognition, Boolean(options.text));
 
   return [
     `<svg xmlns="http://www.w3.org/2000/svg"`,
@@ -144,20 +125,11 @@ export function toSvg(doc: InkDocument, options: RenderOptions): string {
     // lands off-screen and the PNG rasterises transparent. ADR-053.
     `<rect x="${n(vx)}" y="${n(vy)}" width="${n(vw)}" height="${n(vh)}"`,
     ` fill="${paper ? "#FFFFFF" : "none"}"/>`,
-    // Ink first, then typed text over it -- the order the editor shows, where
-    // the object plane sits above both canvases. These were reversed, which
-    // nothing could see while text was transparent and everything would see the
-    // moment a box had a fill. ADR-078.
-    //
     // Arrows first of all, matching the canvas: they are on the committed
-    // layer, under the ink and under the object plane. ADR-108.
+    // layer, under everything else. ADR-108. Then the page, bottom to top.
     ...drawn,
     ...body,
-    ...typed,
-    // Stickers last, so they are on TOP of everything. A sticker is stuck onto
-    // the page rather than drawn into it, and one that a stroke could cover
-    // would stop being a mark about the thing underneath it. ADR-115.
-    ...stuck,
     "</svg>",
   ].join("");
 }
+

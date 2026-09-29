@@ -27,6 +27,9 @@ export {
 
 export { spin, centreOf, corners, extent, hits, bearing, turnAttr } from "./turn";
 
+export { segments } from "./svg-parts";
+export { stackOf, stackKey, nextZ, type StackItem, type StackKind, type Stackable } from "./stack";
+
 export { toSvg, scaleFor, type RenderOptions } from "./svg";
 
 export { tiles, type Tile, type TileOptions } from "./tiles";

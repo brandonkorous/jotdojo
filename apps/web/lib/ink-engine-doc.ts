@@ -1,5 +1,6 @@
 import type { InkDelta, Stroke } from "@jotacular/domain";
-import { clip, holding, isEmpty, put, reborn, take, PASTE_OFFSET } from "./ink-clipboard";
+import { nextZ, stackOf, type Stackable } from "@jotacular/ink-render";
+import { clip, holding, isEmpty, put, reborn, take, PASTE_OFFSET, type Clipping } from "./ink-clipboard";
 import { EMPTY, InkHistory, fold, type Snapshot } from "./ink-history";
 import type { InkLinks } from "./ink-engine-links";
 import type { InkTextLayer } from "./ink-text-layer";
@@ -76,11 +77,13 @@ export class InkDoc {
     const held = take();
     if (!held) return false;
     const next = reborn(held, PASTE_OFFSET, PASTE_OFFSET);
-    this.ctx.setStrokes([...this.ctx.strokes(), ...next.strokes]);
     const texts = this.ctx.texts();
     const images = this.ctx.images();
     const links = this.ctx.links();
     const stickers = this.ctx.stickers();
+    // A paste lands on top, in the order the copies had among themselves.
+    onTop(next, { strokes: this.ctx.strokes(), texts: texts?.all, images: images?.all, stickers: stickers?.all });
+    this.ctx.setStrokes([...this.ctx.strokes(), ...next.strokes]);
     texts?.load([...texts.all, ...next.texts]);
     images?.load([...images.all, ...next.images]);
     stickers?.load([...stickers.all, ...next.stickers]);
@@ -159,3 +162,14 @@ export class InkDoc {
 }
 
 export { EMPTY };
+
+/** Renumber a clipping's layers to sit above a page, keeping its own order. ADR-136. */
+function onTop(c: Clipping, page: Stackable) {
+  const base = nextZ(page);
+  const ranked = stackOf(c);
+  const where = new Map(ranked.map((it, i) => [it.id, i]));
+  const stamp = (items: { id: string; z?: number }[]) => {
+    for (const it of items) { const i = where.get(it.id); if (i !== undefined) it.z = base + i; }
+  };
+  stamp(c.strokes); stamp(c.texts); stamp(c.images); stamp(c.stickers);
+}

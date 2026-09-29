@@ -61,7 +61,7 @@ export class InkFraming {
 
   /** The camera moved under its own steam -- a pan, a pinch. */
   moved() {
-    this.painter.everything();
+    this.painter.camera();
     this.tell();
   }
 

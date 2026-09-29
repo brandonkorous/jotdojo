@@ -1,5 +1,5 @@
 import { DomainError } from "./errors";
-import { turn, withTurn, type Turned } from "./ink-turn";
+import { layer, turn, withLayer, withTurn, type Layered, type Turned } from "./ink-turn";
 
 /**
  * A sticker: one small picture, stuck on the page. ADR-115.
@@ -73,7 +73,7 @@ const KNOWN: ReadonlySet<string> = new Set(STICKER_NAMES);
 export const isStickerName = (v: unknown): v is StickerName =>
   typeof v === "string" && KNOWN.has(v);
 
-export type Sticker = Turned & {
+export type Sticker = Turned & Layered & {
   id: string;
   /** Which picture, from STICKER_NAMES. An unknown name is refused rather than
    *  stored, because a page holding one would draw a hole for ever. */
@@ -136,6 +136,7 @@ function one(raw: unknown, where: string): Sticker {
     id: shortId(s.id, `${where}: id`),
     name: s.name, x: s.x!, y: s.y!, size: s.size, color: s.color,
     ...withTurn(turn(s.rot, where, "bad_stickers")),
+    ...withLayer(layer(s.z, where, "bad_stickers")),
   };
 }
 

@@ -6048,3 +6048,158 @@ a mix. While a highlight is being drawn over an old one it can look darker for a
 moment, because it is still on the live layer; it settles to one coat on release.
 A pixel test proves two passes match one, and fails if the old per-stroke alpha
 returns.
+
+---
+
+### ADR-133 — The canvas carries the mark, not the wordmark
+
+**Status.** Accepted, 2026-09-28. Amends ADR-129.
+
+**Context.** ADR-129 put the full "jotacular" wordmark over the rail. It is twice
+as wide as the rail, so it overhung it, and the mockup Brandon is following heads
+the tools with "jot" alone. `public/brand/mark.svg` already existed and nothing
+used it.
+
+**Decision.** The canvas uses the mark, centred over the rail on its side, still
+linking to the dashboard. `mark-dark.svg` is the same artwork with the letters in
+paper instead of charcoal — the mint dot and the violet stroke read on both — and
+it is swapped in by the same theme selectors as the wordmark (ADR-116). The
+wordmark stays everywhere there is room for it.
+
+---
+
+### ADR-134 — What is drawn in a note belongs to the note
+
+**Status.** Accepted, 2026-09-28.
+
+**Context.** Brandon wanted to draw and write by hand in a note, and for that
+drawing to stay with the note when it moves, grows or turns. Two things stood in
+the way. A stroke had no idea of any note. And the note's colour sat on the
+object plane ABOVE the ink canvases, so anything drawn on a note was hidden
+under it.
+
+**Decision.**
+
+- **A stroke may name its note** (`in`). A stroke that *starts* inside a note
+  joins it when it is finished. The server refuses a bad name (`bad_strokes`)
+  and deletes a note's strokes with the note, as it does a note's arrows.
+- **Each note has a sheet** (`ink-note-art.ts`): an SVG placed just before the
+  note's textarea on the plane, holding the note's colour and then its strokes.
+  The words sit on the drawing, the drawing on the colour, and a photo put on
+  top of the note still covers all three. The canvas no longer paints a stroke
+  that belongs to a note. The sheet is sized from the note as laid out, so it
+  follows the note as the words grow.
+- **The line being drawn rises above the notes** only while it is being drawn,
+  so it does not vanish under a note until it lands, and a voice card's play
+  button still takes a click the rest of the time.
+- **A note carries its drawing.** Selecting a note selects its strokes. Dragging,
+  deleting and copying take them along; a copy's drawing belongs to the copy.
+  The corner and the knob keep the note's own frame and map each point as a
+  fraction of the note, in its turned axes, so **the drawing scales with the
+  note** (Brandon's choice) and turns with it. A tap on the drawing picks the
+  note.
+- **Exports** draw each note as colour, then its strokes, then its words.
+  Recognition still reads the strokes, because it draws no notes at all.
+
+**Consequences.** Fixing the sheet's size exposed an older mismatch: the textarea
+is border-box, so the note on screen was its padding narrower and shorter than
+`cardBounds`, which the lasso, the handles, arrows and exports all use. The
+textarea now takes the card's size.
+
+A stroke whose note is missing — possible only if data is edited by hand — is
+not drawn anywhere; the server's cascade is what keeps that from happening.
+
+---
+
+### ADR-135 — The pen starts thicker
+
+**Status.** Accepted, 2026-09-28.
+
+**Context.** The default pen was 2.2 units, a fine-liner that read as a hairline
+at arm's length. Brandon found it too thin.
+
+**Decision.** 3.2, a felt-tip. Only the starting width changes; the slider's
+range and every stroke already drawn are untouched.
+
+---
+
+### ADR-136 — One order for everything on the page
+
+**Status.** Accepted, 2026-09-28.
+
+**Context.** Handwriting lived on canvases under the object plane, so a line
+drawn across a photo, a sticker or a voice card vanished behind it. Among the
+objects, order was an accident of which layer loaded first — on reload, notes
+went under photos, which went under stickers, whatever order they were made in.
+Brandon wanted the page layered as it was built, and a way to change it: bring
+to front, send to back, forward and backward.
+
+**Decision.**
+
+- **Every stroke, note, photo, voice card and sticker may carry `z`.** One without
+  it keeps the order every page had before (ink, notes, photos, stickers, each in
+  the order made), on keys far below any real `z`, so nothing old is renumbered.
+  New things take the next number up; a paste lands on top, keeping its own order.
+  The server validates it like any other field on each kind.
+- **`stackOf` in `@jotacular/ink-render` is the one order**, used by the screen,
+  a tap, the four moves and the export.
+- **On screen** (`ink-stacker.ts`) each object's elements get a z-index by rank.
+  Strokes below the lowest object stay on the canvas, which is fast; each later
+  run of strokes becomes a layer at its rank (`ink-run-layers.ts`, ADR-137). The order is
+  re-sorted only when something could have moved in it; ranks are re-applied on
+  every repaint, and an element not yet ranked is new and shows on top.
+- **A tap picks the highest thing under the pointer**, of any kind — not stickers
+  first, then notes, as before.
+- **The four moves** move the selection as a block, keeping its own order: in the
+  canvas menu, in an Arrange menu on the selection bar, and on Ctrl/Cmd+] and [
+  (with Shift for all the way), as Figma and Keynote bind them.
+- **Exports** paint strokes, notes and stickers in the same order. Photos are
+  still not drawn in exports (ADR-103).
+
+**Consequences.** Arrows stay under everything, as before (ADR-108). The first
+version drew each run as an SVG; ADR-137 replaced that within the day, because it
+did not survive a page drawn on without end.
+
+---
+
+### ADR-137 — Ink costs what is on screen, and nothing while the camera moves
+
+**Status.** Accepted, 2026-09-28. Amends ADR-136.
+
+**Context.** The canvas is meant for drawing without end. ADR-136 drew every run
+of ink above an object as an SVG, and Brandon asked for the cost to be solved,
+not noted. Measured with a page of seeded lines above one photo, in headless
+Chrome on this machine:
+
+| | before | after |
+|---|---|---|
+| shapes in the page, 4,000 lines | 92,020 | 0 |
+| freeze on finishing a line, 4,000 lines | 826 ms | none over 50 ms |
+| freeze on finishing a line, 15,000 lines | 370 ms | none over 50 ms |
+| worst scroll frame, 15,000 lines | 559 ms | one 167 ms frame, when it stops |
+| 95th-percentile scroll frame, 15,000 lines | 383 ms | 8 ms |
+
+The profile put the rest of the time in the canvas's own `stroke()` — every
+segment of every line was its own call, about 23 a line — which the canvas under
+the objects had always paid too.
+
+**Decision.**
+
+- **A run above an object is a canvas, not an SVG**: one per run, the size of the
+  window, on the plane so it takes its rank, undoing the camera transform so it
+  paints in screen space. It holds only the strokes in view; a run with none in
+  view has no canvas.
+- **A line is painted in a few calls.** Segments of near-equal width (within 12%,
+  or half a device pixel) share one path. A steady line is one call.
+- **While the camera moves, nothing is repainted.** The base canvas is slid and
+  scaled by a CSS transform; the run canvases already move with the plane. The
+  ink is painted afresh once the camera has been still for 120 ms.
+- **Nothing walks every stroke on every frame.** Whether the order could have
+  changed is read from the list's identity and length, the objects' `z`, and a
+  counter the four moves bump.
+
+**Consequences.** During a long, fast pan the edges the camera uncovers are blank
+until it stops, and a zoom-in is soft until it stops. Painting a margin beyond
+the window would hide the first; it is the next step if it is noticed. The
+numbers above are headless on one machine; a phone will be slower, and the same
+test (a seeded page, a scroll, a line) is the way to measure it.

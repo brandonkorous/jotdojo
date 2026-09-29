@@ -41,6 +41,8 @@ export type SelectionSummary = {
   stickers: number;
   /** How many of `images` are voice cards, so the bar can name them. ADR-121. */
   voices: number;
+  /** How many strokes came along inside a note, so the bar names the note. */
+  attached: number;
   /**
    * What one selected stroke could be tidied into, when the classifier is sure.
    *
@@ -53,7 +55,7 @@ export type SelectionSummary = {
 
 export const NO_SELECTION: SelectionSummary = {
   count: 0, pen: false, marker: false, penWidth: null, ids: [],
-  texts: 0, images: 0, stickers: 0, voices: 0, shape: null,
+  texts: 0, images: 0, stickers: 0, voices: 0, attached: 0, shape: null,
 };
 
 export class Held {
@@ -77,6 +79,17 @@ export class Held {
   }
 
   clear() { this.set([], [], [], []); }
+
+  /**
+   * A note brings what was drawn in it, and a drawing does not leave without
+   * its note: it is part of the object, not ink beside it. ADR-134.
+   */
+  withNotes(all: readonly Stroke[]) {
+    const notes = new Set(this.boxes.map((b) => b.id));
+    const kept = this.strokes.filter((s) => !s.in || notes.has(s.in));
+    const have = new Set(kept);
+    this.strokes = [...kept, ...all.filter((s) => s.in && notes.has(s.in) && !have.has(s))];
+  }
 
   /** The marquee round whatever is held, of however many kinds. */
   bounds(): Bounds | null {
@@ -121,6 +134,7 @@ export class Held {
       images: this.pics.length,
       stickers: this.marks.length,
       voices: this.pics.filter((p) => p.media === "audio").length,
+      attached: this.strokes.filter((s) => s.in).length,
       // Only ever asked of ONE stroke and nothing else: "tidy these six
       // squiggles" is not a thing anybody means, and classifying a whole
       // selection to find out would cost a pass over every point.

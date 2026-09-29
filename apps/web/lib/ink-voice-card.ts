@@ -30,6 +30,8 @@ export class VoiceCards {
     for (const id of [...this.cards.keys()]) this.drop(id);
   }
 
+  elOf(id: string): Element | undefined { return this.cards.get(id)?.el; }
+
   /** Remove any card whose placement is gone. */
   keep(live: ReadonlySet<string>) {
     for (const id of [...this.cards.keys()]) if (!live.has(id)) this.drop(id);

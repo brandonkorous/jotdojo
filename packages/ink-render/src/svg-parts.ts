@@ -1,4 +1,4 @@
-import type { InkDocument, Link, Stroke, TextBox } from "@jotacular/domain";
+import type { InkDocument, Link, Sticker, Stroke, TextBox } from "@jotacular/domain";
 import { control, widthAt } from "./geometry";
 import { cardBounds, fillOf, inkOn } from "./text-geometry";
 import { segmentFor, type Segment } from "./links";
@@ -57,7 +57,9 @@ export function segments(stroke: Stroke, ink: string, alpha: number): string[] {
  * typesetter, and a line that breaks a word early costs nothing next to text
  * that runs off the edge of the image.
  */
-export function textLines(box: TextBox, escape: (v: string) => string): string[] {
+export function textLines(
+  box: TextBox, escape: (v: string) => string, inside: readonly string[] = [],
+): string[] {
   const perLine = Math.max(1, Math.floor(box.w / (box.size * 0.55)));
   const out: string[] = [];
   const ink = inkOn(fillOf(box));
@@ -77,9 +79,12 @@ export function textLines(box: TextBox, escape: (v: string) => string): string[]
     + ` font-family="ui-sans-serif, system-ui, sans-serif" font-size="${n(box.size)}"`
     + ` fill="${escape(ink)}" xml:space="preserve">${escape(line)}</text>`);
 
-  const parts = [cardRect(box, escape), ...lines];
-  // Turned about the card's centre, as the editor turns it. ADR-122.
-  return box.rot ? [`<g${turnAttr(cardBounds(box), box.rot)}>`, ...parts, "</g>"] : parts;
+  // Turned about the card's centre, as the editor turns it. ADR-122. The card,
+  // then what was drawn in it (already turned: its points are on the page),
+  // then the words. ADR-134.
+  const turn = (parts: string[]) =>
+    (box.rot ? [`<g${turnAttr(cardBounds(box), box.rot)}>`, ...parts, "</g>"] : parts);
+  return [...turn([cardRect(box, escape)]), ...inside, ...turn(lines)];
 }
 
 /**
@@ -149,10 +154,15 @@ export function arrows(doc: InkDocument, escape: (v: string) => string): string[
  * which is why it is the one string here that is not escaped.
  */
 export function stickers(doc: InkDocument, escape: (v: string) => string): string[] {
+  return (doc.stickers ?? []).flatMap((s) => stickerSvg(s, escape));
+}
+
+/** One sticker, or nothing for a name this build has no art for. */
+export function stickerSvg(sticker: Sticker, escape: (v: string) => string): string[] {
   const out: string[] = [];
-  for (const sticker of doc.stickers ?? []) {
+  {
     const p = placeSticker(sticker);
-    if (!p) continue;
+    if (!p) return out;
     out.push(
       `<g${turnAttr(stickerBounds(sticker), sticker.rot)}>`
       + `<g transform="translate(${n(p.tx)} ${n(p.ty)}) scale(${p.k.toFixed(5)})">`

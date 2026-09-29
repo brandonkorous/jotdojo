@@ -16,7 +16,7 @@ export type SelectHost = {
     readonly dragging: boolean;
     readonly count: number;
     /** The strokes held, as opposed to objects on the plane. */
-    readonly selected: readonly unknown[];
+    readonly selected: readonly { in?: string }[];
     covers(x: number, y: number): boolean;
     beginDrag(x: number, y: number): void;
     gripAt(x: number, y: number, k: number): "resize" | "turn" | null;
@@ -67,7 +67,8 @@ export class LassoInput {
     // Pressing on a card, photo, voice card or sticker grabs it at once. Ink
     // is left to the lasso, because circling words is how ink is picked. ADR-126.
     host.tapSelect(p[0], p[1]);
-    if (host.sel.count > 0 && host.sel.selected.length === 0) {
+    // A note's own drawing comes with it and does not make this ink. ADR-134.
+    if (host.sel.count > 0 && host.sel.selected.every((s) => s.in)) {
       this.from = null;
       return void host.sel.beginDrag(p[0], p[1]);
     }

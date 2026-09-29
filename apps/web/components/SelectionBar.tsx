@@ -8,6 +8,8 @@ import { CARD_COLORS } from "@/lib/ink-cards";
 import { PenSize } from "./PenSize";
 import type { SelectionSummary } from "@/lib/ink-engine";
 import { Swatches } from "./Swatches";
+import { LayerMenu } from "./LayerMenu";
+import type { Reorder } from "@/lib/ink-stack";
 
 /**
  * What you can do with a lasso selection. ADR-033, ADR-045, ADR-125.
@@ -22,8 +24,10 @@ import { Swatches } from "./Swatches";
  * is a grey smear, so the marker palette appears whenever the lasso holds one.
  */
 export function SelectionBar({
-  selection, locate, onColor, onWidth, onCommitWidth, onCard, onDelete, onExport,
+  selection, locate, onColor, onWidth, onCommitWidth, onCard, onDelete, onExport, onReorder,
 }: {
+  /** Up or down the page's one order. ADR-136. */
+  onReorder: (how: Reorder) => void;
   selection: SelectionSummary;
   /** Where the selection is on screen, so the bar can stay attached to it. */
   locate: () => DOMRect | null;
@@ -89,6 +93,8 @@ export function SelectionBar({
 
       <span aria-hidden className="jd-rail-sep-v" />
 
+      <LayerMenu onReorder={onReorder} />
+
       <button
         type="button"
         className="jd-tool"
@@ -118,7 +124,7 @@ export function SelectionBar({
  */
 function countLabel(s: SelectionSummary): string {
   const kinds: [number, string, string][] = [
-    [s.count - s.texts - s.images - s.stickers, "stroke", "strokes"],
+    [s.count - s.texts - s.images - s.stickers - s.attached, "stroke", "strokes"],
     [s.texts, "note", "notes"],
     [s.images - s.voices, "photo", "photos"],
     [s.voices, "voice note", "voice notes"],

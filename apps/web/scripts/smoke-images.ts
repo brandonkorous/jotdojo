@@ -120,14 +120,16 @@ console.log("\na picture is tapped like anything else");
 {
   const sel = new InkSelection();
   const image = pic();
-  // Boxes first, then pictures, then strokes -- matching what is drawn.
+  // Whatever is on top wins, by the page's one order -- what you can see. ADR-136.
   const text: TextBox = {
-    id: "t1", x: 100, y: 100, w: 60, size: 16, color: "#1F2933", text: "on top",
+    id: "t1", x: 100, y: 100, w: 60, size: 16, color: "#1F2933", text: "on top", z: 2,
   };
   check("a picture under nothing is picked",
     sel.pick([], [], 150, 150, 6, [image]) === 1 && sel.summary.images === 1);
   check("a note laid on it wins, because that is what you can see",
-    sel.pick([], [text], 110, 105, 6, [image]) === 1 && sel.summary.texts === 1);
+    sel.pick([], [text], 110, 105, 6, [{ ...image, z: 1 }]) === 1 && sel.summary.texts === 1);
+  check("...and a picture laid on the note wins over it",
+    sel.pick([], [text], 110, 105, 6, [{ ...image, z: 3 }]) === 1 && sel.summary.images === 1);
 }
 
 console.log("\nbigger and smaller, about the centre");

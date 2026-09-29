@@ -1,5 +1,6 @@
 "use client";
 
+import type { Reorder } from "@/lib/ink-stack";
 import { useRef } from "react";
 
 import {
@@ -42,6 +43,8 @@ export type CanvasMenuActions = {
   onStickerColour: (color: string) => void;
   onResize: (bigger: boolean) => void;
   onTidy: () => void;
+  /** Up or down the page's one order. ADR-136. */
+  onReorder: (how: Reorder) => void;
   onExport: () => void;
   onDelete: () => void;
   onTextBoxHere: (clientX: number, clientY: number) => void;

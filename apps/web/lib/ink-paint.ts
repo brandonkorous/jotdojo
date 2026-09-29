@@ -8,7 +8,8 @@ export const MAX_DPR = 2;
 
 export const HIGHLIGHTER_ALPHA = 0.35;
 export const HIGHLIGHTER_WIDTH = 18;
-export const PEN_WIDTH = 2.2;
+/** A felt-tip, not a fine-liner: 2.2 read as a hairline at arm's length. ADR-135. */
+export const PEN_WIDTH = 3.2;
 /** Pressure scales width between these multiples of the base. */
 export const PRESSURE_RANGE = [0.45, 1.6] as const;
 /** How close a pointer must come to a stroke to erase it, in canvas pixels. */
@@ -40,9 +41,8 @@ export function widthAt(stroke: Stroke, pressure: number): number {
  * person actually drew -- an approximating spline would smooth away the
  * character of their handwriting.
  *
- * Each segment is stroked separately so the width can follow pressure. One
- * path for the whole stroke would be cheaper and would give a dead, uniform
- * line.
+ * The width follows pressure, so a new path starts wherever the width moves
+ * visibly; runs of near-equal width share one. ADR-137.
  */
 /** `solid` paints a highlight at full strength, for the scratch layer that
  *  `ink-paint-highlight.ts` then lays down once. ADR-132. */
@@ -71,22 +71,34 @@ export function paintStroke(ctx: CanvasRenderingContext2D, stroke: Stroke, solid
     return;
   }
 
+  // Segments whose width is within a hair of each other share ONE path and
+  // one stroke() call; a stroke per segment was ~23 calls a line, which on a
+  // page of thousands was most of every frame. A hair is 12%, or half a device
+  // pixel when zoomed out, whichever is larger. ADR-137.
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  const tol = 0.5 / Math.max(1e-6, ctx.getTransform().a);
+  let groupW = -1;
   for (let i = 0; i < pts.length - 1; i++) {
     const p0 = pts[Math.max(0, i - 1)]!;
     const p1 = pts[i]!;
     const p2 = pts[i + 1]!;
     const p3 = pts[Math.min(pts.length - 1, i + 2)]!;
-
-    ctx.beginPath();
-    ctx.lineWidth = widthAt(stroke, (p1[3] + p2[3]) / 2);
-    ctx.moveTo(p1[0], p1[1]);
+    const w = widthAt(stroke, (p1[3] + p2[3]) / 2);
+    if (groupW < 0 || Math.abs(w - groupW) > Math.max(groupW * 0.12, tol)) {
+      if (groupW >= 0) ctx.stroke();
+      groupW = w;
+      ctx.beginPath();
+      ctx.lineWidth = w;
+      ctx.moveTo(p1[0], p1[1]);
+    }
     ctx.bezierCurveTo(
       p1[0] + (p2[0] - p0[0]) / 6, p1[1] + (p2[1] - p0[1]) / 6,
       p2[0] - (p3[0] - p1[0]) / 6, p2[1] - (p3[1] - p1[1]) / 6,
       p2[0], p2[1],
     );
-    ctx.stroke();
   }
+  ctx.stroke();
 
   ctx.restore();
 }

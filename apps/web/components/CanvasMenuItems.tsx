@@ -136,6 +136,10 @@ export function Selected({
 
       <ContextMenuSeparator />
 
+      {/* Where it sits among everything else on the page. ADR-136. */}
+      <LayerItems onReorder={actions.onReorder} />
+      <ContextMenuSeparator />
+
       <ContextMenuItem onClick={actions.onExport}>
         <Icon name="download" />
         Save as an image
@@ -197,6 +201,27 @@ export function Empty({
           Redo
         </ContextMenuItem>
       )}
+    </>
+  );
+}
+
+/** The page's one order: to the front, up one, down one, to the back. */
+export const LAYER_MOVES = [
+  { how: "front", label: "Bring to front", icon: "toFront" },
+  { how: "forward", label: "Bring forward", icon: "forward" },
+  { how: "backward", label: "Send backward", icon: "backward" },
+  { how: "back", label: "Send to back", icon: "toBack" },
+] as const;
+
+function LayerItems({ onReorder }: { onReorder: CanvasMenuActions["onReorder"] }) {
+  return (
+    <>
+      {LAYER_MOVES.map(({ how, label, icon }) => (
+        <ContextMenuItem key={how} onClick={() => onReorder(how)}>
+          <Icon name={icon} />
+          {label}
+        </ContextMenuItem>
+      ))}
     </>
   );
 }

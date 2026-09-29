@@ -51,6 +51,8 @@ export type StickerLayerHost = {
   onChange: (stickers: readonly Sticker[]) => void;
   /** Something moved that the camera should be able to frame. */
   onGeometry: () => void;
+  /** The layer number just above everything on the page. ADR-136. */
+  nextZ?: () => number;
 };
 
 export class InkStickerLayer {
@@ -64,6 +66,9 @@ export class InkStickerLayer {
   }
 
   destroy() { this.plane.destroy(); }
+
+  /** The elements standing for one object, for stacking. ADR-136. */
+  els(id: string): Element[] { return this.plane.els(id); }
 
   get all(): readonly Sticker[] { return this.stickers; }
 
@@ -113,6 +118,7 @@ export class InkStickerLayer {
   ): Sticker {
     const sticker: Sticker = {
       id: crypto.randomUUID(), name, ...stickerCorner(at, size), size, color,
+      ...(this.host.nextZ ? { z: this.host.nextZ() } : {}),
     };
     this.stickers = [...this.stickers, sticker];
     this.plane.render(this.stickers);

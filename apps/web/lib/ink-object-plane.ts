@@ -1,12 +1,16 @@
-import type { ImageOnPage, InkDelta, Sticker, TextBox } from "@jotacular/domain";
+import type { ImageOnPage, InkDelta, Sticker, Stroke, TextBox } from "@jotacular/domain";
 import type { Bounds } from "./ink-geometry";
 import { unionOf } from "./ink-rects";
 import { InkTextLayer } from "./ink-text-layer";
 import { InkImageLayer } from "./ink-image-layer";
 import { InkStickerLayer } from "./ink-sticker-layer";
 import { GripOverlay } from "./ink-grip-overlay";
+import { Stacker } from "./ink-stacker";
+import type { InkSurface } from "./ink-surface";
+import type { StrokeIndex } from "./ink-index";
 import type { ImageSource } from "./ink-image-plane";
 import type { ClipSource } from "./ink-voice-card";
+import type { StrokesIn } from "./ink-note-art";
 
 /**
  * Everything on the object plane: typed text, photographs, stickers.
@@ -28,6 +32,10 @@ export type PlaneHooks = {
   imageSrc: ImageSource;
   /** Where a recording's sound is, for voice cards. Absent on the hero. */
   clipSrc?: ClipSource;
+  /** What was drawn in a note, for its sheet. ADR-134. */
+  strokesIn?: StrokesIn;
+  /** The layer number just above everything. ADR-136. */
+  nextZ?: () => number;
 };
 
 export class ObjectPlane {
@@ -35,6 +43,8 @@ export class ObjectPlane {
   readonly images: InkImageLayer;
   readonly stickers: InkStickerLayer;
   readonly grips: GripOverlay;
+  /** The page's one order, on screen. ADR-136. */
+  readonly stack: Stacker;
 
   constructor(el: HTMLElement, hooks: PlaneHooks) {
     // Every kind travels as the SAME delta the strokes do -- one version, one
@@ -43,15 +53,24 @@ export class ObjectPlane {
     this.texts = new InkTextLayer(el, {
       onChange: (boxes) => hooks.onDelta({ remove: [], upsert: [], texts: [...boxes] }),
       onGeometry: hooks.onGeometry,
+      strokesIn: hooks.strokesIn,
+      nextZ: hooks.nextZ,
     });
     this.images = new InkImageLayer(el, {
       onChange: (images) => hooks.onDelta({ remove: [], upsert: [], images: [...images] }),
       onGeometry: hooks.onGeometry,
+      nextZ: hooks.nextZ,
     }, hooks.imageSrc, hooks.clipSrc);
     this.grips = new GripOverlay(el);
+    this.stack = new Stacker(el, {
+      texts: () => this.texts.all, images: () => this.images.all, stickers: () => this.stickers.all,
+      els: (kind, id) => (kind === "text" ? this.texts.els(id)
+        : kind === "image" ? this.images.els(id) : kind === "sticker" ? this.stickers.els(id) : []),
+    });
     this.stickers = new InkStickerLayer(el, {
       onChange: (stickers) => hooks.onDelta({ remove: [], upsert: [], stickers: [...stickers] }),
       onGeometry: hooks.onGeometry,
+      nextZ: hooks.nextZ,
     });
   }
 
@@ -60,7 +79,23 @@ export class ObjectPlane {
     this.images.destroy();
     this.stickers.destroy();
     this.grips.destroy();
+    this.stack.destroy();
   }
+
+  /** The page was repainted. Notes redraw their sheets when the strokes did;
+   *  the order is kept on screen either way. ADR-134, ADR-136. */
+  onPage(strokes: readonly Stroke[], strokesChanged: boolean, surface: InkSurface, index: StrokeIndex) {
+    if (strokesChanged) this.texts.refresh();
+    this.stack.update(strokes, surface, index);
+  }
+
+  /** A finished stroke the plane draws rather than the canvas: one that began
+   *  in a note, or any drawn while something is on the plane below it. */
+  claims(stroke: Stroke): boolean {
+    return this.texts.attach(stroke) || this.stack.hasObjects;
+  }
+
+  onCanvas(stroke: Stroke): boolean { return this.stack.onCanvas(stroke); }
 
   load(
     texts: readonly TextBox[], images: readonly ImageOnPage[],

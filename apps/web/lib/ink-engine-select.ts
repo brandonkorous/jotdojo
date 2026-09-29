@@ -1,6 +1,7 @@
 import type {
   ImageOnPage, InkDelta, Sticker, Stroke, TextBox,
 } from "@jotacular/domain";
+import { reorder, type Reorder } from "./ink-stack";
 import { rememberCard } from "./card-memory";
 import { restyle, without } from "./ink-edit";
 import { InkSelection, NO_SELECTION, type SelectionSummary } from "./ink-selection";
@@ -160,6 +161,13 @@ export class SelectionEditor {
     this.ctx.images()?.refresh();
     this.ctx.stickers()?.refresh();
     this.after();
+  }
+
+  /** Up or down the page's one order, as a block. ADR-136. */
+  reorder(how: Reorder) {
+    const page = { strokes: this.ctx.strokes(), texts: this.ctx.texts()?.all,
+      images: this.ctx.images()?.all, stickers: this.ctx.stickers()?.all };
+    if (reorder(page, new Set(this.sel.summary.ids), how)) this.after();
   }
 
   /** Make the rough thing the shape it was going for. ADR-066, ADR-084. */

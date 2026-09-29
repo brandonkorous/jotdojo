@@ -1,4 +1,5 @@
 import { gripPoints, type Frame } from "./ink-selection-grip";
+import { GRIPS_RANK } from "./ink-stacker";
 
 const SVG = "http://www.w3.org/2000/svg";
 const INK = "#4B5FA8";
@@ -15,6 +16,8 @@ export class GripOverlay {
     this.svg = document.createElementNS(SVG, "svg");
     this.svg.setAttribute("class", "jd-grips");
     this.svg.setAttribute("aria-hidden", "true");
+    // Above every ranked and unranked thing on the plane. ADR-136.
+    this.svg.style.zIndex = String(GRIPS_RANK);
     plane.append(this.svg);
   }
 

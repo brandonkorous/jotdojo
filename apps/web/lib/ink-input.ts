@@ -101,7 +101,7 @@ export class InkInput {
     // A sticker begins nothing on the way down, so there is nothing to abandon
     // -- but it must not reach `capture.abort()` below either.
     else if (host.tool === "sticker") { /* nothing was begun */ }
-    else host.capture.abort();
+    else { host.capture.abort(); delete this.el.dataset.drawing; }
     host.scheduleLive();
   }
 
@@ -163,6 +163,9 @@ export class InkInput {
 
     if (host.tool === "select") return void this.lasso.down(host, p, host.view.k);
 
+    // Above the notes while a line is being drawn, so it does not vanish
+    // under one until it lands. ADR-134.
+    this.el.dataset.drawing = "";
     host.capture.begin(p);
     host.scheduleLive();
   };
@@ -231,6 +234,7 @@ export class InkInput {
       return void host.stampSticker(p[0], p[1]);
     }
 
+    delete this.el.dataset.drawing;
     const stroke = host.capture.finish();
     if (stroke) host.commit(stroke);
   };

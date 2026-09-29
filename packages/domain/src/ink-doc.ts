@@ -1,4 +1,5 @@
 import { DomainError } from "./errors";
+import { layer, withLayer } from "./ink-turn";
 import type { TextBox } from "./ink-text";
 import type { ImageOnPage } from "./ink-image";
 import type { Link } from "./ink-link";
@@ -35,6 +36,11 @@ export type Stroke = {
   color: string;
   width: number;
   pts: Point[];
+  /** The note this was drawn in, when it was. It moves, turns and scales
+   *  with that note, and goes when the note does. ADR-134. */
+  in?: string;
+  /** Where it sits in the page's stacking order. ADR-136. */
+  z?: number;
 };
 
 /**
@@ -146,8 +152,17 @@ export function validateStrokes(input: unknown): Stroke[] {
     return {
       id: strokeId(s.id, where),
       tool: s.tool as Stroke["tool"], color: s.color, width: s.width, pts: s.pts as Point[],
+      ...(s.in === undefined || s.in === null ? {} : { in: noteId(s.in, where) }),
+      ...withLayer(layer(s.z, where, "bad_strokes")),
     };
   });
+}
+
+function noteId(given: unknown, where: string): string {
+  if (typeof given !== "string" || given.length === 0 || given.length > 64) {
+    throw new DomainError(`${where}: in must be a note id`, "bad_strokes", 400);
+  }
+  return given;
 }
 
 /**

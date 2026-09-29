@@ -230,6 +230,7 @@ export function InkCanvas({
         onCard={(fill) => engine()?.selection.recolourCards(fill)}
         onDelete={() => engine()?.selection.remove()}
         onExport={() => void downloadSelection(noteId, selected.ids)}
+        onReorder={(how) => engine()?.selection.reorder(how)}
       />
       <ZoomChip
         zoom={view.k}

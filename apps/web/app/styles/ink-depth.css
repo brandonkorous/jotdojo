@@ -13,11 +13,15 @@
 }
 :root[data-theme='paper-night'] { --jd-depth-near: rgb(0 0 0 / 0.4); --jd-depth-far: rgb(0 0 0 / 0.5); }
 
-/* A card is lifted paper: a tight contact shadow and a soft one below it. */
-.jd-card {
-  box-shadow:
-    0 1px 2px var(--jd-depth-near),
-    0 10px 22px -10px var(--jd-depth-far);
+/* A note is lifted paper: a tight contact shadow and a soft one below it,
+   cast by its sheet -- the colour and what was drawn in it. ADR-134. */
+.jd-note-art {
+  position: absolute;
+  overflow: visible;
+  pointer-events: none;
+  filter:
+    drop-shadow(0 1px 1px var(--jd-depth-near))
+    drop-shadow(0 8px 10px var(--jd-depth-far));
 }
 
 /* A photograph is a polaroid: a thin white edge, a deeper one at the foot,
@@ -77,5 +81,18 @@
   height: 1px;
   overflow: visible;
   pointer-events: none;
-  z-index: 10;
+  z-index: 1000000;
 }
+
+/* Ink that sits above an object on the plane: a window-sized canvas that
+   undoes the camera itself (ADR-136, ADR-137). Never in the way of a pointer. */
+.jd-run-layer {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform-origin: 0 0;
+  pointer-events: none;
+}
+
+/* Not yet ranked: new, so on top until the stacker places it. ADR-136. */
+.jd-object-plane > * { z-index: 900000; }

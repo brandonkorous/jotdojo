@@ -1,4 +1,4 @@
-import type { TextBox } from "@jotacular/domain";
+import type { Stroke, TextBox } from "@jotacular/domain";
 import type { ViewSnapshot } from "./ink-viewport";
 import type { Bounds } from "./ink-geometry";
 import { boxAt, boxesBounds, drawnBox, isEmpty, newBox } from "./ink-objects";
@@ -6,6 +6,7 @@ import { InkPlane, MIN_SIZE } from "./ink-plane";
 import { NARROW } from "./use-narrow";
 import { newBoxWidth } from "./new-box-width";
 import { rememberedCard } from "./card-memory";
+import type { StrokesIn } from "./ink-note-art";
 
 /**
  * The text half of the engine. ADR-065.
@@ -28,6 +29,10 @@ export type TextLayerHost = {
   onChange: (boxes: readonly TextBox[]) => void;
   /** Something moved that the camera should be able to frame. */
   onGeometry: () => void;
+  /** What was drawn in a note. ADR-134. */
+  strokesIn?: StrokesIn;
+  /** The layer number just above everything on the page. ADR-136. */
+  nextZ?: () => number;
 };
 
 export class InkTextLayer {
@@ -45,10 +50,14 @@ export class InkTextLayer {
         this.plane.render(this.boxes);
         this.publish();
       },
+      strokesIn: host.strokesIn,
     });
   }
 
   destroy() { this.plane.destroy(); }
+
+  /** The elements standing for one object, for stacking. ADR-136. */
+  els(id: string): Element[] { return this.plane.els(id); }
 
   get all(): readonly TextBox[] { return this.boxes; }
   get isEditing() { return this.plane.isEditing; }
@@ -113,7 +122,7 @@ export class InkTextLayer {
       return true;
     }
     const box = { ...newBox(x, y, { size: this.newSize, color: style.color },
-      newBoxWidth(visibleWidth, onPhone())), fill: rememberedCard() };
+      newBoxWidth(visibleWidth, onPhone())), fill: rememberedCard(), ...this.top() };
     this.boxes.push(box);
     this.plane.render(this.boxes);
     this.plane.focus(box.id);
@@ -131,7 +140,7 @@ export class InkTextLayer {
    * an instruction to edit what is underneath.
    */
   drawAt(rect: Bounds, style: { color: string }): boolean {
-    const box = { ...drawnBox(rect, { size: this.newSize, color: style.color }), fill: rememberedCard() };
+    const box = { ...drawnBox(rect, { size: this.newSize, color: style.color }), fill: rememberedCard(), ...this.top() };
     this.boxes.push(box);
     this.plane.render(this.boxes);
     this.plane.focus(box.id);
@@ -152,6 +161,22 @@ export class InkTextLayer {
     this.plane.render(this.boxes);
     return true;
   }
+
+  /**
+   * A finished stroke that STARTED in a note belongs to it, and is drawn on
+   * the note's sheet from now on. True when it joined one. ADR-134.
+   */
+  attach(stroke: Stroke): boolean {
+    const p = stroke.pts[0];
+    const box = p ? boxAt(this.boxes, p[0], p[1]) : null;
+    if (!box) return false;
+    stroke.in = box.id;
+    this.plane.render(this.boxes);
+    return true;
+  }
+
+  /** A new note goes on top of the page. ADR-136. */
+  private top() { return this.host.nextZ ? { z: this.host.nextZ() } : {}; }
 
   /** Redraw after a drag moved boxes in place. */
   refresh() { this.plane.render(this.boxes); }
