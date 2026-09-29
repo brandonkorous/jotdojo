@@ -5,7 +5,7 @@
  * one remarks.css and remark-canvas.css already drew: ink.css is the writing
  * surface and the furniture round it, and this is one object that sits on it.
  *
- * The white die-cut edge is NOT here. It is `paint-order` on the path itself,
+ * The white die-cut edge is NOT here. It is a filled backing path (ADR-128),
  * set by ink-sticker-plane.ts from the same numbers the exporter uses -- a CSS
  * outline would exist on the screen and nowhere else. ADR-078.
  */

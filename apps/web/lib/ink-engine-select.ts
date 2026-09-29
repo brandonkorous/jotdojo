@@ -1,6 +1,7 @@
 import type {
   ImageOnPage, InkDelta, Sticker, Stroke, TextBox,
 } from "@jotacular/domain";
+import { rememberCard } from "./card-memory";
 import { restyle, without } from "./ink-edit";
 import { InkSelection, NO_SELECTION, type SelectionSummary } from "./ink-selection";
 import type { StrokeIndex } from "./ink-index";
@@ -118,6 +119,8 @@ export class SelectionEditor {
       if (fill) box.fill = fill;
       else delete box.fill;
     }
+    // The next new note starts in the colour just chosen. ADR-131.
+    if (fill) rememberCard(fill);
     // The plane re-reads the boxes it already holds; these are the same objects.
     this.ctx.texts()?.refresh();
     this.ctx.overlay();

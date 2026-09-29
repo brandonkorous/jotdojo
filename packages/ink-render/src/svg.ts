@@ -1,4 +1,4 @@
-import type { InkDocument } from "@jotacular/domain";
+import type { InkDocument, Stroke } from "@jotacular/domain";
 import { bounds, contentBounds, medianWidth, type Bounds } from "./geometry";
 import { arrows, escapeAttr, n, segments, stickers, textLines } from "./svg-parts";
 
@@ -120,14 +120,19 @@ export function toSvg(doc: InkDocument, options: RenderOptions): string {
   // somebody put ON the writing would come back as part of the writing. ADR-115.
   const stuck = options.text ? stickers(doc, escapeAttr) : [];
 
-  const body = doc.strokes.flatMap((stroke) => {
-    // Colour is thrown away for recognition on purpose. The highlighter keeps
-    // some transparency either way so struck-through text stays readable
-    // underneath it rather than becoming a solid bar the model has to guess at.
-    const ink = recognition ? "#000000" : escapeAttr(stroke.color);
-    const alpha = stroke.tool === "highlighter" ? (recognition ? 0.25 : 0.35) : 1;
-    return segments(stroke, ink, alpha);
-  });
+  // Colour is thrown away for recognition on purpose. The highlighter keeps
+  // some transparency either way so struck-through text stays readable.
+  const ink = (stroke: Stroke) => (recognition ? "#000000" : escapeAttr(stroke.color));
+  // Highlights solid inside ONE translucent group, so overlaps are one coat
+  // rather than three -- the canvas does the same. Ink goes on top. ADR-132.
+  const marks = doc.strokes.filter((st) => st.tool === "highlighter");
+  const wash = marks.length === 0 ? [] : [
+    `<g opacity="${recognition ? 0.25 : 0.35}">`,
+    ...marks.flatMap((st) => segments(st, ink(st), 1)), "</g>",
+  ];
+  const body = [...wash, ...doc.strokes
+    .filter((st) => st.tool !== "highlighter")
+    .flatMap((st) => segments(st, ink(st), 1))];
 
   return [
     `<svg xmlns="http://www.w3.org/2000/svg"`,

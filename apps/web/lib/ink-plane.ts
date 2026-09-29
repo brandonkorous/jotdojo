@@ -1,5 +1,5 @@
 import type { TextBox } from "@jotacular/domain";
-import { CARD_PAD, inkOn } from "@jotacular/ink-render";
+import { CARD_PAD, fillOf, inkOn } from "@jotacular/ink-render";
 import { nightInk } from "./ink-night";
 import { isEmpty } from "./ink-objects";
 import { applyTurn } from "./ink-turned";
@@ -188,18 +188,20 @@ export class InkPlane {
    * impossible to end up with a card whose text cannot be read on it.
    */
   private dress(node: HTMLTextAreaElement, box: TextBox, size: number) {
-    const pad = box.fill ? size * CARD_PAD : 0;
-    node.classList.toggle("jd-card", Boolean(box.fill));
-    node.style.background = box.fill ?? "transparent";
+    // Every note is a card; an unset colour is paper. ADR-131.
+    const fill = fillOf(box);
+    const pad = size * CARD_PAD;
+    node.classList.add("jd-card");
+    node.style.background = fill;
     // Words straight on the page are INK and follow the page (ADR-116): both
     // values go on the node and CSS picks. A card carries its own ground, so
     // its ink is derived from that and does not flip.
     node.style.setProperty("--jd-ink", box.color);
     node.style.setProperty("--jd-ink-night", nightInk(box.color));
-    node.style.color = box.fill ? inkOn(box.fill) : "";
-    node.style.caretColor = box.fill ? inkOn(box.fill) : "";
+    node.style.color = inkOn(fill);
+    node.style.caretColor = inkOn(fill);
     node.style.padding = `${pad}px`;
-    node.style.borderRadius = box.fill ? `${size * 0.5}px` : "";
+    node.style.borderRadius = `${size * 0.5}px`;
     node.style.left = `${box.x - pad}px`;
     node.style.top = `${box.y - pad}px`;
     applyTurn(node, box.rot);

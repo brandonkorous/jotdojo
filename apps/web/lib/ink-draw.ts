@@ -10,6 +10,7 @@ import {
 import type { Bounds } from "./ink-geometry";
 import { paintGrips } from "./ink-paint-grip";
 import type { GripOverlay } from "./ink-grip-overlay";
+import { paintHighlights } from "./ink-paint-highlight";
 import type { Segment } from "@jotacular/ink-render";
 
 /**
@@ -27,9 +28,11 @@ export function drawPage(surface: InkSurface, scene: Scene) {
   // Arrows first, so handwriting drawn over one stays on top -- and so an
   // arrow between two cards passes under them, which is what ink does. ADR-108.
   for (const { link, seg } of scene.links()) paintLink(surface.cctx, seg, link);
-  for (const stroke of scene.index.visible(scene.strokes, surface.visibleWorld())) {
-    paintStroke(surface.cctx, stroke);
-  }
+  // Highlights first, laid once so overlaps do not stack; ink on top of them,
+  // so the words stay crisp. ADR-132.
+  const shown = scene.index.visible(scene.strokes, surface.visibleWorld());
+  paintHighlights(surface.cctx, shown.filter((s) => s.tool === "highlighter"));
+  for (const stroke of shown) if (stroke.tool !== "highlighter") paintStroke(surface.cctx, stroke);
 }
 
 /** The live layer, minus the stroke under the pen: the lasso being drawn, the
@@ -42,7 +45,7 @@ export function drawOverlay(surface: InkSurface, scene: Scene) {
   if (scene.pendingText) paintTextRect(surface.lctx, scene.pendingText, scene.k);
   if (scene.aim) paintAim(surface.lctx, scene.aim, scene.k);
   const path = scene.sel.path;
-  const one = path ? null : scene.sel.gripped;
+  const one = path ? null : scene.sel.frame;
   scene.grips?.draw(one, scene.k);
   if (path) paintLasso(surface.lctx, path, scene.k);
   else if (one && !scene.grips) paintGrips(surface.lctx, one, scene.k);
@@ -86,7 +89,9 @@ export function drawFrame(surface: InkSurface, dirty: ReadonlySet<Dirty>, scene:
   if (!dirty.has("overlay") && !dirty.has("live")) return;
   drawOverlay(surface, scene);
   if (dirty.has("live") && scene.capture.active) {
-    paintStroke(surface.lctx, scene.capture.preview());
+    const live = scene.capture.preview();
+    if (live.tool === "highlighter") paintHighlights(surface.lctx, [live]);
+    else paintStroke(surface.lctx, live);
   }
 }
 
@@ -98,9 +103,12 @@ export function drawAll(surface: InkSurface, scene: Scene) {
 }
 
 /** Move a finished stroke onto the durable layer, so it stops being repainted
- *  from scratch every frame. */
-export function commitStroke(surface: InkSurface, stroke: Stroke) {
+ *  from scratch every frame. False for a highlight: it has to be laid with the
+ *  others or it stacks on them, so the page is repainted instead. ADR-132. */
+export function commitStroke(surface: InkSurface, stroke: Stroke): boolean {
+  surface.clearLive();
+  if (stroke.tool === "highlighter") return false;
   surface.applyView();
   paintStroke(surface.cctx, stroke);
-  surface.clearLive();
+  return true;
 }

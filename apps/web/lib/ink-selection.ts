@@ -4,7 +4,11 @@ import { boxAt, boxInPolygon } from "./ink-objects";
 import { imageAt, imageInPolygon, stickerAt, stickerInPolygon } from "./ink-rects";
 import { topmostAt } from "./ink-edit";
 import { Held } from "./ink-selection-held";
-import { gripAt, resizeTo, turnTo, type Grip, type Gripped } from "./ink-selection-grip";
+import {
+  frameOf, gripAt, resizeTo, snapTurn, turnTo, type Frame, type Grip, type Gripped,
+} from "./ink-selection-grip";
+import { GroupGrip, snapshot } from "./ink-selection-group";
+import { bearing, centreOf } from "./ink-turned";
 
 export { NO_SELECTION, type SelectionSummary } from "./ink-selection-held";
 
@@ -27,6 +31,8 @@ export class InkSelection {
   private moved = false;
   /** Which handle is being dragged, when it is a handle and not the body. */
   private grip: Grip | null = null;
+  /** A handle on a group, or a stroke, while it is held. ADR-126. */
+  private group: GroupGrip | null = null;
 
   get count() { return this.held.count; }
   get summary() { return this.held.summary(); }
@@ -48,14 +54,24 @@ export class InkSelection {
     return h.marks[0] ? { kind: "mark", obj: h.marks[0] } : null;
   }
 
-  gripAt(x: number, y: number, k: number): Grip | null {
+  /** What the handles are drawn round: one object as it is turned, or the
+   *  whole selection as a box. ADR-126. */
+  get frame(): Frame | null {
     const g = this.gripped;
-    return g ? gripAt(g, x, y, k) : null;
+    if (g) return frameOf(g);
+    if (this.group) return this.group.frame;
+    return this.box ? { b: this.box, rot: 0 } : null;
+  }
+
+  gripAt(x: number, y: number, k: number): Grip | null {
+    const f = this.frame;
+    return f ? gripAt(f, x, y, k) : null;
   }
 
   beginGrip(grip: Grip, x: number, y: number) {
     this.beginDrag(x, y);
     this.grip = grip;
+    if (!this.gripped && this.box) this.group = new GroupGrip(snapshot(this.held, this.box));
   }
 
   /** True when the point falls inside a settled marquee. */
@@ -142,10 +158,8 @@ export class InkSelection {
   /** Mutates the selected objects in place. Returns false when nothing moved. */
   dragTo(x: number, y: number): boolean {
     if (!this.dragFrom) return false;
-    const g = this.grip ? this.gripped : null;
-    if (g) {
-      if (this.grip === "turn") turnTo(g, x, y);
-      else resizeTo(g, x, y);
+    if (this.grip) {
+      this.dragGrip(x, y);
       this.remeasure();
       this.moved = true;
       return true;
@@ -166,8 +180,19 @@ export class InkSelection {
     const moved = this.moved;
     this.dragFrom = null;
     this.grip = null;
+    this.group = null;
     this.moved = false;
     return moved;
+  }
+
+  private dragGrip(x: number, y: number) {
+    const g = this.gripped;
+    if (g) return this.grip === "turn" ? turnTo(g, x, y) : resizeTo(g, x, y);
+    const group = this.group;
+    if (!group) return;
+    if (this.grip === "resize") return group.resize(this.held, x, y);
+    const [cx, cy] = centreOf(group.frame.b);
+    group.turn(this.held, snapTurn(bearing(cx, cy, x, y)));
   }
 
   /** True if there was anything to clear, so callers can skip a repaint. */

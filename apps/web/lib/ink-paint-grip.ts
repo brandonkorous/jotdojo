@@ -1,4 +1,4 @@
-import type { Gripped } from "./ink-selection-grip";
+import type { Frame } from "./ink-selection-grip";
 import { gripPoints } from "./ink-selection-grip";
 import { SELECT_STROKE } from "./ink-paint";
 
@@ -6,7 +6,7 @@ import { SELECT_STROKE } from "./ink-paint";
  * The outline of one held object, turned as it is, with its two handles.
  * ADR-122. Constant on screen, like the marquee it replaces.
  */
-export function paintGrips(ctx: CanvasRenderingContext2D, g: Gripped, k = 1) {
+export function paintGrips(ctx: CanvasRenderingContext2D, g: Frame, k = 1) {
   const p = gripPoints(g, k);
   ctx.save();
   ctx.strokeStyle = SELECT_STROKE;

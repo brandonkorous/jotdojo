@@ -5859,3 +5859,192 @@ appeared once the camera had moved.
 
 **Consequences.** ToolOptions is no longer centred by CSS; it is placed by
 measuring, and it is hidden until measured so it never flashes elsewhere first.
+
+---
+
+### ADR-125 — The selection bar is attached to the selection
+
+**Status.** Accepted, 2026-09-28. Reverses the placement in ADR-033 and ADR-045.
+
+**Context.** ADR-033 put the selection bar at the foot of the page on purpose: a
+bar that follows the selection covers the strokes beside it, which is what somebody
+is looking at while deciding. Once the chrome moved to the sides (ADR-120) and
+options became cards beside their buttons (ADR-124), a bar at the foot was the one
+control far from the thing it acted on. Brandon asked for it to be attached.
+
+**Decision.** The bar sits **just below the selection**, centred on it, and flips
+**above** when there is no room below. Below, not above, because a single held
+object already has its rotate knob above it (ADR-122). ADR-033's worry is met by
+keeping the bar outside the selection, never over it. When the selection fills the
+screen, the bar falls back to the bottom edge. It follows every frame while shown,
+so a pan or a drag carries it along, and it wears the menus' card look.
+
+**Consequences.** The label now names the kind — "1 voice note", "2 photos" — and
+says "things" only for a mix; photos and voice cards were being counted as strokes.
+
+---
+
+### ADR-126 — Everything on the page is an object: grab it, resize it, turn it
+
+**Status.** Accepted, 2026-09-28. Extends ADR-122.
+
+**Context.** Brandon expected the same three things of every thing on the canvas:
+move it, size it, turn it. Two gaps stood in the way. With the Select tool, pressing
+on a card and dragging started a lasso instead of moving the card; it had to be
+tapped first. And the handles (ADR-122) appeared only for a single card, photo,
+voice card or sticker — never for handwriting, and never for a group.
+
+**Decision.**
+
+- **Press and drag moves a card, photo, voice card or sticker at once.** Pressing on
+  handwriting still starts a lasso, because circling words is how ink is chosen;
+  a tap still picks a single stroke.
+- **Handles for any selection.** A single object keeps its own turned frame. A
+  stroke, several strokes, or a mix get a frame round the whole selection. The
+  corner scales everything from the top-left, proportionally: points, stroke
+  widths, card and text sizes, photos and stickers. The knob turns everything about
+  the group's centre, and each object's own angle turns with it.
+- **Always from a snapshot** taken when the handle was pressed, so a long drag does
+  not drift or compound.
+- **A loop is a loop.** A lasso that closes where it began was being read as a tap,
+  because only its two ends were compared. A gesture is now a tap only if the
+  pointer never left the tap slop.
+
+**Consequences.** After a group turn the frame is upright again round the new
+shape: a group has no angle of its own to remember, only its members do.
+
+---
+
+### ADR-127 — A photograph is a print, with its date on the foot
+
+**Status.** Accepted, 2026-09-28. Extends ADR-120.
+
+**Context.** The polaroid frame (ADR-120) rounded only its outer corners; the
+picture inside stayed square, because a single `<img>` cannot round its content
+separately from its frame. Brandon also wanted the deep bottom band to carry
+something, as a real polaroid's does.
+
+**Decision.** A photo on the plane is a frame holding a picture (`ink-print.ts`):
+the frame moves, turns and casts the shadow; the picture has its own smaller
+rounding and is cropped to the window. The bottom band carries **the date the
+photo was added**, in the handwritten face — the one napkin-moment use design.md
+allows it, since nobody needs it to operate anything. The vision caption becomes
+the picture's alt text instead of more ink on the page. `mediaClip` now carries
+`createdAt`, so the date arrives in the same round trip as the picture.
+
+**Consequences.** The date is when it was put on the page, not when it was taken:
+the client does not read EXIF today.
+
+---
+
+### ADR-128 — A sticker is cut from white, so its middle is filled
+
+**Status.** Accepted, 2026-09-28. Amends ADR-115.
+
+**Context.** The sticker art is line drawing from Font Awesome Whiteboard: a smiley
+is a ring, two eyes and a mouth, and the ring is an outline with a hole in it.
+ADR-115 drew the white die-cut edge as a stroke behind the art, which went round
+the lines and nowhere else, so the middle showed the page or the photo through it.
+Brandon found they looked out of place.
+
+**Decision.** Every sticker has a **backing**: the artwork's outer outlines only —
+those no other outline surrounds — filled white, with the die-cut stroke round
+them. The art is drawn on top of it with no stroke of its own. `sticker-backing.ts`
+in `@jotacular/ink-render` finds the outlines from the path data at runtime (the
+art uses only M, L, C, S and Z) and caches one backing per name, so the canvas,
+the tray, the ghost and the exporter draw the same thing.
+
+**Consequences.** A sticker is now opaque inside its silhouette, as a real one is.
+The smoke suite proves it with pixels on transparent paper rather than by looking
+for an attribute.
+
+---
+
+### ADR-129 — The tools start at the top, under the logo
+
+**Status.** Accepted, 2026-09-28. Amends ADR-120.
+
+**Context.** ADR-120 centred the rail on its side. The mockup, which Brandon is
+following, puts the logo top-left and the tools directly under it.
+
+**Decision.** The wordmark sits in the top corner on the rail's side, links to the
+dashboard, and moves with the left/right preference. The rail starts under it.
+Pop-outs beside the rail never rise above the rail's top, so they cannot cover the
+logo. On a phone the logo is left out: the folded rail already takes that corner,
+and the band across the top is where writing goes.
+
+**Consequences.** The marketing hero keeps its rail at the top of its own frame,
+with no logo row, because the site header already carries the wordmark.
+
+---
+
+### ADR-130 — Adding a note arms the tool, so its size can be drawn
+
+**Status.** Accepted, 2026-09-28. Amends issue 012's fix.
+
+**Context.** Brandon could not add a note, at 10% zoom with the same note open in
+a second tab. Three things were wrong, and one was a missing gesture.
+
+1. A new note was made at the smallest text size whatever the zoom, so at 10% it
+   was 1.6px tall: a faint line, not a note.
+2. A page arriving from the other tab replaced every box, and kept the one being
+   typed in only if the other tab already had it. A new note is empty and empty
+   notes are never sent, so it was wiped within a second.
+3. The Add menu dropped a note in the middle of the screen at once, so there was
+   no way to drag its size, which the note tool already supports (ADR-078).
+
+**Decision.** A new note's text is 16px on the glass at any zoom, never below the
+floor iOS needs. `applyRemote` keeps the box being typed in whether or not the
+other side knows it yet. The Add menu **arms** the note tool — a crosshair; tap
+for a note, drag to draw one — unless it was worked from the keyboard, which has
+no tap to give and so still gets a note placed at once (issue 012).
+
+**Consequences.** From a pointer, "A note on the canvas" is two steps instead of
+one. The second step is where the note goes and how big it is, which is the
+choice that was missing.
+
+---
+
+### ADR-131 — Every note is a card
+
+**Status.** Accepted, 2026-09-28. Amends ADR-079.
+
+**Context.** ADR-079 made a card an option: a text box with a colour behind it,
+and "None" first in the swatches. A note with no colour has no edge, so it cannot
+be seen as a thing, grabbed, resized or turned (ADR-126), and next to cards and
+photos it read as stray text. Brandon asked that every note have a colour, with
+the page's own text — the spine, top left — the one plain surface.
+
+**Decision.** `fillOf(box)` in `@jotacular/ink-render` is the one answer to "what
+colour is this note": its fill, or **paper** (`#FBF8F2`) when none is stored. The
+plane, the export, the card geometry and the handles all ask it. "None" is gone
+from the swatches. A new note starts in the colour last picked on this device, or
+paper; picking a colour for a selection remembers it.
+
+**Consequences.** No data changes: boxes stored without a fill — older ones, or
+an agent's that did not say — are simply shown on paper. Their frame grows by the
+card's padding, outward, so no word moves (ADR-079's rule).
+
+---
+
+### ADR-132 — A highlighter is one coat however many passes
+
+**Status.** Accepted, 2026-09-28.
+
+**Context.** Each highlighter stroke was painted as many short translucent
+segments. Where they met, and wherever a second pass crossed the first, the
+alpha compounded, so going over the same words made them darker and darker.
+Brandon wanted a highlighter that behaves like one.
+
+**Decision.** Highlights are drawn **solid** on a scratch canvas and laid on the
+page **once** at the marker's alpha (`ink-paint-highlight.ts`), multiply on paper
+as before (ADR-116). The export does the same with one translucent `<g>` round
+solid paths. Handwriting is drawn after the highlights, so ink is never washed by
+them. A finished highlight repaints the page rather than being stamped onto it,
+because stamped it would be a second coat.
+
+**Consequences.** Different highlight colours that overlap show the later one, not
+a mix. While a highlight is being drawn over an old one it can look darker for a
+moment, because it is still on the live layer; it settles to one coat on release.
+A pixel test proves two passes match one, and fails if the old per-stroke alpha
+returns.

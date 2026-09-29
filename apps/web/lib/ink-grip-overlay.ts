@@ -1,4 +1,4 @@
-import { gripPoints, type Gripped } from "./ink-selection-grip";
+import { gripPoints, type Frame } from "./ink-selection-grip";
 
 const SVG = "http://www.w3.org/2000/svg";
 const INK = "#4B5FA8";
@@ -20,7 +20,7 @@ export class GripOverlay {
 
   destroy() { this.svg.remove(); }
 
-  draw(g: Gripped | null, k: number) {
+  draw(g: Frame | null, k: number) {
     if (!g) return void this.svg.replaceChildren();
     const p = gripPoints(g, k);
     const r = 6 / k;

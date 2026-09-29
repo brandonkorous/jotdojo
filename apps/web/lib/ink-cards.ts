@@ -17,9 +17,9 @@
  */
 export type CardColor = { name: string; fill: string | null };
 
+/** No "none": every note is a card (ADR-131). The page's own text, top left,
+ *  is the one plain surface. */
 export const CARD_COLORS: readonly CardColor[] = [
-  /** No card at all -- words straight onto the canvas, as before ADR-079. */
-  { name: "None", fill: null },
   { name: "Paper", fill: "#FBF8F2" },
   { name: "Mint", fill: "#CCF3ED" },
   { name: "Violet", fill: "#E4DBFF" },

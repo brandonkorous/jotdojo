@@ -124,7 +124,8 @@
 }
 .jd-hero-input::placeholder { opacity: 0.5; }
 
-/* The same rail as the app, in the same place on the surface. */
+/* The same rail as the app; the hero has no logo row above it. */
+.jd-hero-rail.jd-hero-rail { top: 0.75rem; }
 
 .jd-hero-foot {
   position: absolute;
@@ -146,7 +147,6 @@
 /* The selection bar anchors to the bottom of the ink layer, which on the hero
    is exactly where the status bar is. Lift it clear. The app has nothing along
    that edge, so this belongs here rather than in chrome.css. */
-.jd-hero-stage .jd-selection-bar { bottom: calc(var(--foot) + 0.75rem); }
 
 @media (prefers-reduced-motion: reduce) {
   .jd-hero-frame { transition: none; transform: none; }

@@ -1,6 +1,8 @@
 "use client";
 
+import { useRef } from "react";
 import { Icon } from "@/components/Icon";
+import { useAttachedBar } from "@/lib/use-attached-bar";
 import { MARKER_COLORS, PEN_COLORS } from "@/lib/ink-style";
 import { CARD_COLORS } from "@/lib/ink-cards";
 import { PenSize } from "./PenSize";
@@ -8,7 +10,8 @@ import type { SelectionSummary } from "@/lib/ink-engine";
 import { Swatches } from "./Swatches";
 
 /**
- * What you can do with a lasso selection. ADR-033, ADR-045.
+ * What you can do with a lasso selection. ADR-033, ADR-045, ADR-125.
+ * Attached to the selection, just below it, in the same card as the menus.
  *
  * Selecting used to do two things nobody could discover: drag to move, and
  * press Delete. Both still work. This says so, and adds the thing a selection
@@ -19,9 +22,11 @@ import { Swatches } from "./Swatches";
  * is a grey smear, so the marker palette appears whenever the lasso holds one.
  */
 export function SelectionBar({
-  selection, onColor, onWidth, onCommitWidth, onCard, onDelete, onExport,
+  selection, locate, onColor, onWidth, onCommitWidth, onCard, onDelete, onExport,
 }: {
   selection: SelectionSummary;
+  /** Where the selection is on screen, so the bar can stay attached to it. */
+  locate: () => DOMRect | null;
   onColor: (color: string) => void;
   /** Make the selected notes cards, or plain text again. Null removes the
    *  colour. ADR-079. */
@@ -35,13 +40,16 @@ export function SelectionBar({
    *  part somebody wants to send. ADR-067. */
   onExport: () => void;
 }) {
+  const bar = useRef<HTMLDivElement>(null);
+  useAttachedBar(bar, locate, selection.count > 0);
   if (selection.count === 0) return null;
 
   return (
     <div
+      ref={bar}
       role="toolbar"
       aria-label="Selected strokes"
-      className="jd-chrome glass jd-selection-bar bottom-3 left-1/2 z-20 flex -translate-x-1/2 items-center gap-1 rounded-full p-1"
+      className="jd-chrome jd-selection-bar"
     >
       <span className="jd-selection-count">{countLabel(selection)}</span>
 
@@ -105,18 +113,21 @@ export function SelectionBar({
 }
 
 /**
- * What the bar calls what it caught. ADR-065, ADR-079.
- *
- * "3 strokes" is wrong for a selection holding a note, and "3 objects" is
- * right and horrible -- nobody circles two words and a squiggle and thinks
- * "objects". So: name the kind when there is only one, and fall back to the
- * neutral word only when the selection genuinely mixes them.
+ * What the bar calls what it caught. ADR-065, ADR-079, ADR-125.
+ * The kind by name when there is only one kind; "things" only for a mix.
  */
-function countLabel({ count, texts }: SelectionSummary): string {
-  const strokes = count - texts;
-  if (texts === 0) return count === 1 ? "1 stroke" : `${count} strokes`;
-  if (strokes === 0) return texts === 1 ? "1 note" : `${texts} notes`;
-  return `${count} things`;
+function countLabel(s: SelectionSummary): string {
+  const kinds: [number, string, string][] = [
+    [s.count - s.texts - s.images - s.stickers, "stroke", "strokes"],
+    [s.texts, "note", "notes"],
+    [s.images - s.voices, "photo", "photos"],
+    [s.voices, "voice note", "voice notes"],
+    [s.stickers, "sticker", "stickers"],
+  ];
+  const present = kinds.filter(([n]) => n > 0);
+  if (present.length !== 1) return `${s.count} things`;
+  const [n, one, many] = present[0]!;
+  return n === 1 ? `1 ${one}` : `${n} ${many}`;
 }
 
 /** The card colours, with "none" first so taking a colour off is as easy as

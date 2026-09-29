@@ -10,9 +10,11 @@ import { cardBounds, contentBounds, extent, hits, toSvg } from "@jotacular/ink-r
 import { imageAt, imageInPolygon, imagesBounds } from "../lib/ink-rects";
 import { boxAt } from "../lib/ink-objects";
 import { InkSelection } from "../lib/ink-selection";
-import { gripAt, gripPoints, resizeTo, turnTo } from "../lib/ink-selection-grip";
+import { frameOf, gripAt, gripPoints, resizeTo, turnTo } from "../lib/ink-selection-grip";
 import { VOICE_BARS, clock, peaks, voiceSize } from "../lib/ink-voice";
 import { clearOf } from "../lib/ink-image-layer";
+import { written } from "../lib/ink-print";
+import type { Stroke } from "@jotacular/domain";
 
 let failures = 0;
 const check = (label: string, ok: boolean, detail?: string) => {
@@ -73,10 +75,10 @@ console.log("\nthe handles");
   const p = pic();
   sel.hold([], [], [p]);
   check("one object has handles", sel.gripped?.obj === p);
-  const pts = gripPoints(sel.gripped!, 1);
+  const pts = gripPoints(frameOf(sel.gripped!), 1);
   check("the knob is above the top edge", near(pts.knob[0], 100) && pts.knob[1] < 0);
   check("the resize corner is bottom-right", near(pts.resize[0], 200) && near(pts.resize[1], 100));
-  check("a pointer on the knob takes it", gripAt(sel.gripped!, pts.knob[0], pts.knob[1], 1) === "turn");
+  check("a pointer on the knob takes it", gripAt(frameOf(sel.gripped!), pts.knob[0], pts.knob[1], 1) === "turn");
   check("a pointer on the corner takes it", sel.gripAt(200, 100, 1) === "resize");
   check("a pointer in the middle takes neither", sel.gripAt(100, 50, 1) === null);
 
@@ -96,6 +98,34 @@ console.log("\nthe handles");
   const two = new InkSelection();
   two.hold([], [card()], [pic()]);
   check("two objects have no handles", two.gripped === null);
+}
+
+console.log("\na group resizes and turns as one object");
+{
+  const line = { id: "s1", tool: "pen", color: "#111111", width: 2,
+    pts: [[0, 0, 0, 0.5, 0, 0], [100, 0, 1, 0.5, 0, 0]] } as unknown as Stroke;
+  const p = pic({ x: 0, y: 50, w: 100, h: 50 });
+  const sel = new InkSelection();
+  sel.hold([line], [], [p]);
+  check("a group has handles too", sel.frame !== null && sel.gripped === null);
+  const b = sel.marquee!;
+  sel.beginGrip("resize", b.x + b.w, b.y + b.h);
+  sel.dragTo(b.x + b.w * 2, b.y + b.h * 2);
+  check("the stroke doubled from the corner", near(line.pts[1]![0], b.x + (100 - b.x) * 2));
+  check("its width doubled", near(line.width, 4));
+  check("the photo doubled with it", near(p.w, 200) && near(p.h, 100));
+  sel.endDrag();
+  const c = sel.marquee!;
+  const [cx, cy] = [c.x + c.w / 2, c.y + c.h / 2];
+  sel.beginGrip("turn", cx, c.y - 28);
+  sel.dragTo(cx + 500, cy);
+  check("the photo turned a quarter", p.rot === 90);
+  check("the frame turned with it", sel.frame?.rot === 90);
+  sel.endDrag();
+  check("afterwards the frame is upright round the new shape", sel.frame?.rot === 0);
+  const one = new InkSelection();
+  one.hold([line], [], []);
+  check("a single stroke has handles", one.frame !== null);
 }
 
 console.log("\na card resizes inside its colour");
@@ -134,6 +164,14 @@ console.log("\nvoice cards");
   const voice = pic({ id: "v", media: "audio", x: 40, y: 60, w: 160, h: 44 });
   clearOf(voice, [photo]);
   check("a new card steps off the photo under it", voice.y >= 200 && voice.x === 40);
+}
+
+console.log("\na print is dated on its foot");
+{
+  const now = new Date("2026-09-28T12:00:00Z");
+  check("this year's date has no year", !/2026/.test(written("2026-03-04T10:00:00Z", now)));
+  check("last year's date says so", /2025/.test(written("2025-03-04T10:00:00Z", now)));
+  check("a bad date writes nothing", written("not a date", now) === "");
 }
 
 console.log(failures === 0 ? "\nturn: all good\n" : `\nturn: ${failures} FAILED\n`);

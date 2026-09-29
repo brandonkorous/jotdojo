@@ -5,6 +5,7 @@ import { Icon } from "@/components/Icon";
 import { CommandPalette } from "@wizeworks/silicaui-react";
 import { RemarksButton } from "./RemarksButton";
 import { SideRail } from "./SideRail";
+import { Wordmark } from "./Brand";
 import { cornerSide, railSide, type Align } from "@/lib/toolbar-side";
 import type { CanvasTool } from "@/lib/canvas-tool";
 import { useModKey } from "@/lib/mod-key";
@@ -27,7 +28,7 @@ export function Chrome({
   onTool: (tool: CanvasTool) => void;
   onCamera: () => void;
   onMic: () => void;
-  onTextBox: () => void;
+  onTextBox: (byKeyboard: boolean) => void;
   /** Open the sticker tray. ADR-115. */
   onSticker: () => void;
 }) {
@@ -36,6 +37,10 @@ export function Chrome({
 
   return (
     <>
+      {/* The logo heads the tools, on their side, and goes home. ADR-129. */}
+      <a href="/dashboard" className="jd-rail-logo" data-side={railSide(align)} aria-label="Dashboard">
+        <Wordmark />
+      </a>
       <SideRail
         side={railSide(align)} dimmed={dimmed} tool={tool} onTool={onTool}
         onCamera={onCamera} onMic={onMic} onTextBox={onTextBox} onSticker={onSticker}

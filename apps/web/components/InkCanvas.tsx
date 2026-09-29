@@ -223,6 +223,7 @@ export function InkCanvas({
       <div ref={pinsRef} className="jd-pin-layer" />
       <SelectionBar
         selection={selected}
+        locate={() => engine()?.marqueeRect() ?? null}
         onColor={(color) => engine()?.selection.restyle({ color })}
         onWidth={(width) => engine()?.selection.restyle({ width }, false)}
         onCommitWidth={(width) => engine()?.selection.restyle({ width })}

@@ -42,7 +42,9 @@ function measure(el: HTMLElement | null, tool: string): CSSProperties {
   if (!fits) {
     return { top: b.bottom - h.top + GAP, left: EDGE, maxWidth: h.width - EDGE * 2 };
   }
-  const y = Math.min(Math.max(EDGE, b.top - h.top + b.height / 2 - el.offsetHeight / 2),
+  // Never above the rail's own top, where the logo is. ADR-129.
+  const floor = Math.max(EDGE, rail.getBoundingClientRect().top - h.top);
+  const y = Math.min(Math.max(floor, b.top - h.top + b.height / 2 - el.offsetHeight / 2),
     h.height - el.offsetHeight - EDGE);
   return { top: y, left: x };
 }

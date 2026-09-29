@@ -185,7 +185,7 @@ export class InkInput {
       return void host.scheduleLive();
     }
 
-    if (host.tool === "select") return void this.lasso.move(host, this.pointAt(e));
+    if (host.tool === "select") return void this.lasso.move(host, this.pointAt(e), host.view.k);
 
     // A loaded sticker has no drag. Without this the move falls through to the
     // capture below and starts recording a stroke nobody asked for.

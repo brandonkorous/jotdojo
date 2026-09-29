@@ -44,7 +44,9 @@ export function widthAt(stroke: Stroke, pressure: number): number {
  * path for the whole stroke would be cheaper and would give a dead, uniform
  * line.
  */
-export function paintStroke(ctx: CanvasRenderingContext2D, stroke: Stroke) {
+/** `solid` paints a highlight at full strength, for the scratch layer that
+ *  `ink-paint-highlight.ts` then lays down once. ADR-132. */
+export function paintStroke(ctx: CanvasRenderingContext2D, stroke: Stroke, solid = false) {
   const pts = stroke.pts;
   if (pts.length === 0) return;
 
@@ -53,11 +55,9 @@ export function paintStroke(ctx: CanvasRenderingContext2D, stroke: Stroke) {
   ctx.strokeStyle = color;
   ctx.fillStyle = color;
 
-  if (stroke.tool === "highlighter") {
-    // Multiply keeps overlapping passes readable instead of turning the text
-    // underneath into a solid block. On charcoal it has nothing to darken, and
-    // screen compounds past the words, so a dark page takes the wash plain and
-    // lets the night colour be the ceiling. ADR-116.
+  if (stroke.tool === "highlighter" && !solid) {
+    // One highlight on its own. Several go through `paintHighlights`, which
+    // is what stops overlaps stacking. ADR-116, ADR-132.
     if (!paperIsDark()) ctx.globalCompositeOperation = "multiply";
     ctx.globalAlpha = HIGHLIGHTER_ALPHA;
   }

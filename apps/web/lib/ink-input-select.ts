@@ -14,6 +14,9 @@ import type { Point } from "@jotacular/domain";
 export type SelectHost = {
   readonly sel: {
     readonly dragging: boolean;
+    readonly count: number;
+    /** The strokes held, as opposed to objects on the plane. */
+    readonly selected: readonly unknown[];
     covers(x: number, y: number): boolean;
     beginDrag(x: number, y: number): void;
     gripAt(x: number, y: number, k: number): "resize" | "turn" | null;
@@ -41,6 +44,9 @@ const near = (a: Point, b: Point, k: number) =>
 export class LassoInput {
   /** Where the gesture began, or null when it began inside a marquee. */
   private from: Point | null = null;
+  /** Whether the pointer ever left the tap slop. A loop that closes where it
+   *  began is still a loop, not a tap. */
+  private travelled = false;
 
   /**
    * Returns where the gesture started, for `up` to measure against. Pressing
@@ -58,14 +64,23 @@ export class LassoInput {
       this.from = null;
       return void host.sel.beginDrag(p[0], p[1]);
     }
+    // Pressing on a card, photo, voice card or sticker grabs it at once. Ink
+    // is left to the lasso, because circling words is how ink is picked. ADR-126.
+    host.tapSelect(p[0], p[1]);
+    if (host.sel.count > 0 && host.sel.selected.length === 0) {
+      this.from = null;
+      return void host.sel.beginDrag(p[0], p[1]);
+    }
     host.dropSelection();
     this.from = p;
+    this.travelled = false;
     host.sel.beginLasso(p);
     host.scheduleLive();
   }
 
-  move(host: SelectHost, p: Point) {
+  move(host: SelectHost, p: Point, k = 1) {
     if (host.sel.dragging) return void host.dragSelection(p[0], p[1]);
+    if (this.from && !near(this.from, p, k)) this.travelled = true;
     host.sel.extendLasso(p);
     host.scheduleLive();
   }
@@ -74,7 +89,7 @@ export class LassoInput {
   up(host: SelectHost, p: Point, k: number) {
     const from = this.from;
     this.from = null;
-    if (from && near(from, p, k)) return void host.tapSelect(from[0], from[1]);
+    if (from && !this.travelled && near(from, p, k)) return void host.tapSelect(from[0], from[1]);
     host.finishSelect();
   }
 

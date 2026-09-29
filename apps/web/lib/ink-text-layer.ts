@@ -5,6 +5,7 @@ import { boxAt, boxesBounds, drawnBox, isEmpty, newBox } from "./ink-objects";
 import { InkPlane, MIN_SIZE } from "./ink-plane";
 import { NARROW } from "./use-narrow";
 import { newBoxWidth } from "./new-box-width";
+import { rememberedCard } from "./card-memory";
 
 /**
  * The text half of the engine. ADR-065.
@@ -67,10 +68,20 @@ export class InkTextLayer {
   applyRemote(boxes: readonly TextBox[]) {
     const mine = this.boxes.find((b) => b.id === this.editingId());
     this.boxes = boxes.map((b) => (b.id === mine?.id ? mine : { ...b }));
+    // A box still being typed into may be too new for the other side to know
+    // -- an empty one is never sent -- so it stays rather than vanishing.
+    if (mine && !boxes.some((b) => b.id === mine.id)) this.boxes.push(mine);
     this.plane.render(this.boxes);
   }
 
-  frame(view: ViewSnapshot) { this.plane.frame(view.x, view.y, view.k); }
+  frame(view: ViewSnapshot) { this.k = view.k; this.plane.frame(view.x, view.y, view.k); }
+
+  /** The zoom at the last frame, so a new box is readable where it is made. */
+  private k = 1;
+
+  /** 16px ON THE GLASS whatever the zoom, and never below the floor iOS needs:
+   *  a box made at 10% used to have 1.6px text, a line nobody could read. */
+  private get newSize() { return Math.max(MIN_SIZE, MIN_SIZE / this.k); }
 
   /**
    * Whether a note may take a pointer at all.
@@ -101,8 +112,8 @@ export class InkTextLayer {
       this.plane.focus(hit.id);
       return true;
     }
-    const box = newBox(x, y, { size: MIN_SIZE, color: style.color },
-      newBoxWidth(visibleWidth, onPhone()));
+    const box = { ...newBox(x, y, { size: this.newSize, color: style.color },
+      newBoxWidth(visibleWidth, onPhone())), fill: rememberedCard() };
     this.boxes.push(box);
     this.plane.render(this.boxes);
     this.plane.focus(box.id);
@@ -120,7 +131,7 @@ export class InkTextLayer {
    * an instruction to edit what is underneath.
    */
   drawAt(rect: Bounds, style: { color: string }): boolean {
-    const box = drawnBox(rect, { size: MIN_SIZE, color: style.color });
+    const box = { ...drawnBox(rect, { size: this.newSize, color: style.color }), fill: rememberedCard() };
     this.boxes.push(box);
     this.plane.render(this.boxes);
     this.plane.focus(box.id);

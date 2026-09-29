@@ -1,5 +1,5 @@
 import type { Sticker } from "@jotacular/domain";
-import { placeSticker } from "@jotacular/ink-render";
+import { placeSticker, stickerBacking } from "@jotacular/ink-render";
 import { applyTurn } from "./ink-turned";
 
 /**
@@ -87,16 +87,18 @@ export class InkStickerPlane {
       "transform",
       `translate(${p.tx - sticker.x} ${p.ty - sticker.y}) scale(${p.k})`,
     );
+    // The white it is cut from: the silhouette, filled, with the die-cut edge
+    // round it. The art goes on top. ADR-115, ADR-128.
+    const backing = document.createElementNS(SVG, "path");
+    backing.setAttribute("d", stickerBacking(sticker.name));
+    backing.setAttribute("fill", "#FFFFFF");
+    backing.setAttribute("stroke", "#FFFFFF");
+    backing.setAttribute("stroke-width", String(p.stroke));
+    backing.setAttribute("stroke-linejoin", "round");
     const path = document.createElementNS(SVG, "path");
     path.setAttribute("d", p.art.d);
     path.setAttribute("fill", sticker.color);
-    // The die-cut edge. `paint-order` puts the white BEHIND the artwork, which
-    // is the whole difference between a sticker and an icon. ADR-115.
-    path.setAttribute("stroke", "#FFFFFF");
-    path.setAttribute("stroke-width", String(p.stroke));
-    path.setAttribute("stroke-linejoin", "round");
-    path.setAttribute("paint-order", "stroke fill");
-    group.append(path);
+    group.append(backing, path);
     node.append(group);
   }
 }

@@ -174,14 +174,17 @@ console.log("\na note with a colour behind it");
 
   // The frame has to clear the card's edge, or every exported note loses the
   // colour off its sides.
-  const plain: InkDocument = { ...doc, texts: [textBox("mooring fee", 400, 20)] };
+  const words = textBounds(card.texts![0]!).w;
   check("the frame allows for the card, not just the words",
-    contentBounds(card)!.w > contentBounds(plain)!.w,
-    `${contentBounds(card)!.w} vs ${contentBounds(plain)!.w}`);
+    contentBounds(card)!.w > words, `${contentBounds(card)!.w} vs ${words}`);
+  // Every note is a card now: one stored with no colour is drawn on paper. ADR-131.
+  const unset: InkDocument = { ...doc, texts: [textBox("mooring fee", 400, 20)] };
+  check("a note with no colour set is drawn on paper",
+    toSvg(unset, { mode: "viewing", text: true }).includes('fill="#FBF8F2"'));
 
   // Colouring a note must not move a word: the padding grows outward.
   check("...and colouring a note does not move its text",
-    textBounds(card.texts![0]!).x === textBounds(plain.texts![0]!).x);
+    textBounds(card.texts![0]!).x === textBounds(unset.texts![0]!).x);
 
   // Recognition never draws text at all, so it certainly never draws a card --
   // but a coloured rectangle reaching the model would be a new way to break
@@ -199,6 +202,25 @@ console.log("\na page with nothing on it");
   const meta = await sharp(await toPng(blank, { mode: "viewing" })).metadata();
   check("...and renders to the empty placeholder", meta.width === 1 && meta.height === 1,
     `${meta.width}x${meta.height}`);
+}
+
+console.log("\na highlighter pass over a highlight is one coat, not two. ADR-132");
+{
+  const band = (id: string): Stroke => ({
+    id, tool: "highlighter", color: "#F5D547", width: 18,
+    pts: [point(20, 60), point(120, 60), point(220, 60)],
+  });
+  const once: InkDocument = { ...doc, strokes: [band("h1")] };
+  const twice: InkDocument = { ...doc, strokes: [band("h1"), band("h2")] };
+  const a = await toPng(once, { mode: "viewing" });
+  const b = await toPng(twice, { mode: "viewing" });
+  const meta = await sharp(a).metadata();
+  const [cx, cy] = [Math.floor((meta.width ?? 2) / 2), Math.floor((meta.height ?? 2) / 2)];
+  const one = await pixelAt(a, cx, cy);
+  const two = await pixelAt(b, cx, cy);
+  check("the highlight is actually there", one[2]! < 230, one.join(","));
+  check("two passes are the same shade as one",
+    one.every((v, i) => Math.abs(v - two[i]!) <= 2), `${one} vs ${two}`);
 }
 
 console.log(failures === 0 ? "\nraster: all good\n" : `\nraster: ${failures} failed\n`);

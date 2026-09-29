@@ -1,5 +1,6 @@
 "use client";
 
+import { StickerPaths } from "./StickerPaths";
 import { useEffect, useState } from "react";
 import {
   STICKER_GROUPS, type StickerGroup, type StickerName,
@@ -129,7 +130,7 @@ const BOX = 100;
  *
  * Drawn by `placeSticker`, which is also what the plane, the ghost and the
  * exporter call -- so all four agree by construction rather than by four sets
- * of arithmetic that match today. It carries the same `paint-order` die-cut
+ * of arithmetic that match today. It carries the same filled die-cut
  * edge, which is what makes this a sticker rather than a flat icon of one.
  */
 function Glyph({ name, color }: { name: StickerName; color: string }) {
@@ -144,14 +145,7 @@ function Glyph({ name, color }: { name: StickerName; color: string }) {
       aria-hidden
     >
       <g transform={`translate(${p.tx} ${p.ty}) scale(${p.k})`}>
-        <path
-          d={p.art.d}
-          fill={color}
-          stroke="#FFFFFF"
-          strokeWidth={p.stroke}
-          strokeLinejoin="round"
-          paintOrder="stroke fill"
-        />
+        <StickerPaths name={name} color={color} p={p} />
       </g>
     </svg>
   );

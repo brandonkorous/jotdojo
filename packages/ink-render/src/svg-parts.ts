@@ -1,9 +1,10 @@
 import type { InkDocument, Link, Stroke, TextBox } from "@jotacular/domain";
 import { control, widthAt } from "./geometry";
-import { cardBounds, inkOn } from "./text-geometry";
+import { cardBounds, fillOf, inkOn } from "./text-geometry";
 import { segmentFor, type Segment } from "./links";
 import { placeSticker, stickerBounds } from "./sticker-geometry";
 import { turnAttr } from "./turn";
+import { stickerBacking } from "./sticker-backing";
 
 /**
  * What one THING on the page looks like: a stroke, a typed box, the card
@@ -59,7 +60,7 @@ export function segments(stroke: Stroke, ink: string, alpha: number): string[] {
 export function textLines(box: TextBox, escape: (v: string) => string): string[] {
   const perLine = Math.max(1, Math.floor(box.w / (box.size * 0.55)));
   const out: string[] = [];
-  const ink = box.fill ? inkOn(box.fill) : box.color;
+  const ink = inkOn(fillOf(box));
   for (const paragraph of box.text.split("\n")) {
     if (!paragraph.trim()) { out.push(""); continue; }
     let line = "";
@@ -76,7 +77,7 @@ export function textLines(box: TextBox, escape: (v: string) => string): string[]
     + ` font-family="ui-sans-serif, system-ui, sans-serif" font-size="${n(box.size)}"`
     + ` fill="${escape(ink)}" xml:space="preserve">${escape(line)}</text>`);
 
-  const parts = box.fill ? [cardRect(box, escape), ...lines] : lines;
+  const parts = [cardRect(box, escape), ...lines];
   // Turned about the card's centre, as the editor turns it. ADR-122.
   return box.rot ? [`<g${turnAttr(cardBounds(box), box.rot)}>`, ...parts, "</g>"] : parts;
 }
@@ -94,7 +95,7 @@ function cardRect(box: TextBox, escape: (v: string) => string): string {
   const b = cardBounds(box);
   const r = box.size * 0.5;
   return `<rect x="${n(b.x)}" y="${n(b.y)}" width="${n(b.w)}" height="${n(b.h)}"`
-    + ` rx="${n(r)}" ry="${n(r)}" fill="${escape(box.fill!)}"/>`;
+    + ` rx="${n(r)}" ry="${n(r)}" fill="${escape(fillOf(box))}"/>`;
 }
 
 /**
@@ -155,9 +156,10 @@ export function stickers(doc: InkDocument, escape: (v: string) => string): strin
     out.push(
       `<g${turnAttr(stickerBounds(sticker), sticker.rot)}>`
       + `<g transform="translate(${n(p.tx)} ${n(p.ty)}) scale(${p.k.toFixed(5)})">`
-      + `<path d="${p.art.d}" fill="${escape(sticker.color)}"`
-      + ` stroke="#FFFFFF" stroke-width="${n(p.stroke)}" stroke-linejoin="round"`
-      + ` paint-order="stroke fill"/></g></g>`,
+      // The white it is cut from first, then the art on it. ADR-128.
+      + `<path d="${stickerBacking(sticker.name)}" fill="#FFFFFF"`
+      + ` stroke="#FFFFFF" stroke-width="${n(p.stroke)}" stroke-linejoin="round"/>`
+      + `<path d="${p.art.d}" fill="${escape(sticker.color)}"/></g></g>`,
     );
   }
   return out;

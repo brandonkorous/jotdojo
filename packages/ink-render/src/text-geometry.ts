@@ -60,6 +60,11 @@ export function textBounds(box: TextBox): Bounds {
  */
 export const CARD_PAD = 0.55;
 
+/** Every note is a card. One stored with no colour -- before ADR-131, or from
+ *  an agent that did not say -- is shown on paper. */
+export const DEFAULT_CARD = "#FBF8F2";
+export const fillOf = (box: TextBox): string => box.fill ?? DEFAULT_CARD;
+
 /**
  * The rectangle a card actually COVERS, which is bigger than its text.
  *
@@ -67,12 +72,10 @@ export const CARD_PAD = 0.55;
  * a colour never moves a word. Somebody turning a note into a card watches the
  * card appear around what they wrote, instead of watching their text jump.
  *
- * A box with no fill has no card, and its bounds are its text -- which is every
- * box written before ADR-079, unchanged.
+ * Every box has one now (ADR-131): an unset fill is drawn as paper.
  */
 export function cardBounds(box: TextBox): Bounds {
   const b = textBounds(box);
-  if (!box.fill) return b;
   const pad = box.size * CARD_PAD;
   return { x: b.x - pad, y: b.y - pad, w: b.w + pad * 2, h: b.h + pad * 2 };
 }

@@ -18,9 +18,11 @@ export {
 } from "./sticker-geometry";
 
 export { STICKER_ART, type StickerArt } from "./sticker-art";
+export { stickerBacking } from "./sticker-backing";
 
 export {
   textBounds, textContentHeight, cardBounds, inkOn, TEXT_LINE_HEIGHT, CARD_PAD,
+  DEFAULT_CARD, fillOf,
 } from "./text-geometry";
 
 export { spin, centreOf, corners, extent, hits, bearing, turnAttr } from "./turn";

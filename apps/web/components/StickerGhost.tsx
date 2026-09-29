@@ -1,5 +1,6 @@
 "use client";
 
+import { StickerPaths } from "./StickerPaths";
 import { useEffect, useState } from "react";
 import { placeSticker } from "@jotacular/ink-render";
 import { STICKER_FRACTION, type ArmedSticker } from "@/lib/ink-sticker-layer";
@@ -67,14 +68,7 @@ export function StickerGhost({ armed }: { armed: ArmedSticker | null }) {
       focusable="false"
     >
       <g transform={`translate(${p.tx} ${p.ty}) scale(${p.k})`}>
-        <path
-          d={p.art.d}
-          fill={armed.color}
-          stroke="#FFFFFF"
-          strokeWidth={p.stroke}
-          strokeLinejoin="round"
-          paintOrder="stroke fill"
-        />
+        <StickerPaths name={armed.name} color={armed.color} p={p} />
       </g>
     </svg>
   );

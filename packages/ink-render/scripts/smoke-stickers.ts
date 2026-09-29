@@ -40,6 +40,15 @@ const mark = (name: string, x = 0, y = 0, size = 200): Sticker =>
 const page = (stickers: Sticker[]): InkDocument =>
   ({ v: 1, canvas: { w: 800, h: 600 }, strokes: [], stickers });
 
+/** Pixels with any paint at all, on transparent paper. */
+async function opaque(svg: string) {
+  const { data } = await sharp(await svgToPng(svg)).ensureAlpha().raw()
+    .toBuffer({ resolveWithObject: true });
+  let n = 0;
+  for (let i = 3; i < data.length; i += 4) if (data[i]! > 128) n++;
+  return n;
+}
+
 async function count(svg: string, hit: (r: number, g: number, b: number) => boolean) {
   const { data, info } = await sharp(await svgToPng(svg)).raw()
     .toBuffer({ resolveWithObject: true });
@@ -109,28 +118,20 @@ console.log("\n(3) a sticker never reaches the recogniser");
   const doc = page([mark("fire")]);
   const seen = toSvg(doc, { mode: "viewing", text: true });
   const read = toSvg(doc, { mode: "recognition" });
-  check("a person looking at the page sees it", seen.includes("paint-order"));
-  check("a model reading the page does not", !read.includes("paint-order"), read.slice(0, 200));
+  check("a person looking at the page sees it", seen.includes('fill="#FFFFFF" stroke="#FFFFFF"'));
+  check("a model reading the page does not", !read.includes('fill="#FFFFFF" stroke="#FFFFFF"'), read.slice(0, 200));
   check("...and there is no path of it either", !read.includes(STICKER_ART.fire!.d.slice(0, 40)));
 }
 
-console.log("\n(2) the white edge sits BEHIND the picture, not over it");
+console.log("\n(2) a sticker is cut from white, so its middle is filled. ADR-128");
 {
-  const svg = toSvg(page([mark("fire")]), { mode: "viewing", text: true });
-  check("the die-cut attribute is there", svg.includes('paint-order="stroke fill"'));
-  check("...and it is a white stroke", svg.includes('stroke="#FFFFFF"'));
-
-  const withEdge = await count(svg, isRed);
-  // The same drawing with the one attribute removed: the stroke then paints
-  // OVER the fill and thins the glyph from the outside in.
-  const overIt = await count(svg.replace(/ paint-order="stroke fill"/g, ""), isRed);
-
-  check("the flame is actually drawn", withEdge > 2000, String(withEdge));
-  check("the edge does NOT eat into the artwork", withEdge > overIt,
-    `behind: ${withEdge} red px, over: ${overIt} red px`);
-  check("...by a visible margin, not a rounding error",
-    withEdge - overIt > withEdge * 0.1,
-    `behind: ${withEdge}, over: ${overIt}`);
+  const svg = toSvg(page([mark("circle-check")]), { mode: "preview", text: true });
+  check("the white backing is there", svg.includes('fill="#FFFFFF" stroke="#FFFFFF"'));
+  // Transparent paper, so the page showing through a hole reads as NOT drawn.
+  const filled = await opaque(svg);
+  const hollow = await opaque(svg.replace(/<path d="[^"]*" fill="#FFFFFF"[^>]*>/, ""));
+  check("the ring's middle is filled, not see-through", filled > hollow * 1.5,
+    `with backing: ${filled} px, without: ${hollow} px`);
 }
 
 console.log("\nevery sticker in the set renders");
@@ -139,7 +140,7 @@ console.log("\nevery sticker in the set renders");
     page(STICKER_NAMES.map((name, i) => mark(name, (i % 10) * 120, Math.floor(i / 10) * 120, 100))),
     { mode: "viewing", text: true },
   );
-  const drawn = (svg.match(/paint-order="stroke fill"/g) ?? []).length;
+  const drawn = (svg.match(/fill="#FFFFFF" stroke="#FFFFFF"/g) ?? []).length;
   check("all of them are in the picture", drawn === STICKER_NAMES.length,
     `${drawn} of ${STICKER_NAMES.length}`);
   const png = await svgToPng(svg);

@@ -25,8 +25,9 @@ export function AddMenu({
   side?: "bottom" | "left" | "right";
   onPhoto: () => void;
   onVoice: () => void;
-  /** Arm placing a text box on the canvas. ADR-065. */
-  onNote: () => void;
+  /** Arm placing a text box on the canvas, or place one now when the menu
+   *  was worked from the keyboard, which has no tap to give. ADR-065, ADR-130. */
+  onNote: (byKeyboard: boolean) => void;
   /** Open the sticker tray. Absent on the marketing hero, which has no plane
    *  to stick one to. ADR-115. */
   onSticker?: () => void;
@@ -62,7 +63,7 @@ export function AddMenu({
           <Icon name="voice" />
           Voice note
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={onNote}>
+        <DropdownMenuItem onClick={(e) => onNote(e.detail === 0)}>
           <Icon name="text" />
           A note on the canvas
         </DropdownMenuItem>

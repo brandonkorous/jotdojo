@@ -216,7 +216,7 @@ export class InkEngine implements InputHost {
 
   commit(stroke: Stroke) {
     this.strokes.push(stroke);
-    commitStroke(this.surface, stroke);
+    if (!commitStroke(this.surface, stroke)) this.repaint();
     // Recorded, not published: the stroke goes out as an APPEND, and only the
     // way back from it is a delta. ADR-109.
     this.doc.history.record({ remove: [], upsert: [stroke] });

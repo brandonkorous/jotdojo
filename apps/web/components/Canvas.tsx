@@ -101,11 +101,12 @@ export function Canvas({
    *  ref that nothing else here reads. ADR-102. */
   const blankTap = useBlankTap(input, tool);
 
-  /** The Add menu PUTS a note on the page rather than arming a tap: no key
-   *  places a box and the canvas is deliberately not focusable, so arming one
-   *  left a keyboard-only person unable to write at all. Issue 012. */
-  const addTextBox = () => {
+  /** From the Add menu: arm the note tool, so a tap drops one and a drag draws
+   *  its size. From the KEYBOARD it puts one down now, because no key places a
+   *  box and the canvas is not focusable. Issue 012, ADR-130. */
+  const addTextBox = (byKeyboard = true) => {
     armTextBox();
+    if (!byKeyboard) return;
     requestAnimationFrame(() => {
       const r = shellRef.current?.getBoundingClientRect();
       if (r) engineRef.current?.textAtClient(r.left + r.width / 2, r.top + r.height / 3);

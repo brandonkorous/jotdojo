@@ -3,9 +3,10 @@
  * Every rule here is on `.jd-chrome`, whose doubled [class] makes `position:
  * absolute` beat Silica's `glass` (canvas.css says why).
  */
+/* Under the logo, in the top corner on its side, as the mockup has it: the
+   eye starts top-left, and the tools are the first thing it meets. ADR-129. */
 .jd-side-rail {
-  top: 50%;
-  transform: translateY(-50%);
+  top: 3.5rem;
   z-index: 20;
   display: flex;
   flex-direction: column;
@@ -30,10 +31,23 @@
 /* On a phone it folds to one button in the top corner, and unfolds downward
    from there. The breakpoint is `use-narrow.ts`'s; keep the two in step. */
 @media (max-width: 30rem) {
-  .jd-side-rail { top: 0.75rem; transform: none; padding: 0.25rem; border-radius: 1.5rem; }
+  .jd-side-rail { top: 0.75rem; padding: 0.25rem; border-radius: 1.5rem; }
+  /* The writing band on a phone is too narrow to give a logo a row. */
+  .jd-rail-logo.jd-rail-logo { display: none; }
   /* Doubled, to beat the `display: contents` on the add menu's wrapper. */
   .jd-side-rail[data-open='false'] .jd-rail-extra.jd-rail-extra { display: none; }
 }
+
+.jd-rail-logo {
+  position: absolute;
+  top: 0.9rem;
+  z-index: 20;
+  display: block;
+  line-height: 0;
+}
+.jd-rail-logo[data-side='left'] { left: 1rem; }
+.jd-rail-logo[data-side='right'] { right: 1rem; }
+.jd-rail-logo .jd-wordmark { height: 1.625rem; }
 
 /* ---- The corner: search, remarks, you. -------------------------------- */
 .jd-corner {
@@ -118,6 +132,8 @@
 /* Folded on a phone, the chip's own chevron sits in that corner instead. */
 .jd-side-rail .jd-tool[data-chip]::before { display: none; }
 .jd-ink-mount[data-tool='pan'] { cursor: grab; }
+/* A note waiting to be put down: tap for one, drag to draw its size. */
+.jd-ink-mount[data-tool='textbox'] { cursor: crosshair; }
 .jd-ink-mount[data-tool='pan']:active { cursor: grabbing; }
 
 /* Typing starts clear of the rail, on whichever side it stands. A phone's

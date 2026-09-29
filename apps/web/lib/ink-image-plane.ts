@@ -1,4 +1,5 @@
-import type { ImageOnPage } from "@jotacular/domain";
+import type { ImageOnPage, MediaClip } from "@jotacular/domain";
+import { makePrint, showPicture, writeOn, type Print } from "./ink-print";
 import { VoiceCards, type ClipSource } from "./ink-voice-card";
 import { applyTurn } from "./ink-turned";
 
@@ -22,22 +23,26 @@ export type ImageSource = (blockId: string) => Promise<string | null>;
 export class InkImagePlane {
   private readonly el: HTMLElement;
   private readonly src: ImageSource;
-  private readonly nodes = new Map<string, HTMLImageElement>();
+  private readonly nodes = new Map<string, Print>();
+  /** The date and caption per block, when a clip source can say. ADR-127. */
+  private readonly meta = new Map<string, MediaClip>();
   /** One signed URL per block, however many placements point at it. */
   private readonly urls = new Map<string, string>();
   private readonly asking = new Set<string>();
 
   /** A recording's placement is drawn as a voice card instead. ADR-121. */
   private readonly voices: VoiceCards | null;
+  private readonly clips: ClipSource | null;
 
   constructor(el: HTMLElement, src: ImageSource, clips?: ClipSource) {
     this.el = el;
     this.src = src;
+    this.clips = clips ?? null;
     this.voices = clips ? new VoiceCards(el, clips) : null;
   }
 
   destroy() {
-    for (const node of this.nodes.values()) node.remove();
+    for (const print of this.nodes.values()) print.frame.remove();
     this.nodes.clear();
     this.voices?.destroy();
   }
@@ -45,9 +50,9 @@ export class InkImagePlane {
   render(images: readonly ImageOnPage[]) {
     const pics = images.filter((i) => i.media !== "audio");
     const live = new Set(pics.map((i) => i.id));
-    for (const [id, node] of this.nodes) {
+    for (const [id, print] of this.nodes) {
       if (live.has(id)) continue;
-      node.remove();
+      print.frame.remove();
       this.nodes.delete(id);
     }
     for (const image of pics) this.one(image);
@@ -56,52 +61,46 @@ export class InkImagePlane {
   }
 
   private one(image: ImageOnPage) {
-    let node = this.nodes.get(image.id);
-    if (!node) {
-      node = document.createElement("img");
-      node.className = "jd-plane-image";
-      // The vision transcript is the honest alt text and it lives on the block,
-      // not the placement -- so a photo says nothing here rather than repeating
-      // a filename at a screen reader. It is set once the caption is known.
-      node.alt = "";
-      node.draggable = false;
-      node.dataset.block = image.blockId;
-      // A picture whose bytes will not load shows NOTHING rather than a framed
-      // empty rectangle. The placement stays -- the page is not ours to edit
-      // because a URL expired -- but it stops claiming there is a photo there.
-      node.onerror = () => { node!.dataset.broken = "true"; };
-      node.onload = () => { delete node!.dataset.broken; };
-      this.el.append(node);
-      this.nodes.set(image.id, node);
+    let print = this.nodes.get(image.id);
+    if (!print) {
+      print = makePrint(image.blockId);
+      this.el.append(print.frame);
+      this.nodes.set(image.id, print);
     }
-    node.style.left = `${image.x}px`;
-    node.style.top = `${image.y}px`;
-    node.style.width = `${image.w}px`;
-    node.style.height = `${image.h}px`;
+    const s = print.frame.style;
+    s.left = `${image.x}px`;
+    s.top = `${image.y}px`;
+    s.width = `${image.w}px`;
+    s.height = `${image.h}px`;
     // The polaroid frame is sized from the shorter side. ADR-120.
-    node.style.setProperty("--jd-print", `${Math.min(image.w, image.h)}px`);
-    applyTurn(node, image.rot);
+    s.setProperty("--jd-print", `${Math.min(image.w, image.h)}px`);
+    applyTurn(print.frame, image.rot);
 
     const url = this.urls.get(image.blockId);
-    if (url) { if (node.src !== url) node.src = url; return; }
+    const clip = this.meta.get(image.blockId);
+    if (clip) writeOn(print, clip);
+    if (url) return showPicture(print, url);
     this.ask(image.blockId);
   }
 
   /**
-   * One request per block, ever.
-   *
-   * `render` runs on every drag frame, and a signed-URL request per frame would
-   * be a request per pixel of movement.
+   * One request per block, ever: `render` runs on every drag frame. With a
+   * clip source the same round trip brings the date for the print's foot.
    */
   private ask(blockId: string) {
     if (this.asking.has(blockId)) return;
     this.asking.add(blockId);
-    void this.src(blockId).then((url) => {
+    const got = (url: string | null, clip?: MediaClip) => {
       if (!url) return;
       this.urls.set(blockId, url);
-      for (const node of this.nodes.values()) {
-        if (node.dataset.block === blockId) node.src = url;
+      if (clip) this.meta.set(blockId, clip);
+      for (const print of this.nodes.values()) {
+        if (print.frame.dataset.block !== blockId) continue;
+        showPicture(print, url);
+        if (clip) writeOn(print, clip);
       }
-    });
+    };
+    if (this.clips) void this.clips(blockId).then((c) => got(c?.url ?? null, c ?? undefined));
+    else void this.src(blockId).then((url) => got(url));
   }
 }

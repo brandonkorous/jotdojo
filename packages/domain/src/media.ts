@@ -194,10 +194,12 @@ export async function mediaUrl(actor: Actor, blockId: string): Promise<string> {
   });
 }
 
-/** What a voice card on the page shows: where to play it from, how long it
- *  is, and what it said once the worker has read it. ADR-121. */
+/** What a voice card or a print on the page shows: where the bytes are, how
+ *  long, what it said or shows, and when it was added. ADR-121, ADR-127. */
 export type MediaClip = {
   url: string;
+  /** ISO time the block was made: the date on a polaroid's foot. */
+  createdAt: string;
   durationMs: number | null;
   transcript: string | null;
   pending: boolean;
@@ -210,6 +212,7 @@ export async function mediaClip(actor: Actor, blockId: string): Promise<MediaCli
       durationMs: mediaAssets.durationMs,
       transcript: blocks.transcript,
       state: blocks.transcriptState,
+      createdAt: blocks.createdAt,
     })
       .from(blocks)
       .innerJoin(mediaAssets, eq(mediaAssets.id, blocks.artifactId))
@@ -218,6 +221,7 @@ export async function mediaClip(actor: Actor, blockId: string): Promise<MediaCli
     if (!row) throw new NotFound("No media for that block");
     return {
       url,
+      createdAt: new Date(row.createdAt).toISOString(),
       durationMs: row.durationMs ?? null,
       transcript: row.transcript ?? null,
       pending: row.state === "pending",

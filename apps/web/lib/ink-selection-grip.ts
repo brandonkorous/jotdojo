@@ -23,15 +23,18 @@ const SNAP = 4;
 const MIN_W = 24;
 const MIN_STICKER = 12;
 
+/** What the handles are drawn round: a box, turned by an angle. */
+export type Frame = { b: Bounds; rot: number };
+
+export const frameOf = (g: Gripped): Frame => ({ b: areaOf(g), rot: g.obj.rot ?? 0 });
+
 export function areaOf(g: Gripped): Bounds {
   if (g.kind === "box") return cardBounds(g.obj);
   return g.kind === "pic" ? imageArea(g.obj) : stickerArea(g.obj);
 }
 
 /** Where the outline and the two handles are drawn, in document units. */
-export function gripPoints(g: Gripped, k: number) {
-  const b = areaOf(g);
-  const rot = g.obj.rot ?? 0;
+export function gripPoints({ b, rot }: Frame, k: number) {
   const [cx, cy] = centreOf(b);
   const outline = corners(b, rot);
   const top = spin(cx, b.y, cx, cy, rot);
@@ -40,8 +43,8 @@ export function gripPoints(g: Gripped, k: number) {
 }
 
 /** Which handle a pointer is on, if any. */
-export function gripAt(g: Gripped, x: number, y: number, k: number): Grip | null {
-  const p = gripPoints(g, k);
+export function gripAt(f: Frame, x: number, y: number, k: number): Grip | null {
+  const p = gripPoints(f, k);
   const reach = GRIP_REACH / k;
   if (Math.hypot(x - p.knob[0], y - p.knob[1]) <= reach) return "turn";
   if (Math.hypot(x - p.resize[0], y - p.resize[1]) <= reach) return "resize";
@@ -51,12 +54,17 @@ export function gripAt(g: Gripped, x: number, y: number, k: number): Grip | null
 /** Turn so the knob points at the pointer, landing on right angles. */
 export function turnTo(g: Gripped, x: number, y: number) {
   const [cx, cy] = centreOf(areaOf(g));
-  let deg = bearing(cx, cy, x, y);
+  const deg = snapTurn(bearing(cx, cy, x, y));
+  if (deg === 0) delete g.obj.rot;
+  else g.obj.rot = deg;
+}
+
+/** Land on right angles, then wrap into (-180, 180], to a tenth. */
+export function snapTurn(deg: number): number {
   const right = Math.round(deg / 90) * 90;
-  if (Math.abs(deg - right) <= SNAP) deg = right;
-  deg = ((deg % 360) + 540) % 360 - 180;
-  if (Math.abs(deg) < 0.5) delete g.obj.rot;
-  else g.obj.rot = Math.round(deg * 10) / 10;
+  let d = Math.abs(deg - right) <= SNAP ? right : deg;
+  d = ((d % 360) + 540) % 360 - 180;
+  return Math.abs(d) < 0.5 ? 0 : Math.round(d * 10) / 10;
 }
 
 /**
@@ -86,7 +94,7 @@ function sized(g: Gripped, b: Bounds, w: number, h: number) {
 function place(g: Gripped, r: Bounds) {
   if (g.kind === "mark") return void Object.assign(g.obj, { x: r.x, y: r.y, size: r.w });
   if (g.kind === "pic") return void Object.assign(g.obj, r);
-  const pad = g.obj.fill ? g.obj.size * CARD_PAD : 0;
+  const pad = g.obj.size * CARD_PAD;
   Object.assign(g.obj, {
     x: r.x + pad, y: r.y + pad,
     w: Math.max(g.obj.size, r.w - pad * 2), h: Math.max(g.obj.size, r.h - pad * 2),

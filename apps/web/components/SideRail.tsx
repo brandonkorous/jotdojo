@@ -23,7 +23,7 @@ export function SideRail({
   onTool: (tool: CanvasTool) => void;
   onCamera: () => void;
   onMic: () => void;
-  onTextBox: () => void;
+  onTextBox: (byKeyboard: boolean) => void;
   onSticker: () => void;
 }) {
   const narrow = useNarrow();
@@ -64,7 +64,7 @@ function RailActions({ side, fold, onCamera, onMic, onTextBox, onSticker }: {
   fold: () => void;
   onCamera: () => void;
   onMic: () => void;
-  onTextBox: () => void;
+  onTextBox: (byKeyboard: boolean) => void;
   onSticker: () => void;
 }) {
   const then = (act: () => void) => () => { act(); fold(); };
@@ -81,7 +81,7 @@ function RailActions({ side, fold, onCamera, onMic, onTextBox, onSticker }: {
       </button>
       <span className="jd-rail-extra">
         <AddMenu side={side === "left" ? "right" : "left"} onPhoto={then(onCamera)}
-          onVoice={then(onMic)} onNote={then(onTextBox)} onSticker={then(onSticker)} />
+          onVoice={then(onMic)} onNote={(k) => { onTextBox(k); fold(); }} onSticker={then(onSticker)} />
       </span>
     </>
   );

@@ -95,6 +95,19 @@
  * the strokes next to whatever was caught, which is exactly what somebody is
  * looking at when they are deciding what to do with it.
  * ------------------------------------------------------------------------- */
+/* Attached to what it acts on (ADR-125), in the menus' card look. Hidden
+   until `use-attached-bar.ts` has placed it, so it never flashes elsewhere. */
+.jd-selection-bar {
+  visibility: hidden;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem;
+  border-radius: 12px;
+  background: var(--color-base-100);
+  border: 1px solid color-mix(in oklch, var(--color-base-content) 16%, transparent);
+}
 .jd-selection-count {
   padding-inline: 0.6rem 0.2rem;
   font-size: 0.75rem;

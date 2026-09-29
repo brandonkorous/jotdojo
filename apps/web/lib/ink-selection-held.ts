@@ -39,6 +39,8 @@ export type SelectionSummary = {
   /** How many are stickers. Recolouring one is meaningful and resizing it is,
    *  but nothing else a pen palette offers is. ADR-115. */
   stickers: number;
+  /** How many of `images` are voice cards, so the bar can name them. ADR-121. */
+  voices: number;
   /**
    * What one selected stroke could be tidied into, when the classifier is sure.
    *
@@ -51,7 +53,7 @@ export type SelectionSummary = {
 
 export const NO_SELECTION: SelectionSummary = {
   count: 0, pen: false, marker: false, penWidth: null, ids: [],
-  texts: 0, images: 0, stickers: 0, shape: null,
+  texts: 0, images: 0, stickers: 0, voices: 0, shape: null,
 };
 
 export class Held {
@@ -118,6 +120,7 @@ export class Held {
       texts: this.boxes.length,
       images: this.pics.length,
       stickers: this.marks.length,
+      voices: this.pics.filter((p) => p.media === "audio").length,
       // Only ever asked of ONE stroke and nothing else: "tidy these six
       // squiggles" is not a thing anybody means, and classifying a whole
       // selection to find out would cost a pass over every point.
