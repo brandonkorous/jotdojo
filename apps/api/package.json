@@ -14,7 +14,7 @@
   "dependencies": {
     "@jotacular/domain": "workspace:*",
     "@jotacular/storage": "workspace:*",
-    "@wizeworks/lens-node": "0.3.0-alpha.9",
+    "@wizeworks/lens-node": "0.3.0-alpha.10",
     "fastify": "^5.2.1",
     "tsx": "^4.19.2"
   },

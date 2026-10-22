@@ -1,7 +1,7 @@
 // WizeLens: one trace per claimed batch, with the provider calls inside it. On in
 // development; in production only with WIZELENS_ENABLED=true, then send-only to
-// WIZELENS_HUB. Off in the smoke suites. Queries are untraced: postgres.js is not supported yet.
-import { createWizeLens, type WizeLens } from "@wizeworks/lens-node";
+// WIZELENS_HUB. Off in the smoke suites. Queries are spans too.
+import { createWizeLens, instrumentDrizzle, type WizeLens } from "@wizeworks/lens-node";
 
 const SERVICE = "jotdojo-worker";
 
@@ -20,6 +20,17 @@ function start(): WizeLens {
 }
 
 const wizelens = start();
+
+/** packages/db calls this once its pool exists: every query in a request or job becomes a span. */
+function traceQueries(db: unknown): void {
+  try {
+    if (!instrumentDrizzle(wizelens, db)) console.warn("[wizelens] queries are untraced: unknown driver");
+  } catch (err) {
+    console.warn("[wizelens] queries are untraced", err);
+  }
+}
+
+if (wizelens.enabled) (globalThis as { __wizelensDb?: typeof traceQueries }).__wizelensDb = traceQueries;
 
 /**
  * Run one claimed batch of an outbox topic as its own trace. Called only once

@@ -155,8 +155,9 @@ az keyvault secret set --vault-name kv-jotdojo-prod-cus --name wizelens-key-work
 
 Vault names are case-insensitive, so `wizelens-key-web` is `WIZELENS-KEY-WEB`.
 The keys are optional: a missing one leaves that service running and untraced
-in the cloud. Database queries are not in the traces yet, because WizeLens does
-not instrument postgres.js.
+in the cloud. Queries made inside a request or a worker batch are spans in its
+trace (Drizzle on postgres.js, wired in `packages/db/src/client.ts`); the live
+channel's LISTEN and the claim polling run outside one and are not traced.
 
 ## The deploy pipeline
 

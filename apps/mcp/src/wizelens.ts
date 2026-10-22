@@ -1,8 +1,8 @@
 // WizeLens: request tracing. On in development (dashboard at /_wizelens); in
 // production only with WIZELENS_ENABLED=true, and then send-only to WIZELENS_HUB.
-// Off in the smoke suites. Queries are untraced: postgres.js is not supported yet.
+// Off in the smoke suites. Queries are spans too.
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { createWizeLens, type WizeLens } from "@wizeworks/lens-node";
+import { createWizeLens, instrumentDrizzle, type WizeLens } from "@wizeworks/lens-node";
 
 const SERVICE = "jotdojo-mcp";
 
@@ -20,6 +20,17 @@ function start(): WizeLens {
 }
 
 const wizelens = start();
+
+/** packages/db calls this once its pool exists: every query in a request or job becomes a span. */
+function traceQueries(db: unknown): void {
+  try {
+    if (!instrumentDrizzle(wizelens, db)) console.warn("[wizelens] queries are untraced: unknown driver");
+  } catch (err) {
+    console.warn("[wizelens] queries are untraced", err);
+  }
+}
+
+if (wizelens.enabled) (globalThis as { __wizelensDb?: typeof traceQueries }).__wizelensDb = traceQueries;
 
 type Handler = (req: IncomingMessage, res: ServerResponse) => Promise<void>;
 

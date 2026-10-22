@@ -18,7 +18,7 @@
     "@jotacular/domain": "workspace:*",
     "@jotacular/ink-render": "workspace:*",
     "@modelcontextprotocol/sdk": "^1.30.0",
-    "@wizeworks/lens-node": "0.3.0-alpha.9",
+    "@wizeworks/lens-node": "0.3.0-alpha.10",
     "sharp": "^0.35.4",
     "tsx": "^4.19.2",
     "zod": "^3.24.1"
