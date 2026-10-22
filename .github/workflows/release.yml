@@ -207,6 +207,13 @@ jobs:
             STRIPE_PRICE_SOLO
             STRIPE_PRICE_FAMILY
             STRIPE_PRICE_TEAM
+            # One WizeLens ingest key per service, vault `wizelens-key-<service>`.
+            # Each Deployment maps its own to WIZELENS_HUB_TOKEN, optionally:
+            # without it that service is untraced and nothing else changes.
+            WIZELENS_KEY_WEB
+            WIZELENS_KEY_API
+            WIZELENS_KEY_MCP
+            WIZELENS_KEY_WORKER
           )
 
           missing=()

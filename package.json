@@ -97,7 +97,8 @@
       "fast-uri@^4": "^4.1.3",
       "js-yaml@^4": "^4.3.2",
       "hono": "^4.13.5",
-      "qs": "^6.16.0"
+      "qs": "^6.16.0",
+      "@opentelemetry/api": "1.9.1"
     },
     "onlyBuiltDependencies": [
       "esbuild",

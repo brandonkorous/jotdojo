@@ -6,6 +6,7 @@ import { tiles, bounds } from "@jotacular/ink-render";
 import { toPng } from "@jotacular/ink-render/raster";
 import { readStructure, RecognitionError, type Recognizer } from "@jotacular/vision";
 import { structureSourceFor } from "./sources";
+import { traceJobs } from "./wizelens";
 
 /**
  * Reading a page for what is DRAWN on it. ADR-066.
@@ -40,7 +41,10 @@ export async function runStructureCycle(
 
   const jobs = await claimStructureJobs(batch);
   if (jobs.length === 0) return { claimed: 0, read: 0, failed: 0 };
+  return traceJobs("block.structure", jobs.length, () => readAll(recognizer, jobs));
+}
 
+async function readAll(recognizer: Recognizer, jobs: StructureJob[]): Promise<StructureResult> {
   let read = 0;
   let failed = 0;
 

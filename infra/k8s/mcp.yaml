@@ -44,6 +44,11 @@ spec:
             - configMapRef: { name: jotacular-config }
             - secretRef: { name: jotacular-secrets }
           env:
+            # This service's own WizeLens ingest key. Optional: a missing key
+            # leaves the pod running and untraced in the cloud.
+            - name: WIZELENS_HUB_TOKEN
+              valueFrom:
+                secretKeyRef: { name: jotacular-secrets, key: WIZELENS_KEY_MCP, optional: true }
             # A smaller share than web and api: an agent tool call is one unit of
             # work at a time, not a concurrent request fan-out.
             - name: DB_POOL_MAX

@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { brand, pigment } from "@/lib/brand";
 import "./globals.css";
 import { THEME_BOOT } from "@/lib/theme";
+import { WizeLens } from "@/components/WizeLens";
 
 export const metadata: Metadata = {
     title: brand.name,
@@ -47,6 +48,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </head>
             <body className="bg-base-300 text-base-content font-sans antialiased">
                 {children}
+                {/* Tracing: on only when this page's server traces it; no HUD outside development. */}
+                <WizeLens />
             </body>
         </html>
     );

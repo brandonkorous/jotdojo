@@ -1,5 +1,6 @@
 import { claimEmbedJobs, finishJob, storeEmbedding, type EmbedJob } from "@jotacular/domain";
 import { EmbeddingError, type Embedder } from "@jotacular/embeddings";
+import { traceJobs } from "./wizelens";
 
 export type CycleResult = { claimed: number; embedded: number; failed: number };
 
@@ -12,7 +13,10 @@ export type CycleResult = { claimed: number; embedded: number; failed: number };
 export async function runCycle(embedder: Embedder, batch = 16): Promise<CycleResult> {
   const jobs = await claimEmbedJobs(batch);
   if (jobs.length === 0) return { claimed: 0, embedded: 0, failed: 0 };
+  return traceJobs("block.embed", jobs.length, () => embedBatch(embedder, jobs));
+}
 
+async function embedBatch(embedder: Embedder, jobs: EmbedJob[]): Promise<CycleResult> {
   // A note is several blocks, so one outbox row can yield several jobs. The
   // job is only finished once every block it produced has been handled --
   // finishing early would drop the rest of the note out of semantic search.
