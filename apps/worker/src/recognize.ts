@@ -9,6 +9,7 @@ import { storage } from "@jotacular/storage";
 import { RecognitionError, type Recognizer, type Page } from "@jotacular/vision";
 import { TranscriptionError, type Transcriber } from "@jotacular/speech";
 import { sourceFor } from "./sources";
+import { traceJobs } from "./wizelens";
 
 export type RecognizeResult = { claimed: number; read: number; failed: number };
 
@@ -104,7 +105,12 @@ export async function runRecognitionCycle(
 ): Promise<RecognizeResult> {
   const jobs = await claimRecognizeJobs(batch);
   if (jobs.length === 0) return { claimed: 0, read: 0, failed: 0 };
+  return traceJobs("block.recognize", jobs.length, () => readAll(recognizer, transcriber, jobs));
+}
 
+async function readAll(
+  recognizer: Recognizer | null, transcriber: Transcriber | null, jobs: RecognizeJob[],
+): Promise<RecognizeResult> {
   let read = 0;
   let failed = 0;
 

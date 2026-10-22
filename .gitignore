@@ -23,3 +23,6 @@ coverage/
 
 # Illustrator scratch files, written beside the artwork they came from.
 ~ai-*.tmp
+
+# WizeLens traces kept by the local dashboard in development.
+.wizelens/

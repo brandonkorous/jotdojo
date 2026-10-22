@@ -1,3 +1,5 @@
+// FIRST: WizeLens patches node:http and fetch before anything else loads.
+import { wizelensPlugin } from "./wizelens.js";
 import Fastify from "fastify";
 import {
   resolveCaptureToken, captureNote, RateLimited, DomainError,
@@ -13,6 +15,10 @@ const app = Fastify({
   // surface on an endpoint authenticated by a long-lived bearer token.
   bodyLimit: 1_000_000,
 });
+
+// Before every route, so each request is one trace. Development serves the
+// dashboard at /_wizelens; production sends to the hub and serves nothing.
+await app.register(wizelensPlugin);
 
 app.get("/health", async () => ({ ok: true }));
 

@@ -138,6 +138,26 @@ az keyvault secret set --vault-name kv-jotdojo-prod-cus --name DATABASE-URL --va
 Key Vault secret names allow only alphanumerics and hyphens, so an env var like
 `DATABASE_URL` is stored as `DATABASE-URL` and the workflow maps it back.
 
+### WizeLens ingest keys
+
+All four services send traces to WizeLens Cloud (`app.wizelens.com`, project
+`jotdojo`), send-only: in production nothing serves a dashboard. Each service
+has its own ingest key (`wl_ik_…`), so one can be revoked without the others.
+The release reads `WIZELENS-KEY-<SERVICE>` and each Deployment maps its own to
+`WIZELENS_HUB_TOKEN`:
+
+```
+az keyvault secret set --vault-name kv-jotdojo-prod-cus --name wizelens-key-web --value 'wl_ik_...'
+az keyvault secret set --vault-name kv-jotdojo-prod-cus --name wizelens-key-api --value 'wl_ik_...'
+az keyvault secret set --vault-name kv-jotdojo-prod-cus --name wizelens-key-mcp --value 'wl_ik_...'
+az keyvault secret set --vault-name kv-jotdojo-prod-cus --name wizelens-key-worker --value 'wl_ik_...'
+```
+
+Vault names are case-insensitive, so `wizelens-key-web` is `WIZELENS-KEY-WEB`.
+The keys are optional: a missing one leaves that service running and untraced
+in the cloud. Database queries are not in the traces yet, because WizeLens does
+not instrument postgres.js.
+
 ## The deploy pipeline
 
 This repo has its own workflows, and needs them: sparx's pipeline cannot deploy

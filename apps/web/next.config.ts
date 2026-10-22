@@ -38,7 +38,9 @@ const config: NextConfig = {
   // Neither of these may be bundled into the server build. postgres-js breaks
   // when it is; sharp is a platform-specific native binary, reached only from
   // the export routes through `@jotacular/ink-render/raster`. ADR-067.
-  serverExternalPackages: ["postgres", "sharp"],
+  // WizeLens patches node:http and reads its own files, so it loads from
+  // node_modules rather than a bundle.
+  serverExternalPackages: ["postgres", "sharp", "@wizeworks/lens-node"],
 
   /* No `redirects()`. The rename moved a post's slug, and the rule that
      preserved the old one guarded nothing: the site was a day old, nothing

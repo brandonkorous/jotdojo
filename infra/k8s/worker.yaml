@@ -48,6 +48,11 @@ spec:
             - configMapRef: { name: jotacular-config }
             - secretRef: { name: jotacular-secrets }
           env:
+            # This service's own WizeLens ingest key. Optional: a missing key
+            # leaves the pod running and untraced in the cloud.
+            - name: WIZELENS_HUB_TOKEN
+              valueFrom:
+                secretKeyRef: { name: jotacular-secrets, key: WIZELENS_KEY_WORKER, optional: true }
             # The smallest share. The worker processes one batch at a time, and a
             # batch is a loop over blocks rather than parallel queries.
             - name: DB_POOL_MAX

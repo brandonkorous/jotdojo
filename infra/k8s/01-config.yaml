@@ -25,6 +25,9 @@
 #   STRIPE_PRICE_SOLO     the three price ids. They differ per environment,
 #   STRIPE_PRICE_FAMILY   which is why they are configuration rather than
 #   STRIPE_PRICE_TEAM     constants.
+#   WIZELENS_KEY_WEB      one WizeLens ingest key per service: _WEB, _API, _MCP
+#                         and _WORKER. Optional: without one, that service runs
+#                         untraced and nothing else changes.
 #
 # To create it by hand for a first deploy:
 #     kubectl create secret generic jotacular-secrets -n jotacular --from-env-file=./prod.env
@@ -154,6 +157,14 @@ data:
   # registered webhook takes money and grants nothing.
   #
   # See docs/21-go-live.md.
+
+  # --- tracing (WizeLens) ---------------------------------------------------
+  # All four services send traces to WizeLens Cloud, send-only: with
+  # NODE_ENV=production nothing serves a dashboard. Each Deployment maps its own
+  # WIZELENS_KEY_<SERVICE> to WIZELENS_HUB_TOKEN; a missing key never stops a pod.
+  WIZELENS_ENABLED: 'true'
+  WIZELENS_HUB: 'https://app.wizelens.com'
+  WIZELENS_SAMPLE_RATE: '0.25'
 
   # --- worker tuning -------------------------------------------------------
   WORKER_IDLE_MS: '2000'

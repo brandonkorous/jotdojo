@@ -11,6 +11,8 @@
  * independent -- a missing provider for one does not stop the others, and none
  * of them stops capture. ADR-007, ADR-066.
  */
+// FIRST: WizeLens patches node:http and fetch before the providers load.
+import "./wizelens";
 import { embedder } from "@jotacular/embeddings";
 import { recognizer } from "@jotacular/vision";
 import { transcriber } from "@jotacular/speech";

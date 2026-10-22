@@ -46,6 +46,11 @@ spec:
             - configMapRef: { name: jotacular-config }
             - secretRef: { name: jotacular-secrets }
           env:
+            # This service's own WizeLens ingest key. Optional: a missing key
+            # leaves the pod running and untraced in the cloud.
+            - name: WIZELENS_HUB_TOKEN
+              valueFrom:
+                secretKeyRef: { name: jotacular-secrets, key: WIZELENS_KEY_WEB, optional: true }
             # The BFF serves concurrent user requests, so it takes one of the two
             # larger shares of the connection budget. See config.yaml and
             # packages/db/src/client.ts for why this is set per service: the

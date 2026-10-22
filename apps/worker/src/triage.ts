@@ -2,6 +2,7 @@ import {
   claimTriageJobs, commentAsAgent, recordTriage, finishJob, type TriageJob,
 } from "@jotacular/domain";
 import { ReasoningError, type Reasoner } from "@jotacular/reason";
+import { traceJobs } from "./wizelens";
 
 /**
  * The triage agent. M5, docs/07-capture-pipeline.md, ADR-048.
@@ -36,7 +37,10 @@ export async function runTriageCycle(
 ): Promise<TriageResult> {
   const jobs = await claimTriageJobs(batch);
   if (jobs.length === 0) return { claimed: 0, read: 0, spoke: 0, failed: 0 };
+  return traceJobs("note.triage", jobs.length, () => triageAll(reasoner, jobs));
+}
 
+async function triageAll(reasoner: Reasoner, jobs: TriageJob[]): Promise<TriageResult> {
   let read = 0;
   let spoke = 0;
   let failed = 0;
