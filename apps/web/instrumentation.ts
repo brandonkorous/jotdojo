@@ -1,10 +1,8 @@
 import type { Instrumentation } from "next";
 
-/**
- * WizeLens: one trace per request to this server, with Next's own spans inside.
- * On in development (dashboard at /_wizelens); in production only with
- * WIZELENS_ENABLED=true, and then send-only to WIZELENS_HUB.
- */
+// WizeLens: one trace per request, with Next's spans and every query inside. On in
+// development (dashboard at /_wizelens); in production only with WIZELENS_ENABLED=true,
+// then send-only to WIZELENS_HUB.
 const ENABLED = process.env.NODE_ENV === "development" || process.env.WIZELENS_ENABLED === "true";
 
 /** Node.js runtime only. The import sits INSIDE the runtime check, so the edge build drops it. */
@@ -13,7 +11,16 @@ export async function register() {
     if (!ENABLED) return;
     try {
       const { registerWizeLens } = await import("@wizeworks/lens-node/next");
-      registerWizeLens({ serviceName: "jotdojo-web", enabled: true });
+      const { instrumentDrizzle } = await import("@wizeworks/lens-node");
+      const wizelens = registerWizeLens({ serviceName: "jotdojo-web", enabled: true });
+      // packages/db calls this once its pool exists, so queries become spans.
+      (globalThis as { __wizelensDb?: (db: unknown) => void }).__wizelensDb = (db) => {
+        try {
+          if (!instrumentDrizzle(wizelens, db)) console.warn("[wizelens] queries are untraced: unknown driver");
+        } catch (err) {
+          console.warn("[wizelens] queries are untraced", err);
+        }
+      };
     } catch (err) {
       // Tracing is not worth an outage: the app runs untraced.
       console.warn("[wizelens] tracing did not start", err);

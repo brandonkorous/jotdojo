@@ -27,11 +27,18 @@ function connect(): Db {
 
   // One pool per process. Next.js dev reloads the module graph, so stash it on
   // globalThis to avoid leaking a pool on every hot reload.
-  const globalForDb = globalThis as unknown as { __jotacularSql?: postgres.Sql };
+  const globalForDb = globalThis as unknown as {
+    __jotacularSql?: postgres.Sql;
+    __wizelensDb?: (db: Db) => void;
+  };
   const client = globalForDb.__jotacularSql ?? postgres(url, { max: poolMax });
   if (process.env.NODE_ENV !== "production") globalForDb.__jotacularSql = client;
 
-  return drizzle(client, { schema });
+  // Set by a service's WizeLens setup when tracing is on, so every query in a
+  // request or a job becomes a span. Absent, nothing changes.
+  const db = drizzle(client, { schema });
+  globalForDb.__wizelensDb?.(db);
+  return db;
 }
 
 let connection: Db | undefined;

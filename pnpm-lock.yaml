@@ -44,8 +44,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/storage
       '@wizeworks/lens-node':
-        specifier: 0.3.0-alpha.9
-        version: 0.3.0-alpha.9
+        specifier: 0.3.0-alpha.10
+        version: 0.3.0-alpha.10
       fastify:
         specifier: ^5.2.1
         version: 5.12.1
@@ -72,8 +72,8 @@ importers:
         specifier: ^1.30.0
         version: 1.30.0(zod@3.25.76)
       '@wizeworks/lens-node':
-        specifier: 0.3.0-alpha.9
-        version: 0.3.0-alpha.9
+        specifier: 0.3.0-alpha.10
+        version: 0.3.0-alpha.10
       sharp:
         specifier: ^0.35.4
         version: 0.35.4(@types/node@22.20.1)
@@ -109,11 +109,11 @@ importers:
         specifier: workspace:*
         version: link:../../packages/ink-render
       '@wizeworks/lens-node':
-        specifier: 0.3.0-alpha.9
-        version: 0.3.0-alpha.9
+        specifier: 0.3.0-alpha.10
+        version: 0.3.0-alpha.10
       '@wizeworks/lens-react':
-        specifier: 0.3.0-alpha.9
-        version: 0.3.0-alpha.9(react@19.2.8)
+        specifier: 0.3.0-alpha.10
+        version: 0.3.0-alpha.10(react@19.2.8)
       '@wizeworks/silicaui-react':
         specifier: ^0.55.0
         version: 0.55.0(@types/react@19.2.18)(@wizeworks/silicaui@0.55.0(tailwindcss@4.3.3))(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
@@ -197,8 +197,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/vision
       '@wizeworks/lens-node':
-        specifier: 0.3.0-alpha.9
-        version: 0.3.0-alpha.9
+        specifier: 0.3.0-alpha.10
+        version: 0.3.0-alpha.10
       fastify:
         specifier: ^5.2.1
         version: 5.12.1
@@ -1472,23 +1472,23 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@wizeworks/lens-browser@0.3.0-alpha.9':
-    resolution: {integrity: sha512-Mhq7cCdjdToGZC9v9deO+2qK999jQLKG3aTDUG51H97meOslnNg5emaQYVGwi7fTsmuuWtenv2UItVGBU+ptrQ==}
+  '@wizeworks/lens-browser@0.3.0-alpha.10':
+    resolution: {integrity: sha512-F2W+YFl/N6LpjKZj1nAMCAONEZDM0Z88LF+fEeaTgbAn2l1OZOXpuWUeFJAw6mQvzoYPA41+Ox5w5b9D4T4PwA==}
 
-  '@wizeworks/lens-core@0.3.0-alpha.9':
-    resolution: {integrity: sha512-kuwiMHA1C3QkZoB6IG8gjUVfDf1ENcHI8VJZps9BFIWyFo4+BsodqLVNfWlnh4kkEiwqx1Rxs10SZc0V3U5U2w==}
+  '@wizeworks/lens-core@0.3.0-alpha.10':
+    resolution: {integrity: sha512-IOYsfvH7odHcCpjy1zd0++TXebXtuIPv7ZfTPzhThmllUIomlfsF4H85KPBj/HigdbrZR+QzCRPWbzLqChRCUw==}
 
-  '@wizeworks/lens-node@0.3.0-alpha.9':
-    resolution: {integrity: sha512-Bf8890YtPPlRtVLoNJGuBwHhOy4kKZnE5FAWBh47+HoKstEmNthpfSzTee240O9D7uzOO43XB/S7JG2UKhjg4g==}
+  '@wizeworks/lens-node@0.3.0-alpha.10':
+    resolution: {integrity: sha512-Wqon8L7JYcKQlsaNRjM7MhE9JW0DUYflNcDHvaOFsPWVm53n93lnjZdyV1G1uASJ/bfwUIINfOiJOAo6HWh2ag==}
     engines: {node: '>=22.13'}
 
-  '@wizeworks/lens-react@0.3.0-alpha.9':
-    resolution: {integrity: sha512-ICa7tKvYdGqrffDcvX1rVwfGeqqY6qjAKjNmymnDAdfsK+acImLqFH3gAetRh+JaIU71IJxCc2iA4GQaLn0QZA==}
+  '@wizeworks/lens-react@0.3.0-alpha.10':
+    resolution: {integrity: sha512-Im4Cvroomr65He2AgajU2vAT2Ajc+8OnOo65ZvFbL5ABYLTTSbD6JOv/pXl/kN9eBhu2VKJRfcc14APOr2zm2Q==}
     peerDependencies:
       react: '>=18'
 
-  '@wizeworks/lens-ui@0.3.0-alpha.9':
-    resolution: {integrity: sha512-gDDwTBDLTogBA1dd1weomclzaExtrF+fOGlcShPF2jttOhi7Ma6TNgJaOmNiiPD/DtBrGM3+4oAexaSKJ48KpA==}
+  '@wizeworks/lens-ui@0.3.0-alpha.10':
+    resolution: {integrity: sha512-PwOcwxTigqNkg2bB4P4pZOSxGFXD+ZNRDWhEveAjezPFAog5BwM63gi5HqWOJm7KWvHP1IiQXdVvr7ouik1RiQ==}
 
   '@wizeworks/silicaui-react@0.55.0':
     resolution: {integrity: sha512-+hKiyRnVwpkqB+iJzpZfwA1fxg5xvRcQvCAp+az4bH7/RXMn72rWsumZkwYjX+bTbRcOdPrZ2XSTluJXDz88sQ==}
@@ -4159,13 +4159,13 @@ snapshots:
   '@unrs/resolver-binding-win32-x64-msvc@1.12.2':
     optional: true
 
-  '@wizeworks/lens-browser@0.3.0-alpha.9':
+  '@wizeworks/lens-browser@0.3.0-alpha.10':
     dependencies:
-      '@wizeworks/lens-core': 0.3.0-alpha.9
+      '@wizeworks/lens-core': 0.3.0-alpha.10
 
-  '@wizeworks/lens-core@0.3.0-alpha.9': {}
+  '@wizeworks/lens-core@0.3.0-alpha.10': {}
 
-  '@wizeworks/lens-node@0.3.0-alpha.9':
+  '@wizeworks/lens-node@0.3.0-alpha.10':
     dependencies:
       '@modelcontextprotocol/sdk': 1.32.1(zod@4.6.7)
       '@opentelemetry/api': 1.9.1
@@ -4174,21 +4174,21 @@ snapshots:
       '@opentelemetry/instrumentation-undici': 0.33.0(@opentelemetry/api@1.9.1)
       '@opentelemetry/resources': 2.12.0(@opentelemetry/api@1.9.1)
       '@opentelemetry/sdk-trace-base': 2.12.0(@opentelemetry/api@1.9.1)
-      '@wizeworks/lens-browser': 0.3.0-alpha.9
-      '@wizeworks/lens-core': 0.3.0-alpha.9
-      '@wizeworks/lens-ui': 0.3.0-alpha.9
+      '@wizeworks/lens-browser': 0.3.0-alpha.10
+      '@wizeworks/lens-core': 0.3.0-alpha.10
+      '@wizeworks/lens-ui': 0.3.0-alpha.10
       zod: 4.6.7
     transitivePeerDependencies:
       - '@cfworker/json-schema'
       - supports-color
 
-  '@wizeworks/lens-react@0.3.0-alpha.9(react@19.2.8)':
+  '@wizeworks/lens-react@0.3.0-alpha.10(react@19.2.8)':
     dependencies:
-      '@wizeworks/lens-browser': 0.3.0-alpha.9
-      '@wizeworks/lens-core': 0.3.0-alpha.9
+      '@wizeworks/lens-browser': 0.3.0-alpha.10
+      '@wizeworks/lens-core': 0.3.0-alpha.10
       react: 19.2.8
 
-  '@wizeworks/lens-ui@0.3.0-alpha.9': {}
+  '@wizeworks/lens-ui@0.3.0-alpha.10': {}
 
   '@wizeworks/silicaui-react@0.55.0(@types/react@19.2.18)(@wizeworks/silicaui@0.55.0(tailwindcss@4.3.3))(react-dom@19.2.8(react@19.2.8))(react@19.2.8)':
     dependencies:
