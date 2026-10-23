@@ -473,6 +473,22 @@ jobs:
               "deploy/$svc" "$svc=${REGISTRY}/${svc}:${GITHUB_SHA}"
           done
 
+      # A pod reads its Secrets only when it starts, and a deploy whose image
+      # did not change leaves the pods alone, so a changed key went unread.
+      # A hash of the Secrets on the pod template changes exactly when they
+      # do, and that change rolls the pods.
+      - name: Restart pods when their Secrets change
+        run: |
+          set -euo pipefail
+          hash=$(for s in jotacular-secrets; do
+            kubectl get secret "$s" -n "$NAMESPACE" \
+              -o go-template='{{range $k, $v := .data}}{{$k}}={{$v}};{{end}}'
+          done | sha256sum | cut -c1-16)
+          patch="{\"spec\":{\"template\":{\"metadata\":{\"annotations\":{\"wizeworks/secrets-hash\":\"$hash\"}}}}}"
+          for d in web api mcp worker; do
+            kubectl patch deployment "$d" -n "$NAMESPACE" --type merge -p "$patch"
+          done
+
       # A wedged rollout must FAIL the release rather than leave it green. The
       # worker is `Recreate`, so it is briefly down by design and gets the same
       # timeout as the rest.
