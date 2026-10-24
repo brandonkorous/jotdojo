@@ -1,7 +1,8 @@
 import { withActor } from "@jotacular/db";
 import type { Actor } from "./actor";
 import { actorExists, defaultSpaceId, getToolbarSide, type ToolbarSide } from "./spaces";
-import { createNote, getNote, listNotes, type NoteDetail } from "./notes";
+import { createNote, getNote, type NoteDetail } from "./notes";
+import { listNotes } from "./note-list";
 import { listNoteComments, type CommentView } from "./comments";
 import { hasInk } from "./ink-layer";
 

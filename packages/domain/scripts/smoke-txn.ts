@@ -13,8 +13,7 @@ import {
 
 let failures = 0;
 const check = (label: string, ok: boolean, detail?: string) => {
-  console.log(`${ok ? "  ok  " : "  FAIL"}  ${label}${detail && !ok ? `
-          ${detail}` : ""}`);
+  console.log(`${ok ? "  ok  " : "  FAIL"}  ${label}${detail && !ok ? `\n          ${detail}` : ""}`);
   if (!ok) failures++;
 };
 
@@ -34,8 +33,7 @@ const apart = await withActor(a.id, async () => [await txid(a.id), await txid(b.
 check("a different actor gets its own transaction", apart[0] !== apart[1]);
 check("separate top-level calls are separate transactions", (await txid(a.id)) !== (await txid(a.id)));
 
-console.log("
-loadCanvas");
+console.log("\nloadCanvas");
 const canvas = await loadCanvas(asUser(a.id));
 check("returns a note, comments, ink flag and toolbar side", !!canvas && canvas.note.id !== "" && canvas.comments.length === 0 && canvas.hasInk === false && canvas.toolbar === "auto");
 const again = await loadCanvas(asUser(a.id));
@@ -43,8 +41,7 @@ check("a second visit reuses the same note", again?.note.id === canvas?.note.id)
 const ghost = await loadCanvas(asUser("00000000-0000-4000-8000-000000000000"));
 check("a user who is gone gets null", ghost === null);
 
-console.log("
-assertNoteReachable");
+console.log("\nassertNoteReachable");
 const space = await defaultSpaceId(asUser(a.id));
 const note = await createNote(asUser(a.id), space, "mine");
 const reads = (userId: string) => withActor(userId, async (tx) =>
@@ -60,7 +57,5 @@ let refused = false;
 try { await assertNoteReachable(asUser(b.id), note.id); } catch { refused = true; }
 check("somebody else is refused", refused);
 
-console.log(`
-${failures === 0 ? "all good" : `${failures} FAILED`}
-`);
+console.log(`\n${failures === 0 ? "all good" : `${failures} FAILED`}\n`);
 process.exit(failures === 0 ? 0 : 1);
