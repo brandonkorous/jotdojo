@@ -58,6 +58,9 @@ ENV SITE_URL=$SITE_URL APP_URL=$APP_URL
 # make the dev-login provider's guard the only thing standing between a
 # misconfigured build and a signin bypass. It is safe by construction either
 # way (apps/web/auth.ts), but the build should not be the thing relying on it.
+# Same SHA at build time, for anything `next build` bakes in.
+ARG WIZELENS_RELEASE=
+ENV WIZELENS_RELEASE=$WIZELENS_RELEASE
 RUN pnpm --filter @jotacular/web exec next build
 
 # --- runtime --------------------------------------------------------------
@@ -81,6 +84,10 @@ COPY --from=build --chown=nextjs:nodejs /repo/apps/web/public ./apps/web/public
 # NUMERIC, not a name. Kubernetes cannot verify a NAMED user is non-root, so a
 # pod with `runAsNonRoot: true` refuses the container outright with
 # CreateContainerConfigError. The uid is the one created above.
+# The git SHA, so WizeLens can tell releases apart. Not a secret. Last, so it
+# invalidates no cached layer above it.
+ARG WIZELENS_RELEASE=
+ENV WIZELENS_RELEASE=$WIZELENS_RELEASE
 USER 1001:1001
 EXPOSE 3400
 CMD ["node", "apps/web/server.js"]
