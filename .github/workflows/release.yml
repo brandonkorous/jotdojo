@@ -79,6 +79,9 @@ jobs:
           file: infra/docker/${{ matrix.service }}.Dockerfile
           push: true
           tags: ${{ env.REGISTRY }}/${{ matrix.service }}:${{ github.sha }}
+          # Not a secret: WizeLens groups telemetry by it, at build and at runtime.
+          build-args: |
+            WIZELENS_RELEASE=${{ github.sha }}
           # Only web mounts this -- its icon kit comes from npm.fontawesome.com.
           # Passed to all four because the step is shared; the three that never
           # mount it never see it. ADR-083.

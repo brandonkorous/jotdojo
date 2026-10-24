@@ -113,5 +113,9 @@ USER 1001:1001
 # is not at the workspace root at all -- `tsx` is a dependency of this service,
 # so it resolves under the app. Pointing at `dist/cli.mjs` keeps node as PID 1
 # and depends on a path that install layout cannot move out from under us.
+# The git SHA, so WizeLens can tell releases apart. Not a secret. Last, so it
+# invalidates no cached layer above it.
+ARG WIZELENS_RELEASE=
+ENV WIZELENS_RELEASE=$WIZELENS_RELEASE
 WORKDIR /repo/apps/worker
 CMD ["node", "/repo/apps/worker/node_modules/tsx/dist/cli.mjs", "src/index.ts"]
