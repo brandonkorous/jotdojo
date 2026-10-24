@@ -1,10 +1,11 @@
 "use server";
 
 import {
-  heartbeat, leave, applyInkDelta, strokesSince, noteBody,
+  DomainError, heartbeat, leave, applyInkDelta, strokesSince, noteBody,
   type Presence, type InkDelta,
 } from "@jotacular/domain";
-import { requireActor, captureActor } from "@/lib/session";
+import { signedInActor, requireActor, captureActor } from "@/lib/session";
+import { rethrowRedirect, reportError } from "@/lib/report";
 
 /**
  * The read and write halves of live updates. ADR-058.
@@ -85,8 +86,12 @@ export async function heartbeatAction(
   noteId: string, deviceId: string, writing: boolean,
 ): Promise<Presence[]> {
   try {
-    return await heartbeat(await requireActor(), noteId, deviceId, writing);
-  } catch {
+    // heartbeat() reads the note under the actor's row policy, which is the existence check.
+    return await heartbeat(await signedInActor(), noteId, deviceId, writing);
+  } catch (err) {
+    rethrowRedirect(err);
+    // A note that is gone or a user who is gone is an answer, not a fault.
+    if (!(err instanceof DomainError)) await reportError(err, "heartbeatAction");
     return [];
   }
 }
