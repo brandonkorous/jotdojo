@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { Presence } from "@jotacular/domain";
 import { heartbeatAction, leaveNoteAction } from "@/app/actions/live";
 import { deviceId } from "./device";
+import { samePresence } from "./presence-same";
 
 /**
  * Who else has this note open. ADR-058.
@@ -30,7 +31,9 @@ export function usePresence(noteId: string, enabled: boolean) {
     if (!enabled) return;
     device.current ||= deviceId();
     beatAt.current = Date.now();
-    setHere(await heartbeatAction(noteId, device.current, Date.now() - wroteAt.current < WRITING_MS));
+    const next = await heartbeatAction(noteId, device.current, Date.now() - wroteAt.current < WRITING_MS);
+    // Keep the old array when nothing changed, so React skips the render.
+    setHere((prev) => (samePresence(prev, next) ? prev : next));
   }, [noteId, enabled]);
 
   /**
@@ -49,14 +52,21 @@ export function usePresence(noteId: string, enabled: boolean) {
   useEffect(() => {
     if (!enabled) return;
     void beat();
-    const timer = setInterval(() => void beat(), BEAT_MS);
+    let timer: ReturnType<typeof setInterval> | undefined;
+    const start = () => { timer ??= setInterval(() => void beat(), BEAT_MS); };
+    const stop = () => { clearInterval(timer); timer = undefined; };
+    // A hidden tab stops beating and catches up with one beat when it is shown again.
+    const onVisibility = () => { if (document.hidden) stop(); else { void beat(); start(); } };
+    if (!document.hidden) start();
+    document.addEventListener("visibilitychange", onVisibility);
 
     // Best effort, and the TTL is the real guarantee -- `pagehide` is not
     // delivered reliably anywhere, least of all on iOS.
     const goodbye = () => { void leaveNoteAction(noteId, device.current || deviceId()); };
     window.addEventListener("pagehide", goodbye);
     return () => {
-      clearInterval(timer);
+      stop();
+      document.removeEventListener("visibilitychange", onVisibility);
       window.removeEventListener("pagehide", goodbye);
       goodbye();
     };
