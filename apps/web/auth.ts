@@ -2,6 +2,7 @@ import NextAuth, { type NextAuthResult } from "next-auth";
 import Google from "next-auth/providers/google";
 import Credentials from "next-auth/providers/credentials";
 import { upsertUserFromGoogle } from "@jotacular/domain";
+import { logAuthError } from "@/lib/auth-log";
 
 /**
  * Dev-only sign-in, so the app can be used before Google OAuth is configured.
@@ -51,6 +52,7 @@ const nextAuth = NextAuth({
       : []),
   ],
   session: { strategy: "jwt" },
+  logger: { error: logAuthError },
   pages: { signIn: "/signin" },
   callbacks: {
     async jwt({ token, account, profile, user }) {

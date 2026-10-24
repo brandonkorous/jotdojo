@@ -1,5 +1,5 @@
 import { auth } from "@/auth";
-import { asUser, subscribeToNote, getNote, type LiveEvent } from "@jotacular/domain";
+import { asUser, subscribeToNote, assertNoteReachable, type LiveEvent } from "@jotacular/domain";
 
 /**
  * The live stream for one note. ADR-058.
@@ -36,7 +36,7 @@ export async function GET(
   // other read makes. An anonymous draft never gets here: it is one device by
   // construction, because its cookie is host-only and httpOnly.
   try {
-    await getNote(actor, noteId);
+    await assertNoteReachable(actor, noteId);
   } catch {
     return new Response("No such note", { status: 404 });
   }

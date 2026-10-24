@@ -17,9 +17,9 @@
   "dependencies": {
     "@jotacular/domain": "workspace:*",
     "@jotacular/ink-render": "workspace:*",
-    "@modelcontextprotocol/sdk": "^1.30.0",
+    "@modelcontextprotocol/sdk": "^1.32.0",
     "@wizeworks/lens-node": "0.3.0-alpha.10",
-    "sharp": "^0.35.4",
+    "sharp": "^0.35.5",
     "tsx": "^4.19.2",
     "zod": "^3.24.1"
   },

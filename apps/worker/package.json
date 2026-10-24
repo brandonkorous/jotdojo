@@ -29,8 +29,8 @@
     "@jotacular/storage": "workspace:*",
     "@jotacular/vision": "workspace:*",
     "@wizeworks/lens-node": "0.3.0-alpha.10",
-    "fastify": "^5.2.1",
-    "sharp": "^0.35.4",
+    "fastify": "^5.12.5",
+    "sharp": "^0.35.5",
     "tsx": "^4.19.2"
   },
   "devDependencies": {

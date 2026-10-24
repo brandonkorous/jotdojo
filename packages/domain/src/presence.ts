@@ -84,6 +84,11 @@ export async function heartbeat(
   });
 }
 
+/** Can this actor reach the note? Throws if not. Reads one row and writes no audit entry. */
+export async function assertNoteReachable(actor: Actor, noteId: string): Promise<void> {
+  await withActor(actor.userId, (tx) => loadNote(tx, actor, noteId));
+}
+
 /** Everyone currently in the note. What a `presence` event tells you to re-read. */
 export async function whoIsHere(actor: Actor, noteId: string): Promise<Presence[]> {
   if (actor.type !== "user") return [];

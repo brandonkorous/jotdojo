@@ -1,8 +1,5 @@
-import {
-  listNotes, getNote, createNote, defaultSpaceId, getToolbarSide, hasInk,
-  listNoteComments,
-} from "@jotacular/domain";
-import { requireActor, currentUser } from "@/lib/session";
+import { loadCanvas } from "@jotacular/domain";
+import { signedInActor, currentUser, redirectStale } from "@/lib/session";
 import { Canvas } from "@/components/Canvas";
 import { CanvasStage } from "@/components/CanvasStage";
 
@@ -16,31 +13,26 @@ export const dynamic = "force-dynamic";
  * says "Start jotting". Either way the cursor is live with zero clicks.
  */
 export default async function Home() {
-  const actor = await requireActor();
+  const actor = await signedInActor();
   const user = await currentUser();
 
-  const spaceId = await defaultSpaceId(actor);
-  const recent = await listNotes(actor, spaceId, 1);
-
-  // Reuse the most recent note rather than stacking up empties on every visit.
-  const note = recent[0]
-    ? await getNote(actor, recent[0].id)
-    : await createNote(actor, spaceId, "");
-
-  const preference = await getToolbarSide(actor);
+  // One transaction for every read, which also proves the user still exists.
+  const canvas = await loadCanvas(actor);
+  if (!canvas) return redirectStale();
+  const { note, comments, toolbar } = canvas;
 
   return (
     <main>
       {/* The landing page is the canvas, so this is where "open the app and
           see what your agent noticed" actually has to happen. docs/12, M5. */}
-      <CanvasStage noteId={note.id} comments={await listNoteComments(actor, note.id)}>
+      <CanvasStage noteId={note.id} comments={comments}>
         <Canvas
           noteId={note.id}
           initialBody={note.body}
           initialRevision={note.revision}
-          hasInk={await hasInk(actor, note.id)}
+          hasInk={canvas.hasInk}
           user={user}
-          toolbarPreference={preference}
+          toolbarPreference={toolbar}
         />
       </CanvasStage>
     </main>
