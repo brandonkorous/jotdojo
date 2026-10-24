@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
+import { cache } from "react";
 import { auth } from "@/auth";
 import { currentDraft } from "@/lib/draft";
 import { PATH_HEADER } from "@/lib/here";
@@ -12,13 +13,22 @@ import { actorExists, asUser, type Actor, type AnonSession } from "@jotacular/do
  * proves the first: that somebody once signed in, and that we minted the token.
  * It says nothing about whether the user it names is still there. ADR-105.
  */
-export async function requireActor(): Promise<Actor> {
+export const requireActor = cache(async (): Promise<Actor> => {
+  const actor = await signedInActor();
+  if (!(await actorExists(actor))) await redirectStale();
+  return actor;
+});
+
+/** The signed cookie's actor, without checking the user still exists. Or a redirect to sign-in. */
+export async function signedInActor(): Promise<Actor> {
   const session = await auth();
   if (!session?.user?.id) redirect(await signInUrl());
+  return asUser(session.user.id);
+}
 
-  const actor = asUser(session.user.id);
-  if (!(await actorExists(actor))) redirect(await signInUrl({ stale: true }));
-  return actor;
+/** Sign in again: the cookie names a user who is gone. */
+export async function redirectStale(): Promise<never> {
+  redirect(await signInUrl({ stale: true }));
 }
 
 /**

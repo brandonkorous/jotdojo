@@ -46,3 +46,4 @@ export * from "./oauth-token";
 export * from "./oauth-connections";
 export * from "./oauth-redirect";
 export * from "./comments";
+export * from "./canvas-load";

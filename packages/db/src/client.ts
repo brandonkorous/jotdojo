@@ -1,6 +1,7 @@
 import { drizzle, type PostgresJsDatabase } from "drizzle-orm/postgres-js";
 import { sql } from "drizzle-orm";
 import postgres from "postgres";
+import { AsyncLocalStorage } from "node:async_hooks";
 import * as schema from "./schema";
 
 export type Db = PostgresJsDatabase<typeof schema>;
@@ -72,11 +73,17 @@ export const db: Db = new Proxy({} as Db, {
  * leak to the next borrower of a pooled connection.
  */
 export async function withActor<T>(actorId: string, fn: (tx: Tx) => Promise<T>): Promise<T> {
+  // Inside a transaction for the same actor, join it instead of opening another.
+  const open = openActor.getStore();
+  if (open?.actorId === actorId) return fn(open.tx);
   return db.transaction(async (tx) => {
     await tx.execute(sql`select set_config('app.actor_id', ${actorId}, true)`);
-    return fn(tx);
+    return openActor.run({ actorId, tx }, () => fn(tx));
   });
 }
+
+/** The transaction a `withActor` call is running in, so nested calls can share it. */
+const openActor = new AsyncLocalStorage<{ actorId: string; tx: Tx }>();
 
 /**
  * Escape hatch for the two things that legitimately run before an actor exists:
