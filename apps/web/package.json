@@ -30,7 +30,10 @@
     "smoke:stickers": "tsx scripts/smoke-stickers.ts",
     "smoke:turn": "tsx scripts/smoke-turn.ts",
     "smoke:note-ink": "tsx scripts/smoke-note-ink.ts",
-    "smoke:stack": "tsx scripts/smoke-stack.ts"
+    "smoke:stack": "tsx scripts/smoke-stack.ts",
+    "smoke:presence": "tsx scripts/smoke-presence.ts",
+    "smoke:auth-log": "tsx scripts/smoke-auth-log.ts",
+    "smoke:report": "tsx scripts/smoke-report.ts"
   },
   "dependencies": {
     "@auth/core": "^0.41.3",
