@@ -87,6 +87,7 @@ jobs:
           # mount it never see it. ADR-083.
           secrets: |
             fontawesome_npm_token=${{ secrets.FONTAWESOME_NPM_TOKEN }}
+            next_actions_key=${{ secrets.NEXT_ACTIONS_KEY_JOTDOJO }}
           # GitHub Actions layer cache. Without it every release reinstalls the
           # workspace four times over.
           cache-from: type=gha,scope=${{ matrix.service }}
@@ -301,8 +302,15 @@ jobs:
           fi
 
       - name: Apply the Secret
+        env:
+          # The build key, so the running server decrypts the ids it was built
+          # with. Empty when the GitHub secret is not set; then nothing is added.
+          NEXT_ACTIONS_KEY: ${{ secrets.NEXT_ACTIONS_KEY_JOTDOJO }}
         run: |
           set -euo pipefail
+          if [ -n "$NEXT_ACTIONS_KEY" ]; then
+            printf 'NEXT_SERVER_ACTIONS_ENCRYPTION_KEY=%s\n' "$NEXT_ACTIONS_KEY" >> /tmp/jotacular.env
+          fi
           kubectl create secret generic jotacular-secrets \
             -n "$NAMESPACE" \
             --from-env-file=/tmp/jotacular.env \

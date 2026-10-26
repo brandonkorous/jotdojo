@@ -1,7 +1,9 @@
 "use client";
 
+import { useEffect } from "react";
 import Link from "next/link";
 import { Fallback } from "@/components/Fallback";
+import { isStaleAction, reloadOnce } from "@/lib/stale-action";
 
 /**
  * Any error thrown while rendering a route. ADR-106.
@@ -16,6 +18,8 @@ export default function RouteError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  // A release happened under this tab: reload once rather than offer a retry that cannot work.
+  useEffect(() => { if (isStaleAction(error)) reloadOnce(); }, [error]);
   return (
     <Fallback
       title="Something went wrong"

@@ -33,7 +33,8 @@
     "smoke:stack": "tsx scripts/smoke-stack.ts",
     "smoke:presence": "tsx scripts/smoke-presence.ts",
     "smoke:auth-log": "tsx scripts/smoke-auth-log.ts",
-    "smoke:report": "tsx scripts/smoke-report.ts"
+    "smoke:report": "tsx scripts/smoke-report.ts",
+    "smoke:stale-action": "tsx scripts/smoke-stale-action.ts"
   },
   "dependencies": {
     "@auth/core": "^0.41.3",

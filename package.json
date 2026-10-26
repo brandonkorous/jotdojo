@@ -62,6 +62,7 @@
     "turn:smoke": "pnpm --filter @jotacular/web smoke:turn",
     "note-ink:smoke": "pnpm --filter @jotacular/web smoke:note-ink",
     "presence:smoke": "pnpm --filter @jotacular/web smoke:presence",
+    "stale-action:smoke": "pnpm --filter @jotacular/web smoke:stale-action",
     "report:smoke": "pnpm --filter @jotacular/web smoke:report",
     "auth-log:smoke": "pnpm --filter @jotacular/web smoke:auth-log",
     "stack:smoke": "pnpm --filter @jotacular/web smoke:stack",

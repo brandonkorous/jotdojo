@@ -3,6 +3,7 @@ import { brand, pigment } from "@/lib/brand";
 import "./globals.css";
 import { THEME_BOOT } from "@/lib/theme";
 import { WizeLens } from "@/components/WizeLens";
+import { StaleActionReload } from "@/components/StaleActionReload";
 
 export const metadata: Metadata = {
     title: brand.name,
@@ -50,6 +51,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 {children}
                 {/* Tracing: on only when this page's server traces it; no HUD outside development. */}
                 <WizeLens />
+                <StaleActionReload />
             </body>
         </html>
     );
