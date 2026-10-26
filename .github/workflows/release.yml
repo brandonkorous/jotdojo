@@ -70,6 +70,26 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ github.token }}
 
+      # The server-action key lives in Key Vault like every other secret; only web builds with it.
+      - uses: azure/login@v2
+        if: matrix.service == 'web'
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Read the server-action key
+        if: matrix.service == 'web'
+        env:
+          VAULT: ${{ vars.AZURE_KEY_VAULT_NAME }}
+        run: |
+          set -euo pipefail
+          key=$(az keyvault secret show --vault-name "$VAULT" \
+                  --name NEXT-SERVER-ACTIONS-ENCRYPTION-KEY --query value -o tsv)
+          [ -n "$key" ] || { echo "::error::NEXT-SERVER-ACTIONS-ENCRYPTION-KEY is empty in $VAULT"; exit 1; }
+          echo "::add-mask::$key"
+          echo "NEXT_ACTIONS_KEY=$key" >> "$GITHUB_ENV"
+
       # Context is the REPO ROOT for all four. Every Dockerfile copies workspace
       # manifests before source so a code edit does not reinstall the workspace,
       # and that only works if the whole repo is the context.
@@ -87,7 +107,7 @@ jobs:
           # mount it never see it. ADR-083.
           secrets: |
             fontawesome_npm_token=${{ secrets.FONTAWESOME_NPM_TOKEN }}
-            next_actions_key=${{ secrets.NEXT_ACTIONS_KEY_JOTDOJO }}
+            next_actions_key=${{ env.NEXT_ACTIONS_KEY }}
           # GitHub Actions layer cache. Without it every release reinstalls the
           # workspace four times over.
           cache-from: type=gha,scope=${{ matrix.service }}
@@ -218,6 +238,8 @@ jobs:
             WIZELENS_KEY_API
             WIZELENS_KEY_MCP
             WIZELENS_KEY_WORKER
+            # The key web was built with, so the server decrypts its own action ids.
+            NEXT_SERVER_ACTIONS_ENCRYPTION_KEY
           )
 
           missing=()
@@ -302,15 +324,8 @@ jobs:
           fi
 
       - name: Apply the Secret
-        env:
-          # The build key, so the running server decrypts the ids it was built
-          # with. Empty when the GitHub secret is not set; then nothing is added.
-          NEXT_ACTIONS_KEY: ${{ secrets.NEXT_ACTIONS_KEY_JOTDOJO }}
         run: |
           set -euo pipefail
-          if [ -n "$NEXT_ACTIONS_KEY" ]; then
-            printf 'NEXT_SERVER_ACTIONS_ENCRYPTION_KEY=%s\n' "$NEXT_ACTIONS_KEY" >> /tmp/jotacular.env
-          fi
           kubectl create secret generic jotacular-secrets \
             -n "$NAMESPACE" \
             --from-env-file=/tmp/jotacular.env \
