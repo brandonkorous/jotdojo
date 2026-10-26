@@ -84,7 +84,8 @@ jobs:
           VAULT: ${{ vars.AZURE_KEY_VAULT_NAME }}
         run: |
           set -euo pipefail
-          key=$(az keyvault secret show --vault-name "$VAULT" \n                  --name NEXT-SERVER-ACTIONS-ENCRYPTION-KEY --query value -o tsv)
+          key=$(az keyvault secret show --vault-name "$VAULT" \
+                  --name NEXT-SERVER-ACTIONS-ENCRYPTION-KEY --query value -o tsv)
           [ -n "$key" ] || { echo "::error::NEXT-SERVER-ACTIONS-ENCRYPTION-KEY is empty in $VAULT"; exit 1; }
           echo "::add-mask::$key"
           echo "NEXT_ACTIONS_KEY=$key" >> "$GITHUB_ENV"
