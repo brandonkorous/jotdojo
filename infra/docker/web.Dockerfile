@@ -61,7 +61,10 @@ ENV SITE_URL=$SITE_URL APP_URL=$APP_URL
 # Same SHA at build time, for anything `next build` bakes in.
 ARG WIZELENS_RELEASE=
 ENV WIZELENS_RELEASE=$WIZELENS_RELEASE
-RUN pnpm --filter @jotacular/web exec next build
+# Next salts server-action ids with a random key per build, so every release
+# breaks the tabs people left open. A fixed key keeps the ids stable. A BuildKit
+# secret, absent or empty when none is set, and then the build is as it was.
+RUN --mount=type=secret,id=next_actions_key,required=false     if [ -s /run/secrets/next_actions_key ]; then       export NEXT_SERVER_ACTIONS_ENCRYPTION_KEY="$(cat /run/secrets/next_actions_key)";     fi;     pnpm --filter @jotacular/web exec next build
 
 # --- runtime --------------------------------------------------------------
 # Next's standalone output: a server plus only the files it traced. The two
