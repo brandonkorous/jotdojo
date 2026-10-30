@@ -102,7 +102,7 @@ Margins are thin at Solo pricing if someone maxes their limits. Watch this; the 
 ### SETTLED FOR NOW: the credit pays, and that is a runway not a business
 
 **Decided 2026-08-22 (ADR-051): Azure OpenAI, funded by Azure startup credits.**
-The four seams are provisioned by sparx's Terraform and switched on from the
+The four seams are provisioned by Terraform in wize-infrastructure and switched on from the
 vault; nothing in this repo changed to adopt it. That buys the launch.
 
 **It does not answer the question below, it defers it.** Credits expire. When

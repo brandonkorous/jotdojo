@@ -66,7 +66,7 @@ handwriting, and whether the loop closes end to end.
 
 The deploy is also the moment `app.jotacular.com` becomes permanent — see ADR-010 and
 ADR-018, and the hostname note in [infra/README.md](../infra/README.md). It is a two-repo
-change: routing and the TLS allow-list live in the sparx repo.
+change: routing lives in the wize-infrastructure repo and the TLS allow-list in the sparx repo.
 
 **Exit:** say "Hey Siri, jot" in a car, then that evening ask Claude on a phone to read the note and build a plan in kanninja — and it works end to end.
 
@@ -261,7 +261,7 @@ are the story of getting there, most of it unpleasant).
 
 **And the models are running.** `VISION_PROVIDER`, `EMBEDDING_PROVIDER`, `SPEECH_PROVIDER`
 and `TRIAGE_PROVIDER` are all `azure` in the live secret, pointed at the Azure OpenAI
-account sparx provisions (ADR-051). The worker names the deployments it drains against on
+account wize-infrastructure provisions (ADR-051). The worker names the deployments it drains against on
 every boot, which is the check worth making — `jotdojo-vision` rather than `fake-*` is the
 difference between a pipeline that is proven and one that is running.
 

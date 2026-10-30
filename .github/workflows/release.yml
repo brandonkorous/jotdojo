@@ -9,9 +9,11 @@
 # that corrupts rather than merely breaks.
 #
 # Everything this needs from Azure — the database, the Key Vault, the blob
-# account, and the identity this workflow assumes — is Terraform in the SPARX
-# repo at `terraform/envs/azure/jotacular.tf`. This workflow creates no
-# infrastructure; it only deploys onto it. See docs/17-shared-infrastructure.md.
+# account, and the identity this workflow assumes — is Terraform in the
+# wize-infrastructure repo (wizeworksllc/wize-infrastructure) at
+# `terraform/envs/azure/jotacular.tf`, applied by that repo's own release. This
+# workflow creates no infrastructure; it only deploys onto it. See
+# docs/17-shared-infrastructure.md.
 name: Release
 
 on:
