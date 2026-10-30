@@ -1,8 +1,10 @@
 # 17 — Shared infrastructure, and the deploy that follows from it
 
-Jotacular does not own the cluster or the database server. Both belong to **sparx**
-— a different product in a different repository — which already runs sparx
-itself, the piggles brand, and kanNINJA on them.
+Jotacular does not own the cluster or define its database server. Both are
+defined in **wize-infrastructure** (`wizeworksllc/wize-infrastructure`), the
+repository that holds the infrastructure every WizeWorks product runs on and
+applies it with its own release. The cluster already runs sparx itself, the
+piggles brand, and kanNINJA.
 
 This document is the contract. It exists because almost every rule below is
 invisible from inside this repo: the code compiles, the tests pass, and
@@ -13,16 +15,18 @@ production and fails for a reason nothing here would have suggested.
 
 | Thing | Owner | Ours |
 |---|---|---|
-| AKS cluster `aks-sparx-prod-cus` | sparx | the `jotacular` **namespace** |
-| Caddy ingress + its routing table | sparx | nothing — see [Cross-repo](#the-cross-repo-part) |
-| Postgres server `psql-sparx-prod-cus` | sparx | the `jotacular` **database** |
+| AKS cluster `aks-sparx-prod-cus` | wize-infrastructure | the `jotacular` **namespace** |
+| Caddy ingress + its routing table | wize-infrastructure | nothing — see [Cross-repo](#the-cross-repo-part) |
+| Postgres server `psql-sparx-prod-cus` | wize-infrastructure | the `jotacular` **database** |
 | Key Vault | — | `kv-jotdojo-prod-cus`, ours alone |
 | Blob storage | — | `stjotdojoprodcus`, ours alone |
 | Azure CI identity | — | ours alone, `brandonkorous/jotdojo` only |
 
-Everything on the right is defined in the **sparx** repo at
-`terraform/envs/azure/jotacular.tf` — one file, so deleting it removes Jotacular's
-whole Azure footprint and touches nothing of sparx's.
+Everything on the right is defined in wize-infrastructure at
+[`terraform/envs/azure/jotacular.tf`](https://github.com/wizeworksllc/wize-infrastructure/blob/main/terraform/envs/azure/jotacular.tf)
+and applied by wize-infrastructure's release, not by sparx's. It is one file, so
+deleting it removes Jotacular's whole Azure footprint and touches nothing of
+sparx's.
 
 ## The database
 
@@ -56,8 +60,8 @@ server-wide — there is no per-database version of it. The list currently reads
 The last three are ours (`0000_init.sql`). **If a future migration adds a fourth,
 it will fail in production and only in production** — and it fails in the worst
 possible place, after the roles exist and the pods have already rolled. Adding
-one is a change to sparx's `terraform/envs/azure/main.tf`, so it needs to be
-raised *before* the migration that needs it is written.
+one is a change to wize-infrastructure's `terraform/envs/azure/main.tf`, released
+there, so it needs to be raised *before* the migration that needs it is written.
 
 **3. The connection budget is exhaustible and small, and it used to be shared.** The tier
 caps `max_connections` at **50 for the whole server**, and sparx is already
@@ -191,8 +195,8 @@ variables:
 | `AZURE_SUBSCRIPTION_ID` | ” |
 | `AZURE_KEY_VAULT_NAME` | `kv-jotdojo-prod-cus` |
 
-Run `terraform output jotacular_github_setup` in the sparx repo — it prints the
-four `gh variable set` commands verbatim.
+Run `terraform output jotacular_github_setup` in wize-infrastructure's
+`terraform/bootstrap-azure`. It prints the four `gh variable set` commands verbatim.
 
 **2. Build and push four images** to `ghcr.io/brandonkorous/jotdojo/<service>`,
 tagged with the commit SHA — never `latest`. Dockerfiles are in `infra/docker/`
@@ -244,9 +248,12 @@ token, against a rate limit, on every deploy.
 
 ## The cross-repo part
 
-Two things live in sparx and cannot be changed from here.
+Two things live in other repositories and cannot be changed from here.
 
-**Routing** — `k8s/ingress/Caddyfile`. **Five** hostnames carry the product, and
+**Routing** — wize-infrastructure's
+[`k8s/ingress/Caddyfile`](https://github.com/wizeworksllc/wize-infrastructure/blob/main/k8s/ingress/Caddyfile).
+Caddy still runs in the `sparx-prod` namespace, but wize-infrastructure owns it
+and its release applies it. **Five** hostnames carry the product, and
 three of them proxy to the same Service:
 
 The Services are named `web`, `api` and `mcp` — plainly, inside our namespace,
@@ -271,7 +278,8 @@ This table used to name a `jotacular-web` Service, and a `jotdojo-web` before
 the rename. Neither has ever existed. The sweep renamed a wrong string into a
 differently wrong string, which is what a name nothing resolves gets you.
 
-**TLS authorisation** — `wizeworks/services/api-rest/src/routes/internal/domain-check.ts`.
+**TLS authorisation** — `wizeworks/services/api-rest/src/routes/internal/domain-check.ts`
+in the sparx repo.
 Those Caddy blocks use on-demand TLS, which asks that endpoint for permission
 before issuing a certificate. Every hostname in the table above must be
 allow-listed there, `app.` included.
@@ -280,7 +288,10 @@ allow-listed there, `app.` included.
 half produces a failure that looks nothing like its cause: the first HTTPS
 request gets `403 unknown_host`, Caddy never issues, and Cloudflare answers
 **525** for the whole product. There is no way to make this one-repo without
-running a second ingress, which would mean a second load balancer.
+running a second ingress, which would mean a second load balancer. The Caddy
+half ships with wize-infrastructure's own release, which builds no app images and
+is fast. The allow-list half is sparx application code and ships with sparx's
+release.
 
 ## Before the first deploy
 
@@ -288,8 +299,8 @@ running a second ingress, which would mean a second load balancer.
       credential trusts `refs/heads/main` **only**; a push to `master` fails the
       token exchange with "no matching federated identity credential", which says
       nothing about branches.
-- [ ] Apply the sparx-side Terraform so the database, vault, storage and CI
-      identity exist.
+- [ ] Release wize-infrastructure so its Terraform creates the database, vault,
+      storage and CI identity.
 - [ ] Set the four repository variables (step 1 above).
 - [ ] Load the secrets into `kv-jotdojo-prod-cus`. Key Vault names allow only
       alphanumerics and hyphens, so the release step maps `DATABASE_URL` to a

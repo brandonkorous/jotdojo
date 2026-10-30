@@ -16,8 +16,8 @@ apex with a live-canvas hero.
 
 **It is deployed and the models are running.** The apex serves, the app redirects to
 sign-in, Jotacular has its own Postgres (ADR-100), and all four model seams — vision,
-speech, embeddings, reason — run against a real Azure OpenAI account provisioned by sparx
-(ADR-051). The worker says which deployments it is draining against on every boot.
+speech, embeddings, reason — run against a real Azure OpenAI account provisioned by
+wize-infrastructure's Terraform (ADR-051). The worker says which deployments it is draining against on every boot.
 
 **Billing is configured and switches on at the next deploy.** Every Stripe secret is in the
 vault and the key is live. ADR-114 removed the separate switch that was keeping them inert —

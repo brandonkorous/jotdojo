@@ -116,8 +116,8 @@ are not:
 **Recommendation: serve both, cut over deliberately.** Add the jotacular hostnames
 alongside the jotacular ones, make jotacular canonical for marketing immediately, and hold
 `app.` and `mcp.` on the old host until there is a reconnect path worth shipping. Note
-that adding *any* hostname is a two-repo change — the Caddy site block and the
-domain-check allow-list both live in the sparx repo
+that adding *any* hostname is a two-repo change: the Caddy site block lives in the
+wize-infrastructure repo and the domain-check allow-list in the sparx repo
 ([17-shared-infrastructure.md](17-shared-infrastructure.md)).
 
 ---
@@ -146,8 +146,8 @@ table is the plan, not the record.
 
 Each of these should get one line in the rebrand ADR saying it was considered and left,
 so the next reader does not think it was missed. Note also that production has already
-drifted ahead of the pipeline by hand — treat anything in the sparx repo as needing a
-look at live state first, not just at the terraform.
+drifted ahead of the pipeline by hand — treat anything in the Terraform (now in the
+wize-infrastructure repo) as needing a look at live state first, not just at the code.
 
 ---
 

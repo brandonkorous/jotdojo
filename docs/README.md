@@ -21,7 +21,7 @@ Everything needed to take Jotacular from empty repo to shipped product. Read in 
 | [14-native-apps.md](14-native-apps.md) | Future iOS/Android, and building without a Mac |
 | [15-decision-log.md](15-decision-log.md) | Decisions made, with reasoning |
 | [16-web-presence.md](16-web-presence.md) | Domains, canvas-first shell, anonymous capture, SEO |
-| [17-shared-infrastructure.md](17-shared-infrastructure.md) | **Read before deploying.** We share sparx's cluster and SQL server: what that constrains, and the pipeline that follows |
+| [17-shared-infrastructure.md](17-shared-infrastructure.md) | **Read before deploying.** We share the WizeWorks cluster, defined in wize-infrastructure: what that constrains, and the pipeline that follows |
 | [18-app-directories.md](18-app-directories.md) | Reaching people who never learned the word MCP: Claude and ChatGPT listings |
 | [19-rebrand.md](19-rebrand.md) | The rename to Jotacular: what moved, what deliberately did not, and why the domain lags |
 | [20-rename-runbook.md](20-rename-runbook.md) | The steps the rename took, including the one that failed silently |
@@ -50,4 +50,4 @@ boundary and should stay green — ADR-019 explains why that is not optional.
 - **Must / should / may** are used deliberately. "Must" means a decision is settled — see [15-decision-log.md](15-decision-log.md) before reopening one.
 - Code and schema here are illustrative, not authoritative. The repo is the truth once it exists.
 - The repo directory is still `jotDOJO`. It is the one name the rename left alone (ADR-086): renaming a checkout other sessions and tools hold open buys nothing, and the product's name is not in a path anybody reads. Everything inside it says Jotacular.
-- The **GitHub repository name is a separate fact from the directory name**, and one place depends on it: the federated credential in the sparx repo at `terraform/envs/azure/jotacular.tf` builds its subject from `owner/repo`, matched exactly and case-sensitively. There is no remote yet. When the repo is created, check that variable against the real name before the first deploy.
+- The **GitHub repository name is a separate fact from the directory name**, and one place depends on it: the federated credential in the wize-infrastructure repo at `terraform/envs/azure/jotacular.tf` builds its subject from `owner/repo`, matched exactly and case-sensitively. There is no remote yet. When the repo is created, check that variable against the real name before the first deploy.

@@ -16,6 +16,11 @@ into home-screen icons and `mcp.` is the audience on every live access token
 
 In the sparx repo, `terraform/envs/azure/jotacular.tf` and the Caddy config:
 
+> Since 2026-10-29 both live in the wize-infrastructure repo
+> (`wizeworksllc/wize-infrastructure`, same paths) and ship with its own release.
+> Repeating this step today means a change there, not in sparx. The domain-check
+> allow-list is still in sparx.
+
 - point `jotacular.com`, `app.`, `api.` and `mcp.` at the same cluster ingress
 - add all four to the domain-check allow-list
 - **leave the jotdojo.com site block in place** for the overlap

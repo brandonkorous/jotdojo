@@ -30,7 +30,8 @@ time somebody uses the feature (ADR-113). Set both, or set neither.
 ## 1–4. The models — already on, and Azure, not OpenAI
 
 ADR-051 settled this: all four seams run against **one** Azure OpenAI account created by
-sparx's Terraform in `terraform/envs/azure/jotacular.tf`. Azure startup credits pay for it.
+Terraform in wize-infrastructure's `terraform/envs/azure/jotacular.tf`, applied by that
+repo's own release. Azure startup credits pay for it.
 **The key is written by Terraform and never typed** — the same property as the generated
 database passwords, because a hand-transcribed credential is a crashloop two stages later
 with nothing pointing at the typo.

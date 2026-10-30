@@ -29,15 +29,17 @@ generous; see the note in `k8s/api.yaml` before tightening one.
 
 ## It is a shared cluster, and that changes three things
 
-Jotacular does not own the cluster. It belongs to **sparx** — a different product
-in a different repository — which already hosts sparx itself, the piggles brand,
-and kanNINJA, each in its own namespace behind **one shared Caddy ingress**.
+Jotacular does not own the cluster. It is defined in **wize-infrastructure**
+(`wizeworksllc/wize-infrastructure`), a different repository with its own
+release, and already hosts sparx, the piggles brand, and kanNINJA, each in its own
+namespace behind **one shared Caddy ingress**.
 Jotacular gets the `jotacular` namespace and shares the cluster and the Postgres
 *server*. Nothing else.
 
-**1. Adding a hostname is a two-repo change.** Routing lives in the sparx repo at
-`k8s/ingress/Caddyfile`, and every hostname must *also* be allow-listed in
-`wizeworks/services/api-rest/src/routes/internal/domain-check.ts`. Those blocks
+**1. Adding a hostname is a two-repo change.** Routing lives in wize-infrastructure at
+[`k8s/ingress/Caddyfile`](https://github.com/wizeworksllc/wize-infrastructure/blob/main/k8s/ingress/Caddyfile)
+and ships with that repo's own release. Every hostname must *also* be allow-listed in
+the sparx repo's `wizeworks/services/api-rest/src/routes/internal/domain-check.ts`. Those blocks
 use on-demand TLS, which asks that endpoint for permission before issuing a
 certificate. Miss the allow-list entry and the failure looks nothing like its
 cause: the first HTTPS request gets `403 unknown_host`, Caddy never issues, and
@@ -58,7 +60,7 @@ every user who installed it has to delete and reinstall to move — which is why
 this has to be right *before* the first `kubectl apply`, not after.
 
 **2. The connection budget is shared and exhaustible.** Jotacular has its own
-`jotacular` **database**, but it is on sparx's server, and that server's tier caps
+`jotacular` **database**, but it is on a shared server, and that server's tier caps
 `max_connections` at **50 for the whole server** — a hard, tier-specific ceiling,
 not a tunable. `packages/db/src/client.ts` reads `DB_POOL_MAX`; `infra/k8s` sets
 it to 5/5/3/3 across web/api/mcp/worker for a total of **16**. The default is 10,
@@ -71,9 +73,10 @@ access token to that literal string. It is set in `k8s/01-config.yaml` to
 Caddy routes, character for character.
 
 The Azure side — the database, the Key Vault, the blob account, and this repo's
-CI identity — is Terraform in the sparx repo at
-`terraform/envs/azure/jotacular.tf`. One file, so deleting it removes Jotacular's
-whole Azure footprint and touches nothing of sparx's.
+CI identity — is Terraform in wize-infrastructure at
+[`terraform/envs/azure/jotacular.tf`](https://github.com/wizeworksllc/wize-infrastructure/blob/main/terraform/envs/azure/jotacular.tf),
+applied by wize-infrastructure's release. One file, so deleting it removes
+Jotacular's whole Azure footprint and touches nothing of sparx's.
 
 ## Cost reality
 

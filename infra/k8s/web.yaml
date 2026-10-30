@@ -93,7 +93,7 @@ spec:
             runAsNonRoot: true
             capabilities: { drop: ['ALL'] }
 ---
-# Port 80 -> 3400, so the shared Caddy in the sparx repo never has to know
+# Port 80 -> 3400, so the shared Caddy in the wize-infrastructure repo never has to know
 # Jotacular's port assignments. Its site block reads
 # `reverse_proxy web.jotacular.svc.cluster.local:80`.
 apiVersion: v1

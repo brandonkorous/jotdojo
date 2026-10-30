@@ -6203,3 +6203,26 @@ until it stops, and a zoom-in is soft until it stops. Painting a margin beyond
 the window would hide the first; it is the next step if it is noticed. The
 numbers above are headless on one machine; a phone will be slower, and the same
 test (a seeded page, a scroll, a line) is the way to measure it.
+
+---
+
+### ADR-138 - The shared infrastructure has its own repository
+
+**Status.** Accepted, 2026-10-29.
+
+**Context.** Everything Jotacular needs from Azure (`terraform/envs/azure/jotacular.tf`)
+and its Caddy routes (`k8s/ingress/Caddyfile`) lived in the sparx repo, so even a
+one-line routing change for us rode sparx's release, which takes about two hours
+because it builds every sparx image.
+
+**Decision.** The Terraform, the Caddy ingress and `jotdojo-bootstrap.sql` moved to
+`wizeworksllc/wize-infrastructure`, at the same paths, with its own release.
+That release applies the Terraform and the Caddyfile, and it now runs the
+bootstrap that creates the jotDOJO owner role on the shared Postgres server;
+sparx's data stage no longer does. The TLS allow-list (`domain-check.ts`) is
+sparx application code and stays in sparx.
+
+**Consequences.** A new hostname, database setting, vault or identity for
+Jotacular is a change to wize-infrastructure, released there first. Nothing in
+this repo's own release changed. Entries above that say "the sparx repo" for
+Terraform or Caddy describe where those files were at the time.
