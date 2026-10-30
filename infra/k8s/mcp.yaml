@@ -35,7 +35,7 @@ spec:
       terminationGracePeriodSeconds: 60
       containers:
         - name: mcp
-          image: ghcr.io/brandonkorous/jotacular/mcp:latest
+          image: ghcr.io/wizeworksllc/jotacular/mcp:latest
           imagePullPolicy: Always
           ports:
             - name: http

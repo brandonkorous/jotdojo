@@ -42,7 +42,7 @@ spec:
       terminationGracePeriodSeconds: 120
       containers:
         - name: worker
-          image: ghcr.io/brandonkorous/jotacular/worker:latest
+          image: ghcr.io/wizeworksllc/jotacular/worker:latest
           imagePullPolicy: Always
           envFrom:
             - configMapRef: { name: jotacular-config }

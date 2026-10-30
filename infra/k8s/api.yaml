@@ -30,7 +30,7 @@ spec:
     spec:
       containers:
         - name: api
-          image: ghcr.io/brandonkorous/jotacular/api:latest
+          image: ghcr.io/wizeworksllc/jotacular/api:latest
           imagePullPolicy: Always
           ports:
             - name: http

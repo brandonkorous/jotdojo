@@ -37,7 +37,7 @@ spec:
       #   kubectl set image -n jotacular deploy/web web=<registry>/jotacular-web:<sha>
       containers:
         - name: web
-          image: ghcr.io/brandonkorous/jotacular/web:latest
+          image: ghcr.io/wizeworksllc/jotacular/web:latest
           imagePullPolicy: Always
           ports:
             - name: http

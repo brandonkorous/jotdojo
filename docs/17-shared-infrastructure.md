@@ -20,7 +20,7 @@ production and fails for a reason nothing here would have suggested.
 | Postgres server `psql-sparx-prod-cus` | wize-infrastructure | the `jotacular` **database** |
 | Key Vault | — | `kv-jotdojo-prod-cus`, ours alone |
 | Blob storage | — | `stjotdojoprodcus`, ours alone |
-| Azure CI identity | — | ours alone, `brandonkorous/jotdojo` only |
+| Azure CI identity | — | ours alone, `wizeworksllc/jotdojo` only |
 
 Everything on the right is defined in wize-infrastructure at
 [`terraform/envs/azure/jotacular.tf`](https://github.com/wizeworksllc/wize-infrastructure/blob/main/terraform/envs/azure/jotacular.tf)
@@ -198,12 +198,12 @@ variables:
 Run `terraform output jotacular_github_setup` in wize-infrastructure's
 `terraform/bootstrap-azure`. It prints the four `gh variable set` commands verbatim.
 
-**2. Build and push four images** to `ghcr.io/brandonkorous/jotdojo/<service>`,
+**2. Build and push four images** to `ghcr.io/wizeworksllc/jotdojo/<service>`,
 tagged with the commit SHA — never `latest`. Dockerfiles are in `infra/docker/`
 and all four **build from the repo root**:
 
 ```
-docker build -f infra/docker/api.Dockerfile -t ghcr.io/brandonkorous/jotdojo/api:$SHA .
+docker build -f infra/docker/api.Dockerfile -t ghcr.io/wizeworksllc/jotdojo/api:$SHA .
 ```
 
 **3. Get cluster credentials.**
@@ -227,7 +227,7 @@ as no migration at all, discovered later by a user.
 `:latest` placeholder:
 
 ```
-kubectl set image -n jotacular deploy/api api=ghcr.io/brandonkorous/jotdojo/api:$SHA
+kubectl set image -n jotacular deploy/api api=ghcr.io/wizeworksllc/jotdojo/api:$SHA
 ```
 
 Then `kubectl rollout status` on each, with a timeout, so a wedged rollout fails
